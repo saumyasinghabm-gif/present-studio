@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Present Studio — Workspace</title>
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./index.html" aria-label="Present Studio home">
+        <span class="brand-mark" aria-hidden="true"><span></span><i></i></span>
+        <span>Present Studio</span>
+      </a>
+      <div class="topbar-actions">
+        <button class="button button-outline" type="button" data-toast="Upgrade flow is ready for backend integration.">♕ <span>Upgrade</span></button>
+        <a class="button button-gold" href="./login.html">♙ <span>Account</span></a>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <nav class="side-nav">
+          <a class="nav-item active" href="./dashboard.html">⌂ <span>Dashboard</span></a>
+          <a class="nav-item" href="#slides">▣ <span>Slides</span></a>
+        </nav>
+        <nav class="side-nav side-nav-bottom">
+          <button class="nav-item" type="button" data-toast="Help center will connect to your team documentation.">? <span>Help</span></button>
+          <button class="nav-item" type="button" data-toast="Settings will connect to your backend preferences.">⚙ <span>Settings</span></button>
+        </nav>
+      </aside>
+
+      <main class="main-stage" id="workspace">
+        <section class="slide-column" id="slides" aria-label="Slides panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Your workspace</p>
+              <h1>Slides</h1>
+            </div>
+            <button class="button button-gold button-small" id="addSlide" type="button">＋ <span>Add Slide</span></button>
+          </div>
+          <div class="slide-list" id="slideList"></div>
+          <div class="slide-footer"><button type="button" aria-label="Previous slide" data-slide-prev>‹</button><span id="slideCount">01 / 04</span><button type="button" aria-label="Next slide" data-slide-next>›</button></div>
+        </section>
+
+        <section class="canvas-column" aria-label="Slide editor">
+          <div class="canvas-meta"><span class="status-dot"></span><span id="modeLabel">Local demo</span><span class="divider">/</span><span>Untitled presentation</span><span class="meta-spacer"></span><button class="icon-button" type="button" data-toast="Undo is available in the full editor.">↶</button><button class="icon-button" type="button" data-toast="Redo is available in the full editor.">↷</button><button class="icon-button" type="button" data-toast="More editor tools are coming next.">•••</button></div>
+          <div class="canvas-card">
+            <div class="slide-canvas" id="slideCanvas" tabindex="0" aria-label="Editable presentation slide">
+              <div class="slide-kicker">PRESENT STUDIO</div>
+              <div class="slide-art art-left"></div><div class="slide-art art-right"></div>
+              <div class="editable-element selected-element" id="titleElement" contenteditable="true" spellcheck="false">Welcome</div>
+              <div class="editable-element subtitle-element" id="subtitleElement" contenteditable="true" spellcheck="false">to Present Studio</div>
+              <div class="gold-rule"></div>
+              <div class="slide-index" id="canvasIndex">01 / 04</div>
+            </div>
+            <div class="canvas-toolbar"><span>16:9</span><span class="toolbar-separator">|</span><button type="button" data-toast="Zoom controls are visual only in this starter frontend.">−</button><span>100%</span><button type="button" data-toast="Zoom controls are visual only in this starter frontend.">＋</button><button class="fullscreen-button" type="button" data-fullscreen>⛶</button><span class="toolbar-spacer"></span><button type="button" data-toast="Undo is available in the full editor.">↶</button><button type="button" data-toast="Redo is available in the full editor.">↷</button></div>
+          </div>
+          <div class="editor-panel" id="editorPanel" aria-label="Text formatting controls">
+            <div><strong>Selected text</strong><span class="selection-note" id="selectionNote">Title</span></div>
+            <label>Size <input id="fontSize" type="range" min="18" max="76" value="54" /></label>
+            <button type="button" class="format-button" id="boldButton"><strong>B</strong></button>
+            <label class="color-label">Color <input id="textColor" type="color" value="#1f1e1b" /></label>
+            <button type="button" class="format-button" data-align="left">≡</button><button type="button" class="format-button" data-align="center">≡</button><button type="button" class="format-button" data-align="right">≡</button>
+            <button type="button" class="format-close" id="closeEditor">×</button>
+          </div>
+          <div class="presenter-controls"><button class="button button-gold live-button" id="startLive" type="button">◉ <span>Start Live</span></button><button class="button button-soft" type="button" data-slide-prev>‹ <span>Previous</span></button><span class="page-label" id="pageLabel">Slide 1 of 4</span><button class="button button-gold" type="button" data-slide-next><span>Next</span> ›</button></div>
+        </section>
+
+        <aside class="tools-column" aria-label="Presentation tools">
+          <section class="tool-card"><div class="card-heading"><div><p class="eyebrow">Assets</p><h2>Upload Media</h2><p>Bring your visual language into the room.</p></div><button type="button" class="more-button" data-toast="Asset library menu will be connected later.">•••</button></div><div class="media-grid"><label class="media-option"><input type="file" accept="image/*" data-media-input="image" /><span class="media-icon">▧</span><strong>Image</strong><small>PNG, JPG</small></label><label class="media-option"><input type="file" accept="video/*" data-media-input="video" /><span class="media-icon">▷</span><strong>Video</strong><small>MP4, MOV</small></label></div><p class="upload-status" id="uploadStatus" role="status"></p></section>
+          <section class="tool-card"><div class="card-heading"><div><p class="eyebrow">Collaboration</p><h2>Choose Presenter</h2></div></div><div class="presenter-list"><button class="presenter-option active" type="button" data-presenter="Self">♙ <span>Self</span><span class="radio"></span></button><button class="presenter-option" type="button" data-presenter="AI">✦ <span>AI</span><span class="radio"></span></button><button class="presenter-option" type="button" data-presenter="Partner">♧ <span>Partner</span><span class="radio"></span></button></div><div class="ai-panel" id="aiPanel" hidden><label for="aiPrompt">AI prompt</label><textarea id="aiPrompt" rows="3" placeholder="Create a concise opening slide about..."></textarea><button class="button button-gold button-small" type="button" id="generateAi">Generate draft</button><p id="aiStatus" role="status"></p></div></section>
+          <section class="tool-card"><div class="card-heading"><div><p class="eyebrow">Distribution</p><h2>Share &amp; Publish</h2><p>Invite the room when your story is ready.</p></div></div><div class="share-grid"><button class="button button-soft" id="generateLink" type="button">↗ <span>Generate Link</span></button><button class="button button-soft" id="copyLink" type="button">▣ <span>Copy Link</span></button></div><p class="share-status" id="shareStatus" role="status"></p></section>
+        </aside>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./js/app.js"></script>
+  </body>
+</html>
