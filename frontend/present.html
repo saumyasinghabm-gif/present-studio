@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Present Studio - Present</title>
+    <link rel="stylesheet" href="/css/styles.css">
+  </head>
+  <body class="present-page">
+    <main class="present-stage">
+      <div class="present-meta">
+        <a href="/dashboard.html">Dashboard</a>
+        <span id="presentStatus">Loading presentation...</span>
+      </div>
+      <div class="canvas-frame present-frame"><canvas id="presentCanvas" width="1280" height="720"></canvas></div>
+      <nav class="present-controls">
+        <button id="previousSlide" type="button">Previous</button>
+        <span id="slideCounter">1 / 1</span>
+        <button id="nextSlide" type="button">Next</button>
+      </nav>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/present.js"></script>
+  </body>
+</html>

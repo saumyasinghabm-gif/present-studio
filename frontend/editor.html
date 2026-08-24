@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Present Studio - Editor</title>
+    <link rel="stylesheet" href="/css/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/dashboard.html">Present Studio Cloud</a>
+      <nav><button id="saveDeck" type="button">Save</button><button id="startLive" type="button">Start live</button></nav>
+    </header>
+    <main class="editor-shell">
+      <aside class="slides-panel">
+        <div class="panel-title"><h2>Slides</h2><button id="addSlide" type="button">+</button></div>
+        <div id="slideList"></div>
+      </aside>
+      <section class="canvas-workspace">
+        <div class="workspace-bar">
+          <div><p class="eyebrow">Editor</p><h1 id="deckTitle">Loading...</h1></div>
+          <p id="editorStatus" class="status-text"></p>
+        </div>
+        <div class="canvas-frame"><canvas id="slideCanvas" width="1280" height="720"></canvas></div>
+      </section>
+      <aside class="properties-panel">
+        <h2>Tools</h2>
+        <button class="tool-button" id="addText" type="button">Add text</button>
+        <label class="tool-button file-tool">Add image <input id="imageInput" type="file" accept="image/*"></label>
+        <label>Text <textarea id="textValue" rows="4"></textarea></label>
+        <label>Font size <input id="fontSize" type="range" min="14" max="96" value="48"></label>
+        <label>Color <input id="textColor" type="color" value="#171717"></label>
+        <button class="tool-button danger" id="deleteObject" type="button">Delete selected</button>
+        <button class="tool-button" id="shareDeck" type="button">Create share link</button>
+        <p id="shareOutput" class="share-output"></p>
+      </aside>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/editor.js"></script>
+  </body>
+</html>

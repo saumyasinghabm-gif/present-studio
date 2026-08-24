@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Present Studio - Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/dashboard.html">Present Studio Cloud</a>
+      <nav><a href="/editor.html">Editor</a><a href="/present.html">Present</a></nav>
+    </header>
+    <main class="dashboard">
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">Workspace</p>
+          <h1>Presentation Library</h1>
+        </div>
+        <button class="primary-button" id="newPresentation">New presentation</button>
+      </section>
+      <section class="deck-grid" id="deckGrid"></section>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/dashboard.js"></script>
+  </body>
+</html>

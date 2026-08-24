@@ -1,27 +1,84 @@
-# Present Studio Frontend
+# Present Studio Cloud
 
-This package contains the standalone frontend for the gold-themed Present Studio interface. It intentionally contains only HTML, CSS, and browser JavaScript so a separate backend team can connect its own APIs later.
+Cloud presentation creation and live presenting product built for the current team:
 
-## Included pages
+- Frontend: plain HTML, CSS, JavaScript, Fabric.js.
+- Backend: Python FastAPI, SQLAlchemy, Socket.IO.
+- Local database: SQLite by default.
+- Production database: PostgreSQL through `DATABASE_URL`.
 
-| File | Purpose |
-|---|---|
-| `login.html` | Gold-themed login and signup UI with local demo sign-in behavior |
-| `index.html` | Presentation workspace with thumbnails, editor canvas, media panel, presenter choices, AI panel, and share controls |
-| `css/style.css` | Complete responsive gold editorial design system |
-| `js/login.js` | Login-page demo interactions |
-| `js/app.js` | Slide navigation, local editing, drag, resize, formatting, media selection, AI demo feedback, and share-link demo behavior |
+## Run Locally
 
-## Run in VS Code
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r backend\requirements.txt
+cd backend
+uvicorn app.main:app --reload
+```
 
-No installation or backend is required for the visual demo. Open the folder in VS Code, install the **Live Server** extension if desired, right-click `login.html`, and choose **Open with Live Server**. You can also open `login.html` directly in a browser.
+Open:
 
-The demo login accepts any valid-looking email and password. The data is stored only in the current browser session and is not sent to a server.
+```text
+http://127.0.0.1:8000
+```
 
-## Backend integration points
+Demo login:
 
-A backend team can later replace the local demo handlers with real API calls for authentication, slide persistence, media storage, AI generation, share links, and live presenter synchronization. The current package contains no backend, database, Docker, React, tRPC, OAuth, Manus, or environment-secret files.
+```text
+owner@presentstudio.local
+password123
+```
 
-## Notes
+## Structure
 
-The interface uses Google Fonts through a CSS import. If the project must work fully offline, replace the font import with local font files supplied by the design team.
+```text
+frontend/
+  login.html
+  dashboard.html
+  editor.html
+  present.html
+  css/styles.css
+  js/api.js
+  js/login.js
+  js/dashboard.js
+  js/editor.js
+  js/present.js
+
+backend/
+  requirements.txt
+  app/
+    main.py
+    config.py
+    database.py
+    models.py
+    schemas.py
+    seed.py
+    socket_manager.py
+    routers/
+      auth.py
+      presentations.py
+      media.py
+```
+
+## Current Features
+
+- Login flow.
+- Presentation dashboard.
+- Create presentation.
+- Fabric.js canvas editor.
+- Add/edit/delete text.
+- Add images locally to canvas.
+- Save canvas JSON to backend.
+- Share-link endpoint.
+- Presenter/audience view.
+- Socket.IO active-slide broadcast.
+
+## Production Next Steps
+
+- Replace demo auth with real password hashing and sessions/JWT.
+- Configure PostgreSQL using `DATABASE_URL`.
+- Upload media to Cloudinary/S3/R2 instead of local object URLs.
+- Add Alembic migrations.
+- Add role-based permissions.
+- Add AI slide generation endpoint.
