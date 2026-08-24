@@ -7,11 +7,22 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
 class UserOut(BaseModel):
     id: str
     name: str
     email: str
     role: str
+
+
+class AuthOut(BaseModel):
+    user: UserOut
+    accessToken: str
 
 
 class SlideIn(BaseModel):
@@ -46,6 +57,7 @@ class PresentationOut(BaseModel):
 
 class ShareLinkOut(BaseModel):
     url: str
+    token: str
 
 
 class MediaAssetOut(BaseModel):
@@ -60,3 +72,9 @@ class LiveSlideEvent(BaseModel):
     presentationId: str
     slideId: str
     mode: Literal["presenter", "audience"] = "presenter"
+
+
+class LiveSessionOut(BaseModel):
+    presentationId: str
+    activeSlideId: str | None = None
+    isLive: bool

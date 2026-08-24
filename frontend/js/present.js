@@ -1,6 +1,7 @@
 const api = window.PresentStudioApi;
 const params = new URLSearchParams(window.location.search);
 const presentationId = params.get("id") || "pres_demo";
+const shareToken = params.get("token") || "";
 const canvas = new fabric.Canvas("presentCanvas", {
   selection: false,
   backgroundColor: "#f8f4ea"
@@ -59,7 +60,7 @@ document.querySelector("#nextSlide").addEventListener("click", () => go(1));
 document.querySelector("#previousSlide").addEventListener("click", () => go(-1));
 
 async function loadPresentation() {
-  const result = await api.getPresentation(presentationId);
+  const result = await api.getPresentation(presentationId, shareToken);
   presentation = result.presentation;
   socket?.emit("join_presentation", { presentationId: presentation.id });
   socket?.on("active_slide_changed", (event) => {

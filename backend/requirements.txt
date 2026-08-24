@@ -4,3 +4,10 @@ python-socketio[asgi]==5.11.4
 SQLAlchemy==2.0.36
 pydantic==2.10.3
 python-multipart==0.0.19
+psycopg[binary]==3.2.3
+alembic==1.14.0
+PyJWT==2.10.1
+passlib==1.7.4
+cloudinary==1.41.0
+pytest==8.3.4
+httpx==0.28.1

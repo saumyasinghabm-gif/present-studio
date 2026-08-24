@@ -73,12 +73,50 @@ backend/
 - Share-link endpoint.
 - Presenter/audience view.
 - Socket.IO active-slide broadcast.
+- JWT auth with hashed passwords.
+- Share token table.
+- Live session persistence.
+- Cloudinary upload endpoint.
+- Alembic migration scaffold.
+- Docker Compose with PostgreSQL.
 
 ## Production Next Steps
 
-- Replace demo auth with real password hashing and sessions/JWT.
-- Configure PostgreSQL using `DATABASE_URL`.
-- Upload media to Cloudinary/S3/R2 instead of local object URLs.
-- Add Alembic migrations.
-- Add role-based permissions.
+- Set a strong `JWT_SECRET`.
+- Configure Cloudinary credentials.
+- Run with Docker PostgreSQL for production-like testing.
+- Expand role-management APIs.
 - Add AI slide generation endpoint.
+
+## Docker PostgreSQL
+
+```bash
+docker compose up --build
+```
+
+Backend:
+
+```text
+http://127.0.0.1:8000
+```
+
+## Alembic
+
+From `backend/`:
+
+```bash
+alembic upgrade head
+```
+
+For local development, the app still creates tables automatically on startup. For production, use Alembic migrations.
+
+## Cloudinary
+
+Set these environment variables:
+
+```text
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+CLOUDINARY_FOLDER=present-studio
+```

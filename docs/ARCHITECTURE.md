@@ -22,6 +22,8 @@ Build a professional cloud presentation product in phases. The first production 
 - `backend/app/models.py` - SQLAlchemy tables.
 - `backend/app/routers/` - API modules.
 - `backend/app/socket_manager.py` - live slide sync.
+- `backend/alembic/` - production migrations.
+- `docker-compose.yml` - PostgreSQL and backend containers.
 
 ## Data Model
 
@@ -70,13 +72,13 @@ The editor should store slides as JSON. The backend should not need custom colum
 - Use Socket.IO only for live active-slide events, not for saving slide data.
 - Every new canvas element type must be serializable in slide JSON.
 - Keep the audience page read-only.
+- Use Alembic for production schema changes.
+- Use PostgreSQL in Docker for production-like testing.
 
-## Recommended Migration Later
+## Production Components
 
-When the product moves beyond prototype stage, migrate to:
-
-- React + TypeScript + Vite
-- Fabric.js or Konva.js for the canvas editor
-- Zustand for editor state
-- shadcn/ui or a controlled design system
-- Socket.IO client for live presentation mode
+- JWT auth with HTTP-only cookie and bearer-token support.
+- Password hashes with Passlib.
+- Cloudinary media upload.
+- Share token table for public audience links.
+- Live session table for active-slide persistence.

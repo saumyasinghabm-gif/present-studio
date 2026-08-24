@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from ..config import get_settings
 from ..database import get_db
-from ..models import Presentation, Slide, User
-from ..routers.auth import current_user
-from ..schemas import PresentationCreate, PresentationOut, PresentationSave, ShareLinkOut, SlideOut
+from ..models import LiveSession, Presentation, ShareLink, Slide, User
+from ..schemas import LiveSessionOut, PresentationCreate, PresentationOut, PresentationSave, ShareLinkOut, SlideOut
+from ..security import can_edit_presentation, can_view_presentation, current_user, new_id
 
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
@@ -38,16 +39,18 @@ def create_presentation(
     db: Session = Depends(get_db),
 ) -> dict[str, PresentationOut]:
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
-    presentation = Presentation(id=f"pres_{now}", title=payload.title.strip() or "Untitled presentation", owner_id=user.id)
+    title = payload.title.strip() or "Untitled presentation"
+    presentation = Presentation(id=f"pres_{now}", title=title, owner_id=user.id)
     slide = Slide(
         id=f"slide_{now}",
         presentation_id=presentation.id,
         order=1,
-        title=payload.title.strip() or "Untitled Slide",
+        title=title,
         canvas={"background": "#f8f4ea", "elements": []},
     )
     db.add(presentation)
     db.add(slide)
+    db.add(LiveSession(id=new_id("live"), presentation_id=presentation.id, active_slide_id=slide.id, presenter_user_id=user.id))
     db.commit()
     db.refresh(presentation)
     return {"presentation": serialize_presentation(presentation)}
@@ -56,12 +59,23 @@ def create_presentation(
 @router.get("/{presentation_id}")
 def get_presentation(
     presentation_id: str,
-    user: User = Depends(current_user),
+    request: Request,
     db: Session = Depends(get_db),
 ) -> dict[str, PresentationOut]:
     presentation = db.get(Presentation, presentation_id)
-    if not presentation or presentation.owner_id != user.id:
+    if not presentation:
         raise HTTPException(status_code=404, detail="Presentation not found")
+
+    token = request.query_params.get("token")
+    if token:
+        share = db.query(ShareLink).filter(ShareLink.token == token, ShareLink.presentation_id == presentation.id).first()
+        if not share or not share.is_active:
+            raise HTTPException(status_code=403, detail="Share link is not valid")
+        return {"presentation": serialize_presentation(presentation)}
+
+    user = current_user(request, db)
+    if not can_view_presentation(db, presentation, user):
+        raise HTTPException(status_code=403, detail="No access to this presentation")
     return {"presentation": serialize_presentation(presentation)}
 
 
@@ -73,28 +87,52 @@ def save_presentation(
     db: Session = Depends(get_db),
 ) -> dict[str, PresentationOut]:
     presentation = db.get(Presentation, presentation_id)
-    if not presentation or presentation.owner_id != user.id:
+    if not presentation or not can_edit_presentation(db, presentation, user):
         raise HTTPException(status_code=404, detail="Presentation not found")
 
     presentation.title = payload.title.strip() or "Untitled presentation"
     db.query(Slide).filter(Slide.presentation_id == presentation.id).delete()
     for slide in payload.slides:
-        db.add(Slide(
-            id=slide.id,
-            presentation_id=presentation.id,
-            order=slide.order,
-            title=slide.title,
-            canvas=slide.canvas,
-        ))
+        db.add(Slide(id=slide.id, presentation_id=presentation.id, order=slide.order, title=slide.title, canvas=slide.canvas))
     db.commit()
     db.refresh(presentation)
     return {"presentation": serialize_presentation(presentation)}
 
 
 @router.post("/{presentation_id}/share")
-def create_share_link(presentation_id: str, request: Request, db: Session = Depends(get_db)) -> ShareLinkOut:
+def create_share_link(
+    presentation_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ShareLinkOut:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation or not can_edit_presentation(db, presentation, user):
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    share = ShareLink(
+        id=new_id("share"),
+        presentation_id=presentation.id,
+        token=new_id("token"),
+        permission="viewer",
+    )
+    db.add(share)
+    db.commit()
+    base = get_settings().public_base_url.rstrip("/")
+    return ShareLinkOut(url=f"{base}/present.html?id={presentation_id}&token={share.token}", token=share.token)
+
+
+@router.get("/{presentation_id}/live")
+def get_live_session(
+    presentation_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> LiveSessionOut:
     presentation = db.get(Presentation, presentation_id)
     if not presentation:
         raise HTTPException(status_code=404, detail="Presentation not found")
-    base = str(request.base_url).rstrip("/")
-    return ShareLinkOut(url=f"{base}/present.html?id={presentation_id}")
+    live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).first()
+    return LiveSessionOut(
+        presentationId=presentation_id,
+        activeSlideId=live.active_slide_id if live else None,
+        isLive=bool(live and live.is_live),
+    )

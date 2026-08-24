@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from .models import Presentation, Slide, User
+from .security import hash_password
 
 
 DEMO_USER_ID = "usr_demo"
@@ -41,7 +42,13 @@ def seed_demo_data(db: Session) -> None:
     if db.get(User, DEMO_USER_ID):
         return
 
-    user = User(id=DEMO_USER_ID, name="Studio Owner", email="owner@presentstudio.local", role="owner")
+    user = User(
+        id=DEMO_USER_ID,
+        name="Studio Owner",
+        email="owner@presentstudio.local",
+        password_hash=hash_password("password123"),
+        role="owner",
+    )
     presentation = Presentation(id="pres_demo", title="Product Vision Deck", owner_id=DEMO_USER_ID)
     slides = [
         Slide(id="slide_1", presentation_id="pres_demo", order=1, title="Present Studio Cloud", canvas=default_canvas("Present Studio Cloud", "Create, share, and present from one workspace")),

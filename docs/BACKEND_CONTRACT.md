@@ -4,6 +4,32 @@ The frontend is wired through `frontend/js/api.js`. Frontend page scripts should
 
 ## Authentication
 
+### `POST /api/auth/signup`
+
+Request:
+
+```json
+{
+  "name": "Alex Smith",
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Response:
+
+```json
+{
+  "user": {
+    "id": "usr_123",
+    "name": "Alex Smith",
+    "email": "user@example.com",
+    "role": "owner"
+  },
+  "accessToken": "jwt-token"
+}
+```
+
 ### `POST /api/auth/login`
 
 Request:
@@ -24,7 +50,8 @@ Response:
     "name": "Alex Smith",
     "email": "user@example.com",
     "role": "owner"
-  }
+  },
+  "accessToken": "jwt-token"
 }
 ```
 
@@ -125,39 +152,44 @@ Response:
 
 ```json
 {
-  "url": "https://app.example.com/present.html?token=share_abc"
+  "url": "https://app.example.com/present.html?id=pres_123&token=token_abc",
+  "token": "token_abc"
 }
 ```
 
-Production should use a secure share token, not raw presentation IDs.
+Audience access uses the secure token.
 
 ## Media
 
-The current demo adds local images to the Fabric canvas. Production should use a presigned upload flow.
+The backend uploads files to Cloudinary.
 
-Recommended endpoint:
-
-### `POST /api/uploads/presign`
-
-Request:
-
-```json
-{
-  "fileName": "image.png",
-  "mimeType": "image/png",
-  "size": 238123
-}
-```
+### `POST /api/media/upload`
 
 Response:
 
 ```json
 {
-  "uploadUrl": "https://storage.example.com/upload-url",
   "asset": {
     "id": "asset_123",
-    "url": "https://cdn.example.com/image.png"
+    "name": "image.png",
+    "mimeType": "image/png",
+    "url": "https://res.cloudinary.com/example/image/upload/...",
+    "size": 238123
   }
+}
+```
+
+## Live Session
+
+### `GET /api/presentations/:id/live`
+
+Response:
+
+```json
+{
+  "presentationId": "pres_123",
+  "activeSlideId": "slide_2",
+  "isLive": true
 }
 ```
 
@@ -184,7 +216,7 @@ Response:
 
 ## Live Presenting
 
-Use Socket.IO later. Keep events small.
+Use Socket.IO for active slide changes. Keep events small.
 
 Presenter emits:
 
