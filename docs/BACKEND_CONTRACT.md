@@ -116,7 +116,8 @@ Response:
     "id": "pres_123",
     "title": "Untitled presentation",
     "slides": []
-  }
+  },
+  "permission": "presenter"
 }
 ```
 
@@ -140,7 +141,31 @@ Response:
     "id": "pres_123",
     "title": "Welcome Deck",
     "slides": []
-  }
+  },
+  "permission": "presenter"
+}
+```
+
+`GET /api/presentations/:id?token=share_token` returns the same shape. The `permission` value is resolved from the authenticated user or share token and is always one of `viewer` or `presenter`.
+
+Slide canvas JSON can include presentation-only settings:
+
+```json
+{
+  "fabric": {},
+  "background_media": {
+    "type": "image",
+    "url": "https://res.cloudinary.com/example/image/upload/bg.png",
+    "loop": true,
+    "muted": true,
+    "fit": "cover",
+    "fade_in_ms": 400
+  },
+  "transition": {
+    "type": "fade",
+    "duration_ms": 400
+  },
+  "notes": "Speaker notes for presenter console"
 }
 ```
 
@@ -148,16 +173,27 @@ Response:
 
 ### `POST /api/presentations/:id/share`
 
+Request:
+
+```json
+{
+  "permission": "viewer"
+}
+```
+
+Use `viewer` for audience links and `presenter` for trusted presenter/operator links.
+
 Response:
 
 ```json
 {
   "url": "https://app.example.com/present.html?id=pres_123&token=token_abc",
-  "token": "token_abc"
+  "token": "token_abc",
+  "permission": "viewer"
 }
 ```
 
-Audience access uses the secure token.
+Audience access uses the secure token. Presenter controls are allowed only for authenticated editors/owners or share links created with `permission: "presenter"`.
 
 ## Media
 
@@ -216,15 +252,29 @@ Response:
 
 ## Live Presenting
 
-Use Socket.IO for active slide changes. Keep events small.
+Use Socket.IO for active slide changes. Keep events small. The server rejects presenter-only events unless the payload includes a valid owner/editor JWT or a presenter share token.
 
 Presenter emits:
 
 ```json
 {
   "presentationId": "pres_123",
-  "slideId": "slide_2"
+  "slideId": "slide_2",
+  "authToken": "jwt-token",
+  "shareToken": "token_abc"
 }
 ```
 
 Audience receives the active slide ID and renders the already-loaded slide JSON.
+
+Presenter can end a session through Socket.IO:
+
+```json
+{
+  "presentationId": "pres_123",
+  "authToken": "jwt-token",
+  "shareToken": "token_abc"
+}
+```
+
+Authenticated owners/editors can also call `POST /api/presentations/:id/live/end`.

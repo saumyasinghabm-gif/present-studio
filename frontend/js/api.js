@@ -69,8 +69,30 @@
       });
     },
 
-    async createShareLink(id) {
-      return request(`/api/presentations/${encodeURIComponent(id)}/share`, { method: "POST" });
+    async createShareLink(id, permission = "viewer") {
+      return request(`/api/presentations/${encodeURIComponent(id)}/share`, {
+        method: "POST",
+        body: JSON.stringify({ permission })
+      });
+    },
+
+    async uploadMedia(file) {
+      const token = window.localStorage.getItem("presentStudio.accessToken");
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/media/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.detail || body.error || "Upload failed");
+      return body;
+    },
+
+    async endLiveSession(id) {
+      return request(`/api/presentations/${encodeURIComponent(id)}/live/end`, { method: "POST" });
     }
   };
 })();

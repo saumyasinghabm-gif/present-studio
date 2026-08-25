@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from .config import get_settings
 from .database import get_db
-from .models import Presentation, PresentationMember, User
+from .models import Presentation, PresentationMember, ShareLink, User
 
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -51,6 +51,26 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+def user_from_token(db: Session, token: str) -> User | None:
+    if not token:
+        return None
+    settings = get_settings()
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except jwt.PyJWTError:
+        return None
+    user = db.get(User, payload.get("sub"))
+    return user if user and user.is_active else None
+
+
+def optional_current_user(request: Request, db: Session) -> User | None:
+    auth_header = request.headers.get("authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip() if auth_header.lower().startswith("bearer ") else ""
+    if not token:
+        token = request.cookies.get("present_studio_token", "")
+    return user_from_token(db, token)
+
+
 def can_edit_presentation(db: Session, presentation: Presentation, user: User) -> bool:
     if presentation.owner_id == user.id:
         return True
@@ -69,3 +89,23 @@ def can_view_presentation(db: Session, presentation: Presentation, user: User) -
         PresentationMember.user_id == user.id,
     ).first()
     return bool(member and member.role in {"viewer", "editor", "owner"})
+
+
+def resolve_share_permission(db: Session, presentation_id: str, token: str) -> str | None:
+    share = db.query(ShareLink).filter(
+        ShareLink.token == token,
+        ShareLink.presentation_id == presentation_id,
+        ShareLink.is_active == True,  # noqa: E712
+    ).first()
+    if not share:
+        return None
+    if share.permission not in {"viewer", "presenter"}:
+        return "viewer"
+    return share.permission
+
+
+def can_present_with_credentials(db: Session, presentation: Presentation, auth_token: str = "", share_token: str = "") -> bool:
+    user = user_from_token(db, auth_token)
+    if user and can_edit_presentation(db, presentation, user):
+        return True
+    return resolve_share_permission(db, presentation.id, share_token) == "presenter"

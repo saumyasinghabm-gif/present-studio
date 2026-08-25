@@ -10,7 +10,19 @@ These tasks are written for a junior frontend developer. She should work inside 
 - Keep page files simple: HTML structure, CSS styling, JS behavior.
 - Check mobile and desktop layouts after every UI change.
 
-## Priority 2 - Editor Canvas
+## Five-Day Frontend Assignment
+
+Owner: Junior Frontend Developer
+
+### Day 1 - Run, Read, And Verify
+
+- Run the app locally and confirm login, dashboard, editor, and present pages open.
+- Read `frontend/js/api.js`, `frontend/js/editor.js`, and `frontend/js/present.js`.
+- Verify audience links do not show presenter controls.
+- Verify presenter links show Previous, Next, End Session, timer, thumbnails, notes, and next preview.
+- Report any console error with page name, browser action, and screenshot.
+
+### Day 2 - Editor Canvas Controls
 
 - Add drag support for canvas elements.
 - Add resize support for canvas elements.
@@ -21,7 +33,7 @@ These tasks are written for a junior frontend developer. She should work inside 
 - Add layer ordering: bring forward, send backward.
 - Add basic keyboard shortcuts: Delete, Ctrl+C, Ctrl+V.
 
-## Priority 3 - Slide Management
+### Day 3 - Slide Management
 
 - Add rename presentation UI.
 - Add rename slide UI.
@@ -30,21 +42,25 @@ These tasks are written for a junior frontend developer. She should work inside 
 - Add drag-and-drop slide reorder.
 - Save after slide structure changes.
 
-## Priority 4 - Media Library
+### Day 4 - Media Library And Background Panel
 
 - Show uploaded media assets in the right panel.
 - Allow click-to-insert image/video on canvas.
 - Show upload progress.
 - Validate file type before sending to backend.
+- Improve the existing background media panel without changing the stored JSON shape.
+- Keep `background_media.type`, `url`, `loop`, `muted`, `fit`, and `fade_in_ms` exactly as documented.
 
-## Priority 5 - Presenting
+### Day 5 - Presenting Polish
 
-- Add presenter route/state separate from editor mode.
 - Add audience loading and error states.
 - Add full-screen audience mode.
-- Prepare Socket.IO integration points for active-slide updates.
+- Polish mobile layout for presenter console.
+- Improve sidebar thumbnails visually.
+- Test transitions: none, fade, slide, zoom.
+- Test video background loop and mute behavior.
 
-## Priority 6 - Design Cleanup
+## Later Design Cleanup
 
 - Replace decorative text symbols with proper icons once the project moves to React.
 - Standardize spacing tokens in CSS.
@@ -58,4 +74,5 @@ These tasks are written for a junior frontend developer. She should work inside 
 - Does not break login, dashboard, editor, or present view.
 - Uses `frontend/js/api.js` for data.
 - Updates the slide JSON when canvas content changes.
+- Does not add presenter controls to viewer/audience mode.
 - Has no console errors.

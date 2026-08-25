@@ -17,7 +17,7 @@ Build a professional cloud presentation product in phases. The first production 
 
 - `frontend/js/api.js` - browser API client.
 - `frontend/js/editor.js` - Fabric.js canvas editor.
-- `frontend/js/present.js` - audience/presenter rendering and Socket.IO events.
+- `frontend/js/present.js` - role-aware presenter console and audience stage rendering.
 - `backend/app/main.py` - FastAPI app and static frontend serving.
 - `backend/app/models.py` - SQLAlchemy tables.
 - `backend/app/routers/` - API modules.
@@ -51,10 +51,32 @@ The editor should store slides as JSON. The backend should not need custom colum
         "fontWeight": "500",
         "textAlign": "center"
       }
-    ]
+    ],
+    "background_media": {
+      "type": "image",
+      "url": "https://res.cloudinary.com/example/image/upload/background.png",
+      "loop": true,
+      "muted": true,
+      "fit": "cover",
+      "fade_in_ms": 400
+    },
+    "transition": {
+      "type": "fade",
+      "duration_ms": 400
+    },
+    "notes": "Presenter-only speaker notes"
   }
 }
 ```
+
+## Presentation Runtime
+
+The presentation page has two modes.
+
+- Presenter Console: available to authenticated owners/editors and share links with `permission: "presenter"`.
+- Audience Stage: available to normal viewer share links and does not render navigation controls.
+
+The frontend must always trust the backend's resolved `permission` value from `GET /api/presentations/:id`. Hiding buttons in the DOM is only the first layer. The backend Socket.IO layer also rejects `slide_changed` and `end_session` events unless the caller has presenter rights.
 
 ## Rules For Frontend Work
 
@@ -62,6 +84,7 @@ The editor should store slides as JSON. The backend should not need custom colum
 - Use `window.PresentStudioApi` for backend communication.
 - Keep all slide content serializable as JSON.
 - Keep audience/presenter rendering read-only unless in editor mode.
+- Keep presenter controls behind the backend-resolved `permission` value.
 - Keep UI dense, modern, and product-like.
 
 ## Backend Rules
@@ -70,6 +93,7 @@ The editor should store slides as JSON. The backend should not need custom colum
 - Store slide canvas data as JSON.
 - Keep uploaded media outside the database.
 - Use Socket.IO only for live active-slide events, not for saving slide data.
+- Authorize presenter Socket.IO events with JWT or presenter share token.
 - Every new canvas element type must be serializable in slide JSON.
 - Keep the audience page read-only.
 - Use Alembic for production schema changes.

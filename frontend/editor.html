@@ -31,7 +31,30 @@
         <label>Font size <input id="fontSize" type="range" min="14" max="96" value="48"></label>
         <label>Color <input id="textColor" type="color" value="#171717"></label>
         <button class="tool-button danger" id="deleteObject" type="button">Delete selected</button>
-        <button class="tool-button" id="shareDeck" type="button">Create share link</button>
+        <h2>Slide Background</h2>
+        <label class="tool-button file-tool">Upload background media <input id="backgroundInput" type="file" accept="image/*,video/*"></label>
+        <label>Fit
+          <select id="backgroundFit">
+            <option value="cover">Cover</option>
+            <option value="contain">Contain</option>
+          </select>
+        </label>
+        <label class="inline-check"><input id="backgroundLoop" type="checkbox" checked> Loop media</label>
+        <label class="inline-check"><input id="backgroundMuted" type="checkbox" checked> Mute video for autoplay</label>
+        <p class="helper-text">Video backgrounds should stay muted for browser autoplay.</p>
+        <h2>Transition</h2>
+        <label>Type
+          <select id="transitionType">
+            <option value="fade">Fade</option>
+            <option value="slide">Slide</option>
+            <option value="zoom">Zoom</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <label>Duration <input id="transitionDuration" type="range" min="100" max="1200" step="50" value="400"></label>
+        <h2>Share</h2>
+        <button class="tool-button" id="shareDeck" type="button">Create audience link</button>
+        <button class="tool-button" id="sharePresenter" type="button">Create presenter link</button>
         <p id="shareOutput" class="share-output"></p>
       </aside>
     </main>

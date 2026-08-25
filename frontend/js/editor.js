@@ -16,16 +16,40 @@ const slideList = document.querySelector("#slideList");
 const textValue = document.querySelector("#textValue");
 const fontSize = document.querySelector("#fontSize");
 const textColor = document.querySelector("#textColor");
+const backgroundInput = document.querySelector("#backgroundInput");
+const backgroundFit = document.querySelector("#backgroundFit");
+const backgroundLoop = document.querySelector("#backgroundLoop");
+const backgroundMuted = document.querySelector("#backgroundMuted");
+const transitionType = document.querySelector("#transitionType");
+const transitionDuration = document.querySelector("#transitionDuration");
 
 function setStatus(message) {
   statusText.textContent = message;
 }
 
 function fabricToSlideCanvas() {
+  const previous = activeSlide()?.canvas || {};
   return {
     background: canvas.backgroundColor || "#f8f4ea",
-    fabric: canvas.toJSON(["id", "name"])
+    fabric: canvas.toJSON(["id", "name"]),
+    background_media: previous.background_media || defaultBackgroundMedia(),
+    transition: previous.transition || defaultTransition(),
+    notes: previous.notes || ""
   };
+}
+
+function defaultBackgroundMedia() {
+  return { type: "none", url: "", loop: true, muted: true, fit: "cover", fade_in_ms: 400 };
+}
+
+function defaultTransition() {
+  return { type: "fade", duration_ms: 400 };
+}
+
+function ensureSlideCanvasSettings(slide) {
+  slide.canvas = slide.canvas || {};
+  slide.canvas.background_media = slide.canvas.background_media || defaultBackgroundMedia();
+  slide.canvas.transition = slide.canvas.transition || defaultTransition();
 }
 
 function activeSlide() {
@@ -34,12 +58,14 @@ function activeSlide() {
 
 function updateActiveSlideFromCanvas() {
   const slide = activeSlide();
+  ensureSlideCanvasSettings(slide);
   slide.canvas = fabricToSlideCanvas();
   const titleObject = canvas.getObjects().find((item) => item.type === "textbox");
   slide.title = titleObject?.text || slide.title;
 }
 
 function loadCanvasFromSlide(slide) {
+  ensureSlideCanvasSettings(slide);
   canvas.clear();
   canvas.backgroundColor = slide.canvas?.background || "#f8f4ea";
   if (slide.canvas?.fabric) {
@@ -76,6 +102,16 @@ function loadCanvasFromSlide(slide) {
   canvas.renderAll();
 }
 
+function syncSlideSettingsPanel() {
+  const slide = activeSlide();
+  ensureSlideCanvasSettings(slide);
+  backgroundFit.value = slide.canvas.background_media.fit || "cover";
+  backgroundLoop.checked = slide.canvas.background_media.loop !== false;
+  backgroundMuted.checked = slide.canvas.background_media.muted !== false;
+  transitionType.value = slide.canvas.transition.type || "fade";
+  transitionDuration.value = slide.canvas.transition.duration_ms || 400;
+}
+
 function renderSlides() {
   slideList.innerHTML = presentation.slides.map((slide, index) => `
     <button class="slide-thumb ${index === currentSlideIndex ? "active" : ""}" type="button" data-slide="${index}">
@@ -88,6 +124,7 @@ function renderSlides() {
       updateActiveSlideFromCanvas();
       currentSlideIndex = Number(button.dataset.slide);
       loadCanvasFromSlide(activeSlide());
+      syncSlideSettingsPanel();
       renderSlides();
     });
   });
@@ -98,6 +135,7 @@ async function loadEditor() {
   presentation = result.presentation;
   deckTitle.textContent = presentation.title;
   loadCanvasFromSlide(activeSlide());
+  syncSlideSettingsPanel();
   renderSlides();
   socket?.emit("join_presentation", { presentationId: presentation.id });
   setStatus("Ready");
@@ -134,6 +172,7 @@ function addSlide() {
   });
   currentSlideIndex = presentation.slides.length - 1;
   loadCanvasFromSlide(activeSlide());
+  syncSlideSettingsPanel();
   renderSlides();
 }
 
@@ -156,6 +195,56 @@ document.querySelector("#imageInput").addEventListener("change", (event) => {
     canvas.setActiveObject(image);
   });
 });
+
+backgroundInput.addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  setStatus("Uploading background media...");
+  try {
+    const { asset } = await api.uploadMedia(file);
+    const slide = activeSlide();
+    ensureSlideCanvasSettings(slide);
+    slide.canvas.background_media = {
+      type: asset.mimeType.startsWith("video/") ? "video" : "image",
+      url: asset.url,
+      loop: backgroundLoop.checked,
+      muted: backgroundMuted.checked,
+      fit: backgroundFit.value,
+      fade_in_ms: 400
+    };
+    setStatus("Background media attached. Save the deck.");
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    backgroundInput.value = "";
+  }
+});
+
+function updateBackgroundSettings() {
+  const slide = activeSlide();
+  ensureSlideCanvasSettings(slide);
+  slide.canvas.background_media = {
+    ...slide.canvas.background_media,
+    loop: backgroundLoop.checked,
+    muted: backgroundMuted.checked,
+    fit: backgroundFit.value
+  };
+}
+
+function updateTransitionSettings() {
+  const slide = activeSlide();
+  ensureSlideCanvasSettings(slide);
+  slide.canvas.transition = {
+    type: transitionType.value,
+    duration_ms: Number(transitionDuration.value || 400)
+  };
+}
+
+backgroundFit.addEventListener("change", updateBackgroundSettings);
+backgroundLoop.addEventListener("change", updateBackgroundSettings);
+backgroundMuted.addEventListener("change", updateBackgroundSettings);
+transitionType.addEventListener("change", updateTransitionSettings);
+transitionDuration.addEventListener("input", updateTransitionSettings);
 
 canvas.on("selection:created", syncProperties);
 canvas.on("selection:updated", syncProperties);
@@ -195,13 +284,22 @@ textColor.addEventListener("input", () => {
 });
 
 document.querySelector("#shareDeck").addEventListener("click", async () => {
-  const { url } = await api.createShareLink(presentation.id);
+  const { url } = await api.createShareLink(presentation.id, "viewer");
+  document.querySelector("#shareOutput").textContent = url;
+});
+
+document.querySelector("#sharePresenter").addEventListener("click", async () => {
+  const { url } = await api.createShareLink(presentation.id, "presenter");
   document.querySelector("#shareOutput").textContent = url;
 });
 
 document.querySelector("#startLive").addEventListener("click", () => {
   updateActiveSlideFromCanvas();
-  socket?.emit("slide_changed", { presentationId: presentation.id, slideId: activeSlide().id });
+  socket?.emit("slide_changed", {
+    presentationId: presentation.id,
+    slideId: activeSlide().id,
+    authToken: window.localStorage.getItem("presentStudio.accessToken") || ""
+  });
   window.open(`/present.html?id=${encodeURIComponent(presentation.id)}`, "_blank");
 });
 

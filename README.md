@@ -71,8 +71,11 @@ backend/
 - Add images locally to canvas.
 - Save canvas JSON to backend.
 - Share-link endpoint.
-- Presenter/audience view.
-- Socket.IO active-slide broadcast.
+- Viewer and presenter share links.
+- Role-aware presenter console and audience stage.
+- Socket.IO active-slide broadcast with presenter authorization.
+- Per-slide background image/video media settings.
+- Per-slide transitions: none, fade, slide, zoom.
 - JWT auth with hashed passwords.
 - Share token table.
 - Live session persistence.
@@ -120,3 +123,12 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 CLOUDINARY_FOLDER=present-studio
 ```
+
+## Important Local Test Flow
+
+1. Login with the demo account.
+2. Open the editor for the demo deck.
+3. Create an audience link. This must show only the audience stage.
+4. Create a presenter link. This must show presenter controls.
+5. Move slides from the presenter link. The audience link should follow.
+6. Try End Session from the presenter link. Audience should see the ended state.

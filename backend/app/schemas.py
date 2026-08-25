@@ -2,6 +2,9 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 
+SharePermission = Literal["viewer", "presenter"]
+
+
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -55,9 +58,19 @@ class PresentationOut(BaseModel):
     slides: list[SlideOut]
 
 
+class PresentationPayload(BaseModel):
+    presentation: PresentationOut
+    permission: SharePermission
+
+
+class ShareLinkCreate(BaseModel):
+    permission: SharePermission = "viewer"
+
+
 class ShareLinkOut(BaseModel):
     url: str
     token: str
+    permission: SharePermission
 
 
 class MediaAssetOut(BaseModel):
