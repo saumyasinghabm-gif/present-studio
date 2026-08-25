@@ -1,9 +1,11 @@
+import { renderThumbnail } from "/js/thumbnail.js";
+
 const api = window.PresentStudioApi;
 const params = new URLSearchParams(window.location.search);
 const presentationId = params.get("id") || "pres_demo";
 const shareToken = params.get("token") || "";
 const authToken = window.localStorage.getItem("presentStudio.accessToken") || "";
-const socket = window.io ? window.io() : null;
+const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 
 let presentation = null;
 let permission = "viewer";
@@ -60,6 +62,7 @@ function presenterMarkup() {
         <span id="elapsedTimer">00:00</span>
         <button id="endSession" type="button">End Session</button>
       </div>
+      <div id="connectionStatus" class="stage-status status-connected">Connected</div>
       <div class="stage-shell">
         <div id="backgroundLayer" class="background-layer"></div>
         <canvas id="presentCanvas" width="1280" height="720"></canvas>
@@ -84,7 +87,8 @@ function presenterMarkup() {
 function audienceMarkup() {
   return `
     <section class="audience-stage">
-      <div id="connectionStatus" class="stage-status">Connecting...</div>
+      <div id="connectionStatus" class="stage-status status-reconnecting">Connecting...</div>
+      <div id="presentStatus" class="audience-title">${escapeHtml(presentation.title)}</div>
       <div class="stage-shell audience-shell">
         <div id="backgroundLayer" class="background-layer"></div>
         <canvas id="presentCanvas" width="1280" height="720"></canvas>
@@ -158,20 +162,20 @@ function animateTransition(slide) {
   }
 }
 
-function renderSlide() {
+async function renderSlide() {
   const slide = activeSlide();
   renderBackground(slide);
   renderFabricObjects(slide);
   animateTransition(slide);
   const counter = document.querySelector("#slideCounter");
   if (counter) counter.textContent = `${currentSlideIndex + 1} / ${presentation.slides.length}`;
-  const status = document.querySelector("#presentStatus") || document.querySelector("#connectionStatus");
-  if (status) status.textContent = canPresent() ? "Presenter Console" : presentation.title;
+  const stageTitle = document.querySelector("#presentStatus");
+  if (stageTitle) stageTitle.textContent = canPresent() ? "Presenter Console" : presentation.title;
   const notes = document.querySelector("#speakerNotes");
   if (notes) notes.textContent = slideCanvas(slide).notes || "No notes for this slide.";
   if (canPresent()) {
     renderSlideList();
-    renderNextPreview();
+    await renderNextPreview();
   }
 }
 
@@ -193,16 +197,15 @@ function renderSlideList() {
   });
 }
 
-function renderNextPreview() {
+async function renderNextPreview() {
   const preview = document.querySelector("#nextCanvas");
   if (!preview) return;
   const nextSlide = presentation.slides[(currentSlideIndex + 1) % presentation.slides.length];
+  
+  const thumbnailCanvas = await renderThumbnail(nextSlide, preview.width, preview.height);
   const ctx = preview.getContext("2d");
-  ctx.fillStyle = slideCanvas(nextSlide).background || "#f8f4ea";
-  ctx.fillRect(0, 0, preview.width, preview.height);
-  ctx.fillStyle = "#171717";
-  ctx.font = "bold 18px Arial";
-  ctx.fillText(nextSlide.title || "Next slide", 18, 92);
+  ctx.drawImage(thumbnailCanvas.getElement(), 0, 0, preview.width, preview.height);
+  thumbnailCanvas.dispose();
 }
 
 function publishSlideChange() {
@@ -214,17 +217,17 @@ function publishSlideChange() {
   });
 }
 
-function go(delta) {
+async function go(delta) {
   if (!canPresent()) return;
   currentSlideIndex = (currentSlideIndex + delta + presentation.slides.length) % presentation.slides.length;
   publishSlideChange();
-  renderSlide();
+  await renderSlide();
 }
 
-function handlePresenterKeys(event) {
+async function handlePresenterKeys(event) {
   if (!canPresent()) return;
-  if (event.key === "ArrowRight") go(1);
-  if (event.key === "ArrowLeft") go(-1);
+  if (event.key === "ArrowRight") await go(1);
+  if (event.key === "ArrowLeft") await go(-1);
 }
 
 function renderTimer() {
@@ -261,14 +264,49 @@ async function loadPresentation() {
   permission = result.permission || "viewer";
   buildShell();
   socket?.emit("join_presentation", { presentationId: presentation.id });
+  let connectionState = "connected";
+  
   socket?.on("connect", () => {
-    const status = document.querySelector("#connectionStatus");
-    if (status) status.textContent = "Connected";
+    connectionState = "connected";
+    updateConnectionStatus();
+    socket?.emit("join_presentation", { presentationId: presentation.id });
   });
+  
   socket?.on("disconnect", () => {
-    const status = document.querySelector("#connectionStatus");
-    if (status) status.textContent = "Reconnecting...";
+    connectionState = "reconnecting";
+    updateConnectionStatus();
   });
+  
+  socket?.io.on("reconnect_failed", () => {
+    connectionState = "failed";
+    updateConnectionStatus();
+  });
+  
+  function updateConnectionStatus() {
+    const statusElement = document.querySelector("#connectionStatus");
+    if (!statusElement) return;
+    
+    let statusText = "";
+    let statusClass = "";
+    
+    switch (connectionState) {
+      case "connected":
+        statusText = "Connected";
+        statusClass = "status-connected";
+        break;
+      case "reconnecting":
+        statusText = "Reconnecting...";
+        statusClass = "status-reconnecting";
+        break;
+      case "failed":
+        statusText = "Connection lost — refresh to rejoin";
+        statusClass = "status-failed";
+        break;
+    }
+    
+    statusElement.textContent = statusText;
+    statusElement.className = `stage-status ${statusClass}`;
+  }
   socket?.on("presenter_rejected", (event) => {
     const status = document.querySelector("#presentStatus") || document.querySelector("#connectionStatus");
     if (status) status.textContent = event.message || "Presenter permission rejected";
@@ -277,14 +315,14 @@ async function loadPresentation() {
     root.innerHTML = `<section class="ended-screen"><h1>Presentation ended</h1><p>Thanks for watching.</p></section>`;
     if (timerId) window.clearInterval(timerId);
   });
-  socket?.on("active_slide_changed", (event) => {
+  socket?.on("active_slide_changed", async (event) => {
     const index = presentation.slides.findIndex((slide) => slide.id === event.slideId);
     if (index >= 0) {
       currentSlideIndex = index;
-      renderSlide();
+      await renderSlide();
     }
   });
-  renderSlide();
+  await renderSlide();
 }
 
 loadPresentation().catch((error) => {

@@ -1,3 +1,5 @@
+import { renderThumbnailDataUrl } from "/js/thumbnail.js";
+
 const api = window.PresentStudioApi;
 const params = new URLSearchParams(window.location.search);
 const presentationId = params.get("id") || "pres_demo";
@@ -22,9 +24,26 @@ const backgroundLoop = document.querySelector("#backgroundLoop");
 const backgroundMuted = document.querySelector("#backgroundMuted");
 const transitionType = document.querySelector("#transitionType");
 const transitionDuration = document.querySelector("#transitionDuration");
+const saveButton = document.querySelector("#saveDeck");
+const saveStatePill = document.querySelector("#saveState");
+const createShareLinkButton = document.querySelector("#createShareLink");
+const sharePermission = document.querySelector("#sharePermission");
+const shareOutput = document.querySelector("#shareOutput");
+const copyShareLinkButton = document.querySelector("#copyShareLink");
+let saveState = "saved";
 
 function setStatus(message) {
   statusText.textContent = message;
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[char]);
 }
 
 function fabricToSlideCanvas() {
@@ -112,13 +131,20 @@ function syncSlideSettingsPanel() {
   transitionDuration.value = slide.canvas.transition.duration_ms || 400;
 }
 
-function renderSlides() {
-  slideList.innerHTML = presentation.slides.map((slide, index) => `
-    <button class="slide-thumb ${index === currentSlideIndex ? "active" : ""}" type="button" data-slide="${index}">
-      <span>${String(index + 1).padStart(2, "0")}</span>
-      <strong>${slide.title}</strong>
-    </button>
-  `).join("");
+async function renderSlides() {
+  const slideThumbs = await Promise.all(presentation.slides.map(async (slide, index) => {
+    const thumbnailDataUrl = await renderThumbnailDataUrl(slide, 160, 90);
+    
+    return `
+      <button class="slide-thumb ${index === currentSlideIndex ? "active" : ""}" type="button" data-slide="${index}">
+        <img src="${thumbnailDataUrl}" alt="Thumbnail" class="slide-thumbnail">
+        <span>${String(index + 1).padStart(2, "0")}</span>
+        <strong>${escapeHtml(slide.title)}</strong>
+      </button>
+    `;
+  }));
+
+  slideList.innerHTML = slideThumbs.join("");
   slideList.querySelectorAll("[data-slide]").forEach((button) => {
     button.addEventListener("click", () => {
       updateActiveSlideFromCanvas();
@@ -136,16 +162,56 @@ async function loadEditor() {
   deckTitle.textContent = presentation.title;
   loadCanvasFromSlide(activeSlide());
   syncSlideSettingsPanel();
-  renderSlides();
+  await renderSlides();
   socket?.emit("join_presentation", { presentationId: presentation.id });
+  setSaveState("saved");
   setStatus("Ready");
+}
+
+function setSaveState(state) {
+  saveState = state;
+  updateSaveState();
+}
+
+function markUnsaved() {
+  if (saveState !== "saving") setSaveState("unsaved");
 }
 
 async function saveDeck() {
   updateActiveSlideFromCanvas();
-  await api.savePresentation(presentation);
-  renderSlides();
-  setStatus("Saved");
+  setSaveState("saving");
+  try {
+    await api.savePresentation(presentation);
+    setSaveState("saved");
+    await renderSlides();
+  } catch (error) {
+    setSaveState("unsaved");
+    setStatus(error.message);
+  }
+}
+
+function updateSaveState() {
+  saveStatePill.className = `save-pill ${saveState}`;
+  switch (saveState) {
+    case "unsaved":
+      saveStatePill.textContent = "Unsaved changes";
+      statusText.textContent = "Unsaved changes";
+      saveButton.disabled = false;
+      saveButton.textContent = "Save";
+      break;
+    case "saving":
+      saveStatePill.textContent = "Saving...";
+      statusText.textContent = "Saving...";
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving...";
+      break;
+    case "saved":
+      saveStatePill.textContent = "Saved";
+      statusText.textContent = "Saved";
+      saveButton.disabled = false;
+      saveButton.textContent = "Save";
+      break;
+  }
 }
 
 function addText() {
@@ -159,6 +225,7 @@ function addText() {
   canvas.add(text);
   canvas.setActiveObject(text);
   canvas.renderAll();
+  markUnsaved();
 }
 
 function addSlide() {
@@ -174,14 +241,34 @@ function addSlide() {
   loadCanvasFromSlide(activeSlide());
   syncSlideSettingsPanel();
   renderSlides();
+  markUnsaved();
 }
+
+// Add icons to toolbar buttons
+const toolbarButtons = {
+  addText: { icon: "<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M5 4h14v3h-1.5l-.4-1H13v13h2v1H9v-1h2V6H6.9l-.4 1H5V4z'/></svg>", label: "Text" },
+  addSlide: { icon: "<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M4 5h16v11H4V5zm2 2v7h12V7H6zm5 11h2v2h-2v-2z'/></svg>", label: "Add" },
+  deleteObject: { icon: "<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M8 4h8l1 2h4v2H3V6h4l1-2zm1 6h2v8H9v-8zm4 0h2v8h-2v-8z'/></svg>", label: "Delete selection" },
+  createShareLink: { icon: "<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M8 12a4 4 0 0 1 4-4h3v2h-3a2 2 0 0 0 0 4h3v2h-3a4 4 0 0 1-4-4zm5-1h-2v2h2v-2zm-4-1H6a2 2 0 0 0 0 4h3v2H6a4 4 0 0 1 0-8h3v2zm6-2h3a4 4 0 0 1 0 8h-3v-2h3a2 2 0 0 0 0-4h-3V8z'/></svg>", label: "Create share link" }
+};
+
+Object.entries(toolbarButtons).forEach(([id, { icon, label }]) => {
+  const button = document.querySelector(`#${id}`);
+  if (button) {
+    button.innerHTML = `${icon}<span>${label}</span>`;
+  }
+});
 
 document.querySelector("#saveDeck").addEventListener("click", () => saveDeck().catch((error) => setStatus(error.message)));
 document.querySelector("#addText").addEventListener("click", addText);
 document.querySelector("#addSlide").addEventListener("click", addSlide);
 document.querySelector("#deleteObject").addEventListener("click", () => {
   const selected = canvas.getActiveObject();
-  if (selected) canvas.remove(selected);
+  if (selected) {
+    canvas.remove(selected);
+    updateActiveSlideFromCanvas();
+    markUnsaved();
+  }
 });
 
 document.querySelector("#imageInput").addEventListener("change", (event) => {
@@ -193,6 +280,8 @@ document.querySelector("#imageInput").addEventListener("change", (event) => {
     image.set({ left: 180, top: 140 });
     canvas.add(image);
     canvas.setActiveObject(image);
+    updateActiveSlideFromCanvas();
+    markUnsaved();
   });
 });
 
@@ -212,6 +301,7 @@ backgroundInput.addEventListener("change", async (event) => {
       fit: backgroundFit.value,
       fade_in_ms: 400
     };
+    markUnsaved();
     setStatus("Background media attached. Save the deck.");
   } catch (error) {
     setStatus(error.message);
@@ -229,6 +319,7 @@ function updateBackgroundSettings() {
     muted: backgroundMuted.checked,
     fit: backgroundFit.value
   };
+  markUnsaved();
 }
 
 function updateTransitionSettings() {
@@ -238,6 +329,7 @@ function updateTransitionSettings() {
     type: transitionType.value,
     duration_ms: Number(transitionDuration.value || 400)
   };
+  markUnsaved();
 }
 
 backgroundFit.addEventListener("change", updateBackgroundSettings);
@@ -248,8 +340,14 @@ transitionDuration.addEventListener("input", updateTransitionSettings);
 
 canvas.on("selection:created", syncProperties);
 canvas.on("selection:updated", syncProperties);
-canvas.on("object:modified", updateActiveSlideFromCanvas);
-canvas.on("text:changed", updateActiveSlideFromCanvas);
+canvas.on("object:modified", () => {
+  updateActiveSlideFromCanvas();
+  markUnsaved();
+});
+canvas.on("text:changed", () => {
+  updateActiveSlideFromCanvas();
+  markUnsaved();
+});
 
 function syncProperties() {
   const selected = canvas.getActiveObject();
@@ -264,6 +362,8 @@ textValue.addEventListener("input", () => {
   if (selected && selected.type === "textbox") {
     selected.set("text", textValue.value);
     canvas.renderAll();
+    updateActiveSlideFromCanvas();
+    markUnsaved();
   }
 });
 
@@ -272,6 +372,8 @@ fontSize.addEventListener("input", () => {
   if (selected && selected.type === "textbox") {
     selected.set("fontSize", Number(fontSize.value));
     canvas.renderAll();
+    updateActiveSlideFromCanvas();
+    markUnsaved();
   }
 });
 
@@ -280,17 +382,34 @@ textColor.addEventListener("input", () => {
   if (selected && selected.type === "textbox") {
     selected.set("fill", textColor.value);
     canvas.renderAll();
+    updateActiveSlideFromCanvas();
+    markUnsaved();
   }
 });
 
-document.querySelector("#shareDeck").addEventListener("click", async () => {
-  const { url } = await api.createShareLink(presentation.id, "viewer");
-  document.querySelector("#shareOutput").textContent = url;
+createShareLinkButton.addEventListener("click", async () => {
+  createShareLinkButton.disabled = true;
+  createShareLinkButton.textContent = "Creating...";
+  try {
+    const { url } = await api.createShareLink(presentation.id, sharePermission.value);
+    shareOutput.value = url;
+    copyShareLinkButton.disabled = false;
+    setStatus(`${sharePermission.value === "presenter" ? "Presenter" : "Viewer"} link ready`);
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    createShareLinkButton.disabled = false;
+    createShareLinkButton.innerHTML = `${toolbarButtons.createShareLink.icon}<span>Create share link</span>`;
+  }
 });
 
-document.querySelector("#sharePresenter").addEventListener("click", async () => {
-  const { url } = await api.createShareLink(presentation.id, "presenter");
-  document.querySelector("#shareOutput").textContent = url;
+copyShareLinkButton.addEventListener("click", async () => {
+  if (!shareOutput.value) return;
+  await navigator.clipboard.writeText(shareOutput.value);
+  copyShareLinkButton.textContent = "Copied";
+  window.setTimeout(() => {
+    copyShareLinkButton.textContent = "Copy";
+  }, 1400);
 });
 
 document.querySelector("#startLive").addEventListener("click", () => {
@@ -303,4 +422,13 @@ document.querySelector("#startLive").addEventListener("click", () => {
   window.open(`/present.html?id=${encodeURIComponent(presentation.id)}`, "_blank");
 });
 
-loadEditor().catch((error) => setStatus(error.message));
+loadEditor().catch((error) => {
+  document.querySelector(".canvas-workspace").innerHTML = `
+    <div class="error-panel">
+      <p class="eyebrow">Editor unavailable</p>
+      <h2>Could not open this presentation</h2>
+      <p>${escapeHtml(error.message)}</p>
+      <a class="primary-button as-link" href="/dashboard.html">Go to dashboard</a>
+    </div>
+  `;
+});

@@ -3,13 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Present Studio - Editor</title>
+    <title>Present Studio Cloud - Editor</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/css/styles.css">
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="/dashboard.html">Present Studio Cloud</a>
-      <nav><button id="saveDeck" type="button">Save</button><button id="startLive" type="button">Start live</button></nav>
+      <nav><span id="saveState" class="save-pill unsaved">Unsaved changes</span><button id="saveDeck" type="button">Save</button><button id="startLive" type="button">Start live</button></nav>
     </header>
     <main class="editor-shell">
       <aside class="slides-panel">
@@ -19,48 +20,69 @@
       <section class="canvas-workspace">
         <div class="workspace-bar">
           <div><p class="eyebrow">Editor</p><h1 id="deckTitle">Loading...</h1></div>
-          <p id="editorStatus" class="status-text"></p>
+          <p id="editorStatus" class="status-text">Loading workspace...</p>
         </div>
         <div class="canvas-frame"><canvas id="slideCanvas" width="1280" height="720"></canvas></div>
       </section>
       <aside class="properties-panel">
         <h2>Tools</h2>
-        <button class="tool-button" id="addText" type="button">Add text</button>
-        <label class="tool-button file-tool">Add image <input id="imageInput" type="file" accept="image/*"></label>
+        <div class="tool-group">
+          <h3>Insert</h3>
+          <button class="tool-button" id="addText" type="button"></button>
+          <label class="tool-button file-tool" id="imageTool">Add image <input id="imageInput" type="file" accept="image/*"></label>
+        </div>
+        <div class="tool-group">
+          <h3>Slide</h3>
+          <button class="tool-button danger" id="deleteObject" type="button"></button>
+        </div>
         <label>Text <textarea id="textValue" rows="4"></textarea></label>
         <label>Font size <input id="fontSize" type="range" min="14" max="96" value="48"></label>
         <label>Color <input id="textColor" type="color" value="#171717"></label>
-        <button class="tool-button danger" id="deleteObject" type="button">Delete selected</button>
         <h2>Slide Background</h2>
-        <label class="tool-button file-tool">Upload background media <input id="backgroundInput" type="file" accept="image/*,video/*"></label>
-        <label>Fit
-          <select id="backgroundFit">
-            <option value="cover">Cover</option>
-            <option value="contain">Contain</option>
-          </select>
-        </label>
-        <label class="inline-check"><input id="backgroundLoop" type="checkbox" checked> Loop media</label>
-        <label class="inline-check"><input id="backgroundMuted" type="checkbox" checked> Mute video for autoplay</label>
-        <p class="helper-text">Video backgrounds should stay muted for browser autoplay.</p>
+        <div id="backgroundMediaSection">
+          <p class="helper-text">Loops continuously during presentation when video is selected.</p>
+          <label class="tool-button file-tool" id="backgroundTool">Upload background media <input id="backgroundInput" type="file" accept="image/*,video/*"></label>
+          <label>Fit
+            <select id="backgroundFit">
+              <option value="cover">Cover</option>
+              <option value="contain">Contain</option>
+            </select>
+          </label>
+          <label class="inline-check"><input id="backgroundLoop" type="checkbox" checked> Loop media</label>
+          <label class="inline-check"><input id="backgroundMuted" type="checkbox" checked> Mute video for autoplay</label>
+        </div>
         <h2>Transition</h2>
-        <label>Type
-          <select id="transitionType">
-            <option value="fade">Fade</option>
-            <option value="slide">Slide</option>
-            <option value="zoom">Zoom</option>
-            <option value="none">None</option>
-          </select>
-        </label>
-        <label>Duration <input id="transitionDuration" type="range" min="100" max="1200" step="50" value="400"></label>
+        <div id="transitionSection">
+          <p class="helper-text">Applies when advancing to this slide.</p>
+          <label>Type
+            <select id="transitionType">
+              <option value="fade">Fade</option>
+              <option value="slide">Slide</option>
+              <option value="zoom">Zoom</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+          <label>Duration <input id="transitionDuration" type="range" min="100" max="1200" step="50" value="400"></label>
+        </div>
         <h2>Share</h2>
-        <button class="tool-button" id="shareDeck" type="button">Create audience link</button>
-        <button class="tool-button" id="sharePresenter" type="button">Create presenter link</button>
-        <p id="shareOutput" class="share-output"></p>
+        <div class="share-link-section">
+          <label>Permission
+            <select id="sharePermission">
+              <option value="viewer">Viewer link</option>
+              <option value="presenter">Presenter link</option>
+            </select>
+          </label>
+          <button class="tool-button" id="createShareLink" type="button">Create share link</button>
+          <div class="share-link-input">
+            <input type="text" id="shareOutput" readonly placeholder="Create a link to share this deck">
+            <button id="copyShareLink" type="button" disabled>Copy</button>
+          </div>
+        </div>
       </aside>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/js/api.js"></script>
-    <script src="/js/editor.js"></script>
+    <script type="module" src="/js/editor.js"></script>
   </body>
 </html>
