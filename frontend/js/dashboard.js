@@ -7,13 +7,13 @@ const newPresentationButton = document.querySelector("#newPresentation");
 async function renderDecks(presentations) {
   const deckCards = await Promise.all(presentations.map(async (deck) => {
     const firstSlide = deck.slides[0];
-    const thumbnailDataUrl = firstSlide ? await renderThumbnailDataUrl(firstSlide, 420, 236) : "";
+    const thumbnailDataUrl = await safeDeckThumbnail(firstSlide);
     
     return `
       <article class="deck-card">
-        <button type="button" data-open="${deck.id}">
+        <button type="button" data-open="${escapeHtml(deck.id)}">
           ${thumbnailDataUrl ? `<img src="${thumbnailDataUrl}" alt="Thumbnail" class="deck-thumbnail">` : '<div class="deck-thumbnail-placeholder"></div>'}
-          <strong>${deck.title}</strong>
+          <strong>${escapeHtml(deck.title)}</strong>
           <span>${deck.slides.length} slide${deck.slides.length === 1 ? "" : "s"}</span>
           <small>${deck.updatedAt ? formatRelativeTime(deck.updatedAt) : "Draft"}</small>
         </button>
@@ -28,6 +28,15 @@ async function renderDecks(presentations) {
       window.location.href = `/editor.html?id=${encodeURIComponent(button.dataset.open)}`;
     });
   });
+}
+
+async function safeDeckThumbnail(slide) {
+  if (!slide) return "";
+  try {
+    return await renderThumbnailDataUrl(slide, 420, 236);
+  } catch {
+    return "";
+  }
 }
 
 function formatRelativeTime(dateString) {

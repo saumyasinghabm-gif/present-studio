@@ -133,11 +133,11 @@ function syncSlideSettingsPanel() {
 
 async function renderSlides() {
   const slideThumbs = await Promise.all(presentation.slides.map(async (slide, index) => {
-    const thumbnailDataUrl = await renderThumbnailDataUrl(slide, 160, 90);
+    const thumbnailDataUrl = await safeSlideThumbnail(slide);
     
     return `
       <button class="slide-thumb ${index === currentSlideIndex ? "active" : ""}" type="button" data-slide="${index}">
-        <img src="${thumbnailDataUrl}" alt="Thumbnail" class="slide-thumbnail">
+        ${thumbnailDataUrl ? `<img src="${thumbnailDataUrl}" alt="Thumbnail" class="slide-thumbnail">` : '<span class="slide-thumbnail slide-thumbnail-placeholder"></span>'}
         <span>${String(index + 1).padStart(2, "0")}</span>
         <strong>${escapeHtml(slide.title)}</strong>
       </button>
@@ -154,6 +154,14 @@ async function renderSlides() {
       renderSlides();
     });
   });
+}
+
+async function safeSlideThumbnail(slide) {
+  try {
+    return await renderThumbnailDataUrl(slide, 160, 90);
+  } catch {
+    return "";
+  }
 }
 
 async function loadEditor() {
@@ -405,11 +413,21 @@ createShareLinkButton.addEventListener("click", async () => {
 
 copyShareLinkButton.addEventListener("click", async () => {
   if (!shareOutput.value) return;
-  await navigator.clipboard.writeText(shareOutput.value);
-  copyShareLinkButton.textContent = "Copied";
-  window.setTimeout(() => {
-    copyShareLinkButton.textContent = "Copy";
-  }, 1400);
+  try {
+    await navigator.clipboard.writeText(shareOutput.value);
+    copyShareLinkButton.textContent = "Copied";
+    window.setTimeout(() => {
+      copyShareLinkButton.textContent = "Copy";
+    }, 1400);
+  } catch {
+    shareOutput.focus();
+    shareOutput.select();
+    copyShareLinkButton.textContent = "Press Ctrl+C";
+    setStatus("Could not copy automatically. Press Ctrl+C to copy the selected link.");
+    window.setTimeout(() => {
+      copyShareLinkButton.textContent = "Copy";
+    }, 2400);
+  }
 });
 
 document.querySelector("#startLive").addEventListener("click", () => {

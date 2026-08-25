@@ -10,6 +10,7 @@ const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts:
 let presentation = null;
 let permission = "viewer";
 let currentSlideIndex = 0;
+let lastConfirmedSlideIndex = 0;
 let canvas = null;
 let startedAt = null;
 let timerId = null;
@@ -63,6 +64,7 @@ function presenterMarkup() {
         <button id="endSession" type="button">End Session</button>
       </div>
       <div id="connectionStatus" class="stage-status status-connected">Connected</div>
+      <div id="presenterAlert" class="presenter-alert" hidden></div>
       <div class="stage-shell">
         <div id="backgroundLayer" class="background-layer"></div>
         <canvas id="presentCanvas" width="1280" height="720"></canvas>
@@ -175,7 +177,7 @@ async function renderSlide() {
   if (notes) notes.textContent = slideCanvas(slide).notes || "No notes for this slide.";
   if (canPresent()) {
     renderSlideList();
-    await renderNextPreview();
+    await safeRenderNextPreview();
   }
 }
 
@@ -190,6 +192,7 @@ function renderSlideList() {
   `).join("");
   list.querySelectorAll("[data-slide]").forEach((button) => {
     button.addEventListener("click", () => {
+      hidePresenterAlert();
       currentSlideIndex = Number(button.dataset.slide);
       publishSlideChange();
       renderSlide();
@@ -203,9 +206,27 @@ async function renderNextPreview() {
   const nextSlide = presentation.slides[(currentSlideIndex + 1) % presentation.slides.length];
   
   const thumbnailCanvas = await renderThumbnail(nextSlide, preview.width, preview.height);
-  const ctx = preview.getContext("2d");
-  ctx.drawImage(thumbnailCanvas.getElement(), 0, 0, preview.width, preview.height);
-  thumbnailCanvas.dispose();
+  try {
+    const ctx = preview.getContext("2d");
+    ctx.drawImage(thumbnailCanvas.getElement(), 0, 0, preview.width, preview.height);
+  } finally {
+    thumbnailCanvas.dispose();
+  }
+}
+
+async function safeRenderNextPreview() {
+  const preview = document.querySelector("#nextCanvas");
+  if (!preview) return;
+  try {
+    await renderNextPreview();
+  } catch {
+    const ctx = preview.getContext("2d");
+    ctx.fillStyle = "#f8f4ea";
+    ctx.fillRect(0, 0, preview.width, preview.height);
+    ctx.fillStyle = "#71695c";
+    ctx.font = "bold 16px Arial";
+    ctx.fillText("Preview unavailable", 18, 92);
+  }
 }
 
 function publishSlideChange() {
@@ -219,6 +240,7 @@ function publishSlideChange() {
 
 async function go(delta) {
   if (!canPresent()) return;
+  hidePresenterAlert();
   currentSlideIndex = (currentSlideIndex + delta + presentation.slides.length) % presentation.slides.length;
   publishSlideChange();
   await renderSlide();
@@ -256,6 +278,22 @@ function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#039;"
   })[char]);
+}
+
+function showPresenterAlert(message) {
+  const alert = document.querySelector("#presenterAlert");
+  if (!alert) return;
+  alert.innerHTML = `
+    <span>${escapeHtml(message)}</span>
+    <button type="button" aria-label="Dismiss alert">Dismiss</button>
+  `;
+  alert.hidden = false;
+  alert.querySelector("button").addEventListener("click", hidePresenterAlert);
+}
+
+function hidePresenterAlert() {
+  const alert = document.querySelector("#presenterAlert");
+  if (alert) alert.hidden = true;
 }
 
 async function loadPresentation() {
@@ -308,8 +346,9 @@ async function loadPresentation() {
     statusElement.className = `stage-status ${statusClass}`;
   }
   socket?.on("presenter_rejected", (event) => {
-    const status = document.querySelector("#presentStatus") || document.querySelector("#connectionStatus");
-    if (status) status.textContent = event.message || "Presenter permission rejected";
+    currentSlideIndex = lastConfirmedSlideIndex;
+    renderSlide();
+    showPresenterAlert(event.message || "Presenter permission rejected. Your console was returned to the last audience-confirmed slide.");
   });
   socket?.on("session_ended", () => {
     root.innerHTML = `<section class="ended-screen"><h1>Presentation ended</h1><p>Thanks for watching.</p></section>`;
@@ -319,6 +358,7 @@ async function loadPresentation() {
     const index = presentation.slides.findIndex((slide) => slide.id === event.slideId);
     if (index >= 0) {
       currentSlideIndex = index;
+      lastConfirmedSlideIndex = index;
       await renderSlide();
     }
   });

@@ -132,10 +132,14 @@ export async function renderThumbnail(slide) {
 
 export async function renderThumbnailDataUrl(slide, width = 320, height = 180) {
   const canvas = await renderThumbnail(slide);
-  const dataUrl = canvas.toDataURL({
-    format: "png",
-    multiplier: Math.min(width / DEFAULT_WIDTH, height / DEFAULT_HEIGHT)
-  });
-  canvas.dispose();
-  return dataUrl;
+  try {
+    return canvas.toDataURL({
+      format: "png",
+      multiplier: Math.min(width / DEFAULT_WIDTH, height / DEFAULT_HEIGHT)
+    });
+  } catch {
+    return "";
+  } finally {
+    canvas.dispose();
+  }
 }
