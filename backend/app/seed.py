@@ -39,7 +39,12 @@ def default_canvas(title: str, subtitle: str) -> dict:
 
 
 def seed_demo_data(db: Session) -> None:
-    if db.get(User, DEMO_USER_ID):
+    existing = db.get(User, DEMO_USER_ID)
+    if existing:
+        if not existing.password_hash:
+            existing.password_hash = hash_password("password123")
+            existing.is_active = True
+            db.commit()
         return
 
     user = User(

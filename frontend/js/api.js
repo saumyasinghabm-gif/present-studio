@@ -4,17 +4,24 @@
 
   async function request(path, options = {}) {
     const token = window.localStorage.getItem("presentStudio.accessToken");
-    const response = await fetch(`${API_BASE}${path}`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {})
-      },
-      ...options
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE}${path}`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(options.headers || {})
+        },
+        ...options
+      });
+    } catch {
+      throw new Error("Backend not reachable. Start FastAPI and open http://127.0.0.1:8000/login.html");
+    }
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.detail || body.error || "Request failed");
+    if (!response.ok) {
+      throw new Error(body.detail || body.error || `Request failed (${response.status}). Open the app through http://127.0.0.1:8000/login.html`);
+    }
     return body;
   }
 
