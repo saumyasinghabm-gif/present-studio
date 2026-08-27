@@ -1,88 +1,204 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Present Studio Cloud - Editor</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/css/styles.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Present Studio — Workspace</title>
+    <link rel="stylesheet" href="/css/styles.css" />
   </head>
-  <body>
+  <body class="app-shell">
     <header class="topbar">
-      <a class="brand" href="/dashboard.html">Present Studio Cloud</a>
-      <nav><span id="saveState" class="save-pill unsaved">Unsaved changes</span><button id="saveDeck" type="button">Save</button><button id="startLive" type="button">Start live</button></nav>
+      <a class="brand" href="./index.html" aria-label="Present Studio home">
+        <span class="brand-mark" aria-hidden="true"><span></span><i></i></span>
+        <span>Present Studio</span>
+      </a>
+      <div class="topbar-actions">
+        <button class="button button-outline" type="button" data-toast="Upgrade flow is ready for backend integration.">♕ <span>Upgrade</span></button>
+        <a class="button button-gold" href="./login.html">♙ <span>Account</span></a>
+      </div>
     </header>
-    <main class="editor-shell">
-      <aside class="slides-panel">
-        <div class="panel-title"><h2>Slides</h2><button id="addSlide" type="button">+</button></div>
-        <div id="slideList"></div>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <nav class="side-nav">
+          <a class="nav-item" href="./dashboard.html">⌂ <span>Dashboard</span></a>
+          <a class="nav-item active" href="#slides">▣ <span>Slides</span></a>
+        </nav>
+        <nav class="side-nav side-nav-bottom">
+          <button class="nav-item" type="button" data-toast="Help center will connect to your team documentation.">? <span>Help</span></button>
+          <button class="nav-item" type="button" data-toast="Settings will connect to your backend preferences.">⚙ <span>Settings</span></button>
+        </nav>
       </aside>
-      <section class="canvas-workspace">
-        <div class="workspace-bar">
-          <div><p class="eyebrow">Editor</p><h1 id="deckTitle">Loading...</h1></div>
-          <p id="editorStatus" class="status-text">Loading workspace...</p>
-        </div>
-        <div class="canvas-frame"><canvas id="slideCanvas" width="1280" height="720"></canvas></div>
-      </section>
-      <aside class="properties-panel">
-        <h2>Tools</h2>
-        <div class="tool-group">
-          <h3>Insert</h3>
-          <button class="tool-button" id="addText" type="button"></button>
-          <label class="tool-button file-tool" id="imageTool">Add image <input id="imageInput" type="file" accept="image/*"></label>
-        </div>
-        <div class="tool-group">
-          <h3>Slide</h3>
-          <button class="tool-button danger" id="deleteObject" type="button"></button>
-        </div>
-        <label>Text <textarea id="textValue" rows="4"></textarea></label>
-        <label>Font size <input id="fontSize" type="range" min="14" max="96" value="48"></label>
-        <label>Color <input id="textColor" type="color" value="#171717"></label>
-        <h2>Slide Background</h2>
-        <div id="backgroundMediaSection">
-          <p class="helper-text">Loops continuously during presentation when video is selected.</p>
-          <label class="tool-button file-tool" id="backgroundTool">Upload background media <input id="backgroundInput" type="file" accept="image/*,video/*"></label>
-          <label>Fit
-            <select id="backgroundFit">
-              <option value="cover">Cover</option>
-              <option value="contain">Contain</option>
-            </select>
-          </label>
-          <label class="inline-check"><input id="backgroundLoop" type="checkbox" checked> Loop media</label>
-          <label class="inline-check"><input id="backgroundMuted" type="checkbox" checked> Mute video for autoplay</label>
-        </div>
-        <h2>Transition</h2>
-        <div id="transitionSection">
-          <p class="helper-text">Applies when advancing to this slide.</p>
-          <label>Type
-            <select id="transitionType">
-              <option value="fade">Fade</option>
-              <option value="slide">Slide</option>
-              <option value="zoom">Zoom</option>
-              <option value="none">None</option>
-            </select>
-          </label>
-          <label>Duration <input id="transitionDuration" type="range" min="100" max="1200" step="50" value="400"></label>
-        </div>
-        <h2>Share</h2>
-        <div class="share-link-section">
-          <label>Permission
-            <select id="sharePermission">
-              <option value="viewer">Viewer link</option>
-              <option value="presenter">Presenter link</option>
-            </select>
-          </label>
-          <button class="tool-button" id="createShareLink" type="button">Create share link</button>
-          <div class="share-link-input">
-            <input type="text" id="shareOutput" readonly placeholder="Create a link to share this deck">
-            <button id="copyShareLink" type="button" disabled>Copy</button>
+
+      <main class="main-stage" id="workspace">
+        <section class="slide-column" id="slides" aria-label="Slides panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Your workspace</p>
+              <h1>Slides</h1>
+            </div>
+            <div class="slide-actions">
+              <button class="button button-gold button-small" id="addSlide" type="button">＋ <span>Add Slide</span></button>
+              <button class="button button-soft button-small" id="renamePresentation" type="button">📝 <span>Rename</span></button>
+              <button class="button button-soft button-small" id="renameSlide" type="button">📝 <span>Rename Slide</span></button>
+              <button class="button button-soft button-small" id="duplicateSlide" type="button">📋 <span>Duplicate</span></button>
+              <button class="button button-soft button-small" id="deleteSlide" type="button">🗑 <span>Delete</span></button>
+            </div>
           </div>
-        </div>
-      </aside>
-    </main>
-    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+          <div class="slide-list" id="slideList"></div>
+          <div class="slide-footer">
+            <button type="button" aria-label="Previous slide" data-slide-prev>‹</button>
+            <span id="slideCount">01 / 04</span>
+            <button type="button" aria-label="Next slide" data-slide-next>›</button>
+          </div>
+        </section>
+
+        <section class="canvas-column" aria-label="Slide editor">
+          <div class="canvas-meta">
+            <span class="status-dot"></span><span id="modeLabel">Local demo</span><span class="divider">/</span><span id="presentationTitle">Untitled presentation</span>
+            <span class="meta-spacer"></span>
+            <button class="icon-button" type="button" data-toast="Undo is available in the full editor.">↶</button>
+            <button class="icon-button" type="button" data-toast="Redo is available in the full editor.">↷</button>
+            <button class="icon-button" type="button" data-toast="More editor tools are coming next.">•••</button>
+          </div>
+
+          <div class="canvas-card">
+            <div class="slide-canvas" id="slideCanvas" tabindex="0" aria-label="Editable presentation slide">
+              <div class="slide-kicker">PRESENT STUDIO</div>
+              <div class="slide-art art-left"></div><div class="slide-art art-right"></div>
+              <div class="editable-element selected-element" id="titleElement" contenteditable="true" spellcheck="false">Welcome</div>
+              <div class="editable-element subtitle-element" id="subtitleElement" contenteditable="true" spellcheck="false">to Present Studio</div>
+              <div class="gold-rule"></div>
+              <div class="slide-index" id="canvasIndex">01 / 04</div>
+            </div>
+            <div class="canvas-toolbar">
+              <span>16:9</span><span class="toolbar-separator">|</span>
+              <button type="button" data-toast="Zoom controls are visual only in this starter frontend.">−</button>
+              <span>100%</span>
+              <button type="button" data-toast="Zoom controls are visual only in this starter frontend.">＋</button>
+              <button class="fullscreen-button" type="button" data-fullscreen>⛶</button>
+              <span class="toolbar-spacer"></span>
+              <button type="button" data-toast="Undo is available in the full editor.">↶</button>
+              <button type="button" data-toast="Redo is available in the full editor.">↷</button>
+            </div>
+          </div>
+
+          <div class="editor-panel" id="editorPanel" aria-label="Text formatting controls">
+            <div><strong>Selected text</strong><span class="selection-note" id="selectionNote">Title</span></div>
+            <label>Size <input id="fontSize" type="range" min="18" max="76" value="54" /></label>
+            <div class="format-group">
+              <button type="button" class="format-button" id="boldButton"><strong>B</strong></button>
+              <button type="button" class="format-button" id="italicButton"><em>I</em></button>
+            </div>
+            <label class="font-label">Font
+              <select id="fontFamily">
+                <option value="'DM Sans', system-ui, sans-serif">Sans</option>
+                <option value="Georgia, 'Times New Roman', serif">Serif</option>
+                <option value="'Space Mono', monospace">Mono</option>
+              </select>
+            </label>
+            <label class="color-label">Color <input id="textColor" type="color" value="#1f1e1b" /></label>
+            <div class="format-group" role="group" aria-label="Text alignment">
+              <button type="button" class="format-button" data-align="left" aria-label="Align left" title="Align left">≡</button>
+              <button type="button" class="format-button" data-align="center" aria-label="Align center" title="Align center">≡</button>
+              <button type="button" class="format-button" data-align="right" aria-label="Align right" title="Align right">≡</button>
+            </div>
+            <button type="button" class="format-close" id="closeEditor" aria-label="Close text formatting">×</button>
+          </div>
+
+          <div class="presenter-controls">
+            <button class="button button-gold live-button" id="startLive" type="button">◉ <span>Start Live</span></button>
+            <button class="button button-soft" id="openAudience" type="button">👥 <span>Open Audience View</span></button>
+            <button class="button button-soft" type="button" data-slide-prev>‹ <span>Previous</span></button>
+            <span class="page-label" id="pageLabel">Slide 1 of 4</span>
+            <button class="button button-gold" type="button" data-slide-next><span>Next</span> ›</button>
+          </div>
+          <div class="canvas-actions">
+            <button class="button button-soft" id="bringForward" type="button">▲ <span>Bring Forward</span></button>
+            <button class="button button-soft" id="sendBackward" type="button">▼ <span>Send Backward</span></button>
+            <button class="button button-soft" id="duplicateElement" type="button">📋 <span>Duplicate</span></button>
+            <button class="button button-soft" id="deleteElement" type="button">🗑 <span>Delete</span></button>
+          </div>
+        </section>
+
+        <aside class="tools-column" aria-label="Presentation tools">
+          <section class="tool-card">
+            <div class="card-heading">
+              <div><p class="eyebrow">Assets</p><h2>Upload Media</h2><p>Bring your visual language into the room.</p></div>
+              <button type="button" class="more-button" data-toast="Asset library menu will be connected later.">•••</button>
+            </div>
+            <div class="media-grid">
+              <label class="media-option"><input type="file" accept="image/*" data-media-input="image" /><span class="media-icon">▧</span><strong>Image</strong><small>PNG, JPG</small></label>
+              <label class="media-option"><input type="file" accept="video/*" data-media-input="video" /><span class="media-icon">▷</span><strong>Video</strong><small>MP4, MOV</small></label>
+            </div>
+            <p class="upload-status" id="uploadStatus" role="status"></p>
+          </section>
+
+          <section class="tool-card motion-card">
+            <div class="card-heading"><div><p class="eyebrow">Playback</p><h2>Motion &amp; Control</h2><p>Set how the live room moves through your story.</p></div></div>
+            <label class="control-label">Slide transition<select id="transitionType"><option value="fade">Fade</option><option value="slide">Slide</option><option value="zoom">Zoom</option><option value="none">None</option></select></label>
+            <label class="control-label">Transition speed<select id="transitionDuration"><option value="250">Fast · 0.25 sec</option><option value="500" selected>Normal · 0.5 sec</option><option value="900">Slow · 0.9 sec</option></select></label>
+            <label class="control-label">Auto advance<select id="playbackMode"><option value="manual">Manual control</option><option value="sequential">Loop all slides in order</option><option value="selected">Loop selected slides only</option><option value="random">Random slide loop</option></select></label>
+            <label class="control-label">Advance every<select id="playbackInterval"><option value="3000">3 seconds</option><option value="5000" selected>5 seconds</option><option value="8000">8 seconds</option><option value="12000">12 seconds</option></select></label>
+            <label class="control-label">Media in presentation<select id="mediaMode"><option value="all">Show images and videos</option><option value="images">Show images only</option><option value="videos">Show videos only</option></select></label>
+            <label class="control-label">Media sequence<select id="mediaCycle"><option value="all">Show selected media together</option><option value="sequential">Loop media in order</option><option value="random">Random media loop</option></select></label>
+            <label class="control-label">Change media every<select id="mediaInterval"><option value="3000">3 seconds</option><option value="5000" selected>5 seconds</option><option value="8000">8 seconds</option></select></label>
+            <label class="check-control"><input id="loopVideos" type="checkbox" checked> Loop videos during playback</label>
+            <label class="check-control"><input id="mediaFullBleed" type="checkbox"> Add uploads full screen</label>
+            <div class="selected-slides"><span>Selected slide loop</span><div id="playbackSlides"></div></div>
+          </section>
+
+          <section class="tool-card">
+            <div class="card-heading"><div><p class="eyebrow">Collaboration</p><h2>Choose Presenter</h2></div></div>
+            <div class="presenter-list">
+              <button class="presenter-option active" type="button" data-presenter="Self">♙ <span>Self</span><span class="radio"></span></button>
+              <button class="presenter-option" type="button" data-presenter="AI">✦ <span>AI</span><span class="radio"></span></button>
+              <button class="presenter-option" type="button" data-presenter="Partner">♧ <span>Partner</span><span class="radio"></span></button>
+            </div>
+            <div class="ai-panel" id="aiPanel" hidden>
+              <label for="aiPrompt">AI prompt</label>
+              <textarea id="aiPrompt" rows="3" placeholder="Create a concise opening slide about..."></textarea>
+              <button class="button button-gold button-small" type="button" id="generateAi">Generate draft</button>
+              <p id="aiStatus" role="status"></p>
+            </div>
+          </section>
+
+          <section class="tool-card">
+            <div class="card-heading"><div><p class="eyebrow">Distribution</p><h2>Share &amp; Publish</h2><p>Invite the room when your story is ready.</p></div></div>
+            <div class="share-grid">
+              <button class="button button-soft" id="generateLink" type="button">↗ <span>Generate Link</span></button>
+              <button class="button button-soft" id="copyLink" type="button">▣ <span>Copy Link</span></button>
+            </div>
+            <p class="share-status" id="shareStatus" role="status"></p>
+          </section>
+
+          <section class="tool-card">
+            <div class="card-heading">
+              <div><p class="eyebrow">Media Library</p><h2>My Media</h2></div>
+            </div>
+            <div class="media-library">
+              <div class="media-library-header">
+                <span class="media-library-title">Uploaded Media</span>
+                <span class="media-library-count" id="mediaCount">0 items</span>
+              </div>
+              <div class="media-library-upload">
+                <label class="media-option">
+                  <input type="file" accept="image/*,video/*" data-media-input="upload" />
+                  <span class="media-icon">▢</span>
+                  <strong>Upload Media</strong>
+                  <small>PNG, JPG, MP4, MOV</small>
+                </label>
+                <input type="file" accept="image/*,video/*" style="display:none;" id="fileUpload" />
+              </div>
+              <div class="media-library-grid" id="mediaLibraryGrid"></div>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/js/api.js"></script>
-    <script type="module" src="/js/editor.js"></script>
+    <script src="/js/editor.js"></script>
   </body>
 </html>

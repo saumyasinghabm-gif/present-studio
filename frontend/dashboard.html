@@ -1,29 +1,75 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Present Studio Cloud - Dashboard</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/css/styles.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Present Studio — Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css" />
   </head>
-  <body>
+  <body class="dashboard-shell">
     <header class="topbar">
-      <a class="brand" href="/dashboard.html">Present Studio Cloud</a>
-      <nav><a href="/editor.html">Editor</a><a href="/present.html">Present</a></nav>
+      <a class="brand" href="./dashboard.html" aria-label="Present Studio dashboard">
+        <span class="brand-mark" aria-hidden="true"><span></span><i></i></span>
+        <span>Present Studio</span>
+      </a>
+      <div class="topbar-actions">
+        <button class="button button-outline" type="button" data-toast="Upgrade flow is ready for backend integration.">♕ <span>Upgrade</span></button>
+        <button class="button button-gold" id="profileButton" type="button">AS <span>Alex Smith</span></button>
+      </div>
     </header>
-    <main class="dashboard">
-      <section class="page-heading">
-        <div>
-          <p class="eyebrow">Workspace</p>
-          <h1>Presentation Library</h1>
-        </div>
-        <button class="primary-button" id="newPresentation">New presentation</button>
-      </section>
-      <section class="deck-grid" id="deckGrid"></section>
-    </main>
-    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <nav class="side-nav">
+          <a class="nav-item active" href="./dashboard.html">⌂ <span>Dashboard</span></a>
+          <a class="nav-item" href="./index.html">▣ <span>Slides</span></a>
+        </nav>
+        <nav class="side-nav side-nav-bottom">
+          <button class="nav-item" type="button" data-toast="Help center will connect to your team documentation.">? <span>Help</span></button>
+          <button class="nav-item" type="button" data-toast="Settings will connect to your backend preferences.">⚙ <span>Settings</span></button>
+        </nav>
+      </aside>
+
+      <main class="dashboard-main">
+        <section class="dashboard-intro">
+          <div>
+            <p class="eyebrow">Tuesday, August 25, 2026</p>
+            <h1>Good morning, Alex.</h1>
+            <p class="dashboard-subtitle">A clear stage for every important idea.</p>
+          </div>
+          <button class="button button-gold" id="createPresentation" type="button">＋ <span>New presentation</span></button>
+        </section>
+
+        <section class="stats-grid" aria-label="Workspace summary">
+          <div class="stat-card"><span class="stat-icon">▣</span><div><span class="stat-label">Presentations</span><strong>08</strong></div></div>
+          <div class="stat-card"><span class="stat-icon">◷</span><div><span class="stat-label">Shared this month</span><strong>12</strong></div></div>
+          <div class="stat-card"><span class="stat-icon">✦</span><div><span class="stat-label">AI drafts</span><strong>06</strong></div></div>
+        </section>
+
+        <section class="recent-section">
+          <div class="section-heading dashboard-heading">
+            <div>
+              <p class="eyebrow">Your workspace</p>
+              <h2>Recent presentations</h2>
+            </div>
+            <button class="text-button" type="button" data-toast="Search will connect to your presentation library.">Search presentations ↗</button>
+          </div>
+          <div class="presentation-grid" id="presentationGrid"></div>
+        </section>
+
+        <section class="quick-start">
+          <div>
+            <p class="eyebrow">Start from an idea</p>
+            <h2>What will you present today?</h2>
+            <p>Choose a quiet canvas, shape the story, and invite the room when it is ready.</p>
+          </div>
+          <a class="button button-soft" href="./index.html">Open studio →</a>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="/js/api.js"></script>
-    <script type="module" src="/js/dashboard.js"></script>
+    <script src="/js/dashboard.js"></script>
   </body>
 </html>

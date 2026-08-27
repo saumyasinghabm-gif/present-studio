@@ -3,17 +3,38 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Present Studio Cloud - Present</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <title>Present Studio - Present</title>
     <link rel="stylesheet" href="/css/styles.css">
   </head>
   <body class="present-page">
-    <main id="presentRoot" class="present-stage">
-      <div id="presentStatus" class="stage-loader"><span></span>Preparing stage...</div>
+    <div class="present-loading" id="presentLoading">
+      <div class="loading-spinner"></div>
+      <p>Loading presentation...</p>
+    </div>
+    <div class="present-error" id="presentError" hidden>
+      <div class="error-icon">⚠</div>
+      <h2 id="errorTitle">Unable to load presentation</h2>
+      <p id="errorMessage">Something went wrong while loading the presentation.</p>
+      <a href="/dashboard.html" class="button button-gold">Back to Dashboard</a>
+    </div>
+    <main class="present-stage" id="presentStage" hidden>
+      <div class="present-meta">
+        <a href="/dashboard.html" class="present-back">← Dashboard</a>
+        <span id="presentStatus">Loading presentation...</span>
+        <button id="fullscreenToggle" type="button" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
+      </div>
+      <div class="present-mode-badge" id="presenterBadge">Presenter Mode</div>
+      <div class="canvas-frame present-frame" id="presentFrame"><div class="present-media-layer" id="presentMedia" aria-hidden="true"></div><canvas id="presentCanvas" width="1280" height="720"></canvas></div>
+      <nav class="present-controls" id="presentControls">
+        <button id="previousSlide" type="button">‹ Previous</button>
+        <span id="slideCounter">1 / 1</span>
+        <button id="autoplayToggle" type="button">Start auto play</button>
+        <button id="nextSlide" type="button">Next ›</button>
+      </nav>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/js/api.js"></script>
-    <script type="module" src="/js/present.js"></script>
+    <script src="/js/present.js"></script>
   </body>
 </html>
