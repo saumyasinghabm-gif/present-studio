@@ -64,11 +64,7 @@
 
           <div class="canvas-card">
             <div class="slide-canvas" id="slideCanvas" tabindex="0" aria-label="Editable presentation slide">
-              <div class="slide-kicker">PRESENT STUDIO</div>
-              <div class="slide-art art-left"></div><div class="slide-art art-right"></div>
-              <div class="editable-element selected-element" id="titleElement" contenteditable="true" spellcheck="false">Welcome</div>
-              <div class="editable-element subtitle-element" id="subtitleElement" contenteditable="true" spellcheck="false">to Present Studio</div>
-              <div class="gold-rule"></div>
+              <canvas id="fabricCanvas" width="1280" height="720" aria-label="Editable presentation canvas"></canvas>
               <div class="slide-index" id="canvasIndex">01 / 04</div>
             </div>
             <div class="canvas-toolbar">
@@ -166,6 +162,7 @@
           <section class="tool-card">
             <div class="card-heading"><div><p class="eyebrow">Distribution</p><h2>Share &amp; Publish</h2><p>Invite the room when your story is ready.</p></div></div>
             <div class="share-grid">
+              <label class="control-label">Share access<select id="sharePermission"><option value="viewer">Audience viewer</option><option value="presenter">Trusted presenter</option></select></label>
               <button class="button button-soft" id="generateLink" type="button">↗ <span>Generate Link</span></button>
               <button class="button button-soft" id="copyLink" type="button">▣ <span>Copy Link</span></button>
             </div>
@@ -197,6 +194,7 @@
       </main>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/editor.js"></script>

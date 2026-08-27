@@ -20,16 +20,17 @@
     <main class="present-stage" id="presentStage" hidden>
       <div class="present-meta">
         <a href="/dashboard.html" class="present-back">← Dashboard</a>
-        <span id="presentStatus">Loading presentation...</span>
+        <span id="presentStatus" aria-live="polite">Loading presentation...</span>
         <button id="fullscreenToggle" type="button" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
       </div>
       <div class="present-mode-badge" id="presenterBadge">Presenter Mode</div>
-      <div class="canvas-frame present-frame" id="presentFrame"><div class="present-media-layer" id="presentMedia" aria-hidden="true"></div><canvas id="presentCanvas" width="1280" height="720"></canvas></div>
+      <div class="canvas-frame present-frame" id="presentFrame"><div class="present-media-layer" id="presentMedia" aria-hidden="true"></div><canvas id="presentCanvas" width="1280" height="720" aria-label="Presentation slide"></canvas></div>
       <nav class="present-controls" id="presentControls">
         <button id="previousSlide" type="button">‹ Previous</button>
         <span id="slideCounter">1 / 1</span>
         <button id="autoplayToggle" type="button">Start auto play</button>
         <button id="nextSlide" type="button">Next ›</button>
+        <button id="endLive" type="button" class="end-live-button">End live</button>
       </nav>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
