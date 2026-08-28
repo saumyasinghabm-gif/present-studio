@@ -211,6 +211,11 @@ button { cursor: pointer; }
 #fabricCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
 #slideCanvas .canvas-container { position:absolute !important; inset:0; width:100% !important; height:100% !important; z-index:2; }
 #slideCanvas .canvas-container canvas { width:100% !important; height:100% !important; }
+/* Fix: lower-canvas (render layer) must not intercept pointer events.
+   Only the upper-canvas (interaction layer) should handle clicks and selections.
+   Fabric.js 5.3.0 adds 'lower-canvas' and 'upper-canvas' classes to its canvas elements. */
+#slideCanvas .canvas-container canvas.lower-canvas { pointer-events: none; }
+#slideCanvas .canvas-container canvas.upper-canvas { pointer-events: auto; }
 #slideCanvas .slide-index { z-index:4; pointer-events:none; }
 #fabricCanvas + .slide-kicker, #fabricCanvas + .slide-kicker ~ .slide-art { pointer-events: none; }
 .slide-canvas .editable-element, .slide-canvas .gold-rule, .slide-canvas .slide-index { z-index: 3; }
