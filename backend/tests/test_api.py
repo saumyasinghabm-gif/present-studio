@@ -37,6 +37,7 @@ def test_share_link_permissions_are_returned_to_frontend():
         viewer_link = client.post("/api/presentations/pres_demo/share", json={"permission": "viewer"}, headers=headers)
         assert viewer_link.status_code == 200
         assert viewer_link.json()["permission"] == "viewer"
+        assert "/screen.html?" in viewer_link.json()["url"]
 
         viewer_payload = client.get(f"/api/presentations/pres_demo?token={viewer_link.json()['token']}")
         assert viewer_payload.status_code == 200
@@ -45,6 +46,7 @@ def test_share_link_permissions_are_returned_to_frontend():
         presenter_link = client.post("/api/presentations/pres_demo/share", json={"permission": "presenter"}, headers=headers)
         assert presenter_link.status_code == 200
         assert presenter_link.json()["permission"] == "presenter"
+        assert "/controller.html?" in presenter_link.json()["url"]
 
         presenter_payload = client.get(f"/api/presentations/pres_demo?token={presenter_link.json()['token']}")
         assert presenter_payload.status_code == 200

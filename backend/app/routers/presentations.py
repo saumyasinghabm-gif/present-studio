@@ -122,7 +122,8 @@ def create_share_link(
     db.add(share)
     db.commit()
     base = get_settings().public_base_url.rstrip("/")
-    return ShareLinkOut(url=f"{base}/present.html?id={presentation_id}&token={share.token}", token=share.token, permission=share.permission)
+    page = "controller.html" if share.permission == "presenter" else "screen.html"
+    return ShareLinkOut(url=f"{base}/{page}?id={presentation_id}&token={share.token}", token=share.token, permission=share.permission)
 
 
 @router.post("/{presentation_id}/live/end")

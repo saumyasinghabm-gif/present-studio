@@ -60,6 +60,51 @@ async def slide_changed(sid, data):
 
 
 @sio.event
+async def media_selected(sid, data):
+    presentation_id = data.get("presentationId")
+    slide_id = data.get("slideId")
+    media_id = data.get("mediaId")
+    kind = data.get("kind") or "slide"
+    auth_token = data.get("authToken") or ""
+    share_token = data.get("shareToken") or ""
+    if not presentation_id or not slide_id:
+        return
+    with SessionLocal() as db:
+        presentation = db.get(Presentation, presentation_id)
+        if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
+            await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+            return
+        live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).first()
+        if not live:
+            live = LiveSession(id=new_id("live"), presentation_id=presentation_id)
+            db.add(live)
+        live.active_slide_id = slide_id
+        live.is_live = True
+        db.commit()
+    await sio.emit(
+        "presentation_media_changed",
+        {"presentationId": presentation_id, "slideId": slide_id, "mediaId": media_id, "kind": kind},
+        room=presentation_id,
+    )
+
+
+@sio.event
+async def media_control(sid, data):
+    presentation_id = data.get("presentationId")
+    action = data.get("action")
+    auth_token = data.get("authToken") or ""
+    share_token = data.get("shareToken") or ""
+    if not presentation_id or action not in {"toggle", "stop", "replay"}:
+        return
+    with SessionLocal() as db:
+        presentation = db.get(Presentation, presentation_id)
+        if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
+            await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+            return
+    await sio.emit("presentation_media_control", {"presentationId": presentation_id, "action": action}, room=presentation_id)
+
+
+@sio.event
 async def end_session(sid, data):
     presentation_id = data.get("presentationId")
     auth_token = data.get("authToken") or ""

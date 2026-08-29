@@ -126,8 +126,14 @@
             <div class="media-grid">
               <label class="media-option"><input type="file" accept="image/*" data-media-input="image" /><span class="media-icon">▧</span><strong>Image</strong><small>PNG, JPG</small></label>
               <label class="media-option"><input type="file" accept="video/*" data-media-input="video" /><span class="media-icon">▷</span><strong>Video</strong><small>MP4, MOV</small></label>
+              <label class="media-option"><input type="file" accept="audio/*,.mp3" data-media-input="audio" /><span class="media-icon">♫</span><strong>Audio</strong><small>MP3, WAV</small></label>
             </div>
             <p class="upload-status" id="uploadStatus" role="status"></p>
+          </section>
+
+          <section class="tool-card" id="imageAudioPanel" hidden>
+            <div class="card-heading"><div><p class="eyebrow">Image soundtrack</p><h2>Linked Audio</h2><p>Play this track whenever the selected image appears on screen.</p></div></div>
+            <label class="control-label">Audio track<select id="imageAudio"><option value="">No linked audio</option></select></label>
           </section>
 
           <section class="tool-card motion-card">
@@ -180,12 +186,12 @@
               </div>
               <div class="media-library-upload">
                 <label class="media-option">
-                  <input type="file" accept="image/*,video/*" data-media-input="upload" />
+                  <input type="file" accept="image/*,video/*,audio/*,.mp3" data-media-input="upload" />
                   <span class="media-icon">▢</span>
                   <strong>Upload Media</strong>
-                  <small>PNG, JPG, MP4, MOV</small>
+                  <small>Images, videos, MP3</small>
                 </label>
-                <input type="file" accept="image/*,video/*" style="display:none;" id="fileUpload" />
+                <input type="file" accept="image/*,video/*,audio/*,.mp3" style="display:none;" id="fileUpload" />
               </div>
               <div class="media-library-grid" id="mediaLibraryGrid"></div>
             </div>

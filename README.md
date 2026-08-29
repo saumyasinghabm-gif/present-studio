@@ -37,6 +37,8 @@ frontend/
   login.html
   dashboard.html
   editor.html
+  controller.html
+  screen.html
   present.html
   css/styles.css
   js/api.js
@@ -80,6 +82,9 @@ backend/
 - Share token table.
 - Live session persistence.
 - Cloudinary upload endpoint.
+- Image, video, and MP3 asset library with per-image audio linking.
+- Dedicated presenter controller with direct slide/media selection and selected-media loops.
+- Clean fullscreen audience screen synchronized through Socket.IO.
 - Alembic migration scaffold.
 - Docker Compose with PostgreSQL.
 

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Present Studio — Live Controller</title>
+    <link rel="stylesheet" href="/css/styles.css?v=20260829-live-controller">
+  </head>
+  <body class="live-controller-page">
+    <main class="live-controller-shell">
+      <header class="live-controller-header">
+        <div><p class="eyebrow">Private presenter panel</p><h1 id="controllerTitle">Live Controller</h1></div>
+        <div class="live-controller-actions">
+          <span class="controller-connection" id="connectionStatus"><i></i> Connecting</span>
+          <button class="button button-soft" id="openScreen" type="button">Open Screen</button>
+          <a class="button button-soft" id="backToEditor" href="/dashboard.html">Editor</a>
+        </div>
+      </header>
+
+      <section class="controller-quick-controls">
+        <button type="button" id="pauseMedia"><strong>Pause / Play</strong><small>Toggle active audio or video</small></button>
+        <button type="button" id="replayMedia"><strong>Replay</strong><small>Restart the active item</small></button>
+        <button type="button" id="stopMedia"><strong>Clear Screen</strong><small>Stop media and return to black</small></button>
+      </section>
+
+      <section class="controller-section">
+        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Slides</h2></div><span id="slideTargetCount">0 items</span></div>
+        <div class="controller-target-grid" id="slideTargets"></div>
+      </section>
+
+      <section class="controller-section">
+        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Images</h2></div><span id="imageTargetCount">0 items</span></div>
+        <div class="controller-target-grid" id="imageTargets"></div>
+      </section>
+
+      <section class="controller-section">
+        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Videos</h2></div><span id="videoTargetCount">0 items</span></div>
+        <div class="controller-target-grid" id="videoTargets"></div>
+      </section>
+
+      <section class="controller-section controller-loop-section">
+        <div class="controller-section-heading"><div><p class="eyebrow">Loop control</p><h2>Selected media loops</h2></div><span id="loopStatus">No loop running</span></div>
+        <div class="controller-loop-grid">
+          <article><div><strong>Images</strong><button type="button" id="startImageLoop">Start Image Loop</button></div><div class="controller-loop-list" id="imageLoopList"></div></article>
+          <article><div><strong>Videos</strong><button type="button" id="startVideoLoop">Start Video Loop</button></div><div class="controller-loop-list" id="videoLoopList"></div></article>
+        </div>
+        <label class="controller-duration">Change item every <select id="loopInterval"><option value="5000">5 seconds</option><option value="8000" selected>8 seconds</option><option value="12000">12 seconds</option><option value="20000">20 seconds</option></select></label>
+        <button class="button button-soft" type="button" id="stopLoop">Stop Loop</button>
+      </section>
+
+      <aside class="controller-preview-panel">
+        <div><span class="label">Live selection</span><strong id="previewTitle">Screen ready</strong></div>
+        <div class="controller-preview-stage" id="previewStage"><span>Waiting for a selection</span></div>
+      </aside>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/controller.js?v=20260829-direct-media"></script>
+  </body>
+</html>

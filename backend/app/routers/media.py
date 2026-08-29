@@ -24,6 +24,20 @@ def configure_cloudinary() -> None:
     )
 
 
+@router.get("")
+def list_media(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, list[MediaAssetOut]]:
+    assets = db.query(MediaAsset).filter(MediaAsset.owner_id == user.id).order_by(MediaAsset.created_at.desc()).all()
+    return {
+        "assets": [
+            MediaAssetOut(id=asset.id, name=asset.name, mimeType=asset.mime_type, url=asset.url, size=asset.size)
+            for asset in assets
+        ]
+    }
+
+
 @router.post("/upload")
 async def upload_media(
     file: UploadFile = File(...),
@@ -36,7 +50,10 @@ async def upload_media(
         raise HTTPException(status_code=413, detail="File is too large")
 
     settings = get_settings()
-    resource_type = "image" if (file.content_type or "").startswith("image/") else "video"
+    content_type = file.content_type or ""
+    if not content_type.startswith(("image/", "video/", "audio/")):
+        raise HTTPException(status_code=415, detail="Only image, video, and audio files are supported")
+    resource_type = "image" if content_type.startswith("image/") else "video"
     result = cloudinary.uploader.upload(
         content,
         folder=settings.cloudinary_folder,
