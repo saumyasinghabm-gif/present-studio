@@ -50,6 +50,7 @@ def create_presentation(
     )
     db.add(presentation)
     db.add(slide)
+    db.flush()
     db.add(LiveSession(id=new_id("live"), presentation_id=presentation.id, active_slide_id=slide.id, presenter_user_id=user.id))
     db.commit()
     db.refresh(presentation)

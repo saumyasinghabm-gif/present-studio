@@ -3,8 +3,10 @@ const grid = document.querySelector("#presentationGrid");
 const createButton = document.querySelector("#createPresentation");
 const toast = document.querySelector("#toast");
 const profileButton = document.querySelector("#profileButton");
+const builderButtons = [document.querySelector("#builderNav"), document.querySelector("#openBuilder")].filter(Boolean);
 
 let toastTimer = null;
+let dashboardPresentations = [];
 function showToast(message) {
   if (!toast) return;
   toast.textContent = message;
@@ -70,8 +72,27 @@ async function loadDashboard() {
   if (!grid) return;
   grid.innerHTML = `<p class="status-text">Loading your presentations...</p>`;
   const { presentations } = await api.listPresentations();
+  dashboardPresentations = presentations;
   renderDecks(presentations);
 }
+
+async function openBuilder() {
+  const existing = dashboardPresentations[0];
+  if (existing) {
+    window.location.href = `/editor.html?id=${encodeURIComponent(existing.id)}`;
+    return;
+  }
+  builderButtons.forEach(button => { button.disabled = true; });
+  try {
+    const { presentation } = await api.createPresentation("Untitled presentation");
+    window.location.href = `/editor.html?id=${encodeURIComponent(presentation.id)}`;
+  } catch (error) {
+    builderButtons.forEach(button => { button.disabled = false; });
+    showToast(error.message);
+  }
+}
+
+builderButtons.forEach(button => button.addEventListener("click", openBuilder));
 
 createButton?.addEventListener("click", async () => {
   createButton.disabled = true;

@@ -21,6 +21,19 @@ def test_login_and_list_presentations():
     assert response.json()["presentations"]
 
 
+def test_create_presentation_creates_its_live_session():
+    with TestClient(fastapi_app) as client:
+        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        token = login.json()["accessToken"]
+        response = client.post(
+            "/api/presentations",
+            json={"title": "Builder test presentation"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.status_code == 200
+    assert response.json()["presentation"]["title"] == "Builder test presentation"
+
+
 def test_share_link_requires_auth():
     with TestClient(fastapi_app) as client:
         response = client.post("/api/presentations/pres_demo/share")
