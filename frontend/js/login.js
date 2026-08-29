@@ -1,6 +1,10 @@
 const form = document.querySelector("#loginForm");
 const statusText = document.querySelector("#loginStatus");
 
+if (new URLSearchParams(window.location.search).get("reason") === "session-expired") {
+  statusText.textContent = "Your session expired. Sign in again to continue.";
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);

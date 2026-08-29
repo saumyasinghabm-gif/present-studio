@@ -483,6 +483,10 @@ button { cursor: pointer; }
 /* ============================================================
    PRESENT PAGE
    ============================================================ */
+.present-page [hidden] {
+  display: none !important;
+}
+
 .present-loading {
   display: flex;
   flex-direction: column;

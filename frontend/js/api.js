@@ -8,6 +8,14 @@
       response = await fetch(path, { credentials: "include", headers: { ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) }, ...options });
     } catch { throw new Error("Backend not reachable. Start the FastAPI server and open http://127.0.0.1:8000."); }
     const body = await response.json().catch(() => ({}));
+    if (response.status === 401 && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/signup")) {
+      localStorage.removeItem(sessionKey);
+      localStorage.removeItem(tokenKey);
+      if (!window.location.pathname.endsWith("/login.html") && window.location.pathname !== "/") {
+        window.location.replace("/login.html?reason=session-expired");
+      }
+      throw new Error("Your session expired. Sign in again to continue.");
+    }
     if (!response.ok) throw new Error(body.detail || body.error || `Request failed (${response.status})`);
     return body;
   }

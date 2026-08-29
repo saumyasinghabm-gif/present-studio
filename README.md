@@ -94,8 +94,13 @@ backend/
 ## Docker PostgreSQL
 
 ```bash
-docker compose up --build
+docker-compose up --build -d
 ```
+
+Docker Compose runs the FastAPI application (including the frontend) and PostgreSQL.
+PostgreSQL is available only to containers on the Compose network; uploaded images
+and videos are stored in Cloudinary. Compose reads credentials from the root `.env`
+file and injects them at runtime—the file is excluded from the Docker image.
 
 Backend:
 
@@ -118,11 +123,17 @@ For local development, the app still creates tables automatically on startup. Fo
 Set these environment variables:
 
 ```text
-CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_CLOUD_NAME=ylhzrgso
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 CLOUDINARY_FOLDER=present-studio
 ```
+
+`ylhzrgso` is configured as this project's Cloudinary cloud name. Add the API key
+and API secret from the Cloudinary dashboard before starting the backend. Keep the
+API secret server-side and never add it to frontend JavaScript or commit it to Git.
+The backend automatically loads these values from the `.env` file in the project root.
+Restart the backend after changing that file.
 
 ## Important Local Test Flow
 
