@@ -18,6 +18,50 @@
     return;
   }
   var fabricRef = window.fabric;
+  var textBaselineDescriptor =
+    window.CanvasRenderingContext2D &&
+    Object.getOwnPropertyDescriptor(window.CanvasRenderingContext2D.prototype, "textBaseline");
+
+  function setSafeTextBaseline(ctx, value) {
+    var safeValue = value === "alphabetical" ? "alphabetic" : value;
+    if (textBaselineDescriptor && textBaselineDescriptor.set) {
+      textBaselineDescriptor.set.call(ctx, safeValue);
+    } else {
+      ctx.textBaseline = safeValue;
+    }
+  }
+
+  function withTextBaselineGuard(ctx, callback) {
+    if (!ctx || !textBaselineDescriptor || !textBaselineDescriptor.get || !textBaselineDescriptor.set) {
+      return callback();
+    }
+    var guarded = false;
+    try {
+      Object.defineProperty(ctx, "textBaseline", {
+        configurable: true,
+        get: function getTextBaseline() {
+          return textBaselineDescriptor.get.call(ctx);
+        },
+        set: function setTextBaseline(value) {
+          setSafeTextBaseline(ctx, value);
+        },
+      });
+      guarded = true;
+    } catch (e) {
+      return callback();
+    }
+    try {
+      return callback();
+    } finally {
+      if (guarded) {
+        try {
+          delete ctx.textBaseline;
+        } catch (e) {
+          // Ignore cleanup failures; the guarded setter is still safe.
+        }
+      }
+    }
+  }
 
   // 1) Fix the rendering method that assigns the bad value to the 2D context.
   //    Walk the prototype chain because Text/IText/Textbox each have their own
@@ -28,13 +72,9 @@
     // Avoid double-patching if this script is loaded twice.
     if (original.__patchedForAlphabetic) return;
     proto._setTextStyles = function patchedSetTextStyles(ctx, charStyle, forMeasuring) {
-      // Call the original first so it can do everything else it normally does,
-      // then overwrite the bad value it just set on the context.
-      var result = original.call(this, ctx, charStyle, forMeasuring);
-      if (ctx && ctx.textBaseline === "alphabetical") {
-        ctx.textBaseline = "alphabetic";
-      }
-      return result;
+      return withTextBaselineGuard(ctx, function runOriginalTextStyles() {
+        return original.call(this, ctx, charStyle, forMeasuring);
+      }.bind(this));
     };
     proto._setTextStyles.__patchedForAlphabetic = true;
   }
