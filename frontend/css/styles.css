@@ -83,6 +83,7 @@ button { cursor: pointer; }
 .button-gold:hover { background: var(--yellow-dk); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245,184,0,.35); }
 .button-soft { background: #FFF3BF; color: var(--ink); border-color: var(--yellow-dk); }
 .button-soft:hover { background: var(--yellow); }
+.button:disabled, .button:disabled:hover { opacity: .48; cursor: not-allowed; transform: none; box-shadow: none; }
 .text-button { background: none; border: none; cursor: pointer; font-family: var(--mono); font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); transition: color var(--dur); }
 .text-button:hover { color: var(--ink); }
 
@@ -337,6 +338,14 @@ button { cursor: pointer; }
 
 .share-grid { display: flex; flex-direction: column; gap: .6rem; }
 .share-grid .button { width: 100%; justify-content: center; }
+.share-link-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; align-items: stretch; margin-top: .65rem; }
+.share-link-row .share-status { display: flex; align-items: center; min-width: 0; min-height: 34px; margin: 0; border: 1px solid var(--line); padding: .5rem .6rem; background: var(--bg); overflow-wrap: anywhere; }
+.share-open-button { justify-content: center; white-space: nowrap; }
+
+@media (max-width: 680px) {
+  .share-link-row { grid-template-columns: 1fr; }
+  .share-open-button { width: 100%; }
+}
 
 /* Media Library Styles */
 .media-library { display: flex; flex-direction: column; gap: 0.8rem; }

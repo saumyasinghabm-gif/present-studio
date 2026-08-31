@@ -1,0 +1,17 @@
+{
+  "name": "present-studio-cloudflare",
+  "private": true,
+  "scripts": {
+    "check": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^7.0.2",
+    "wrangler": "latest"
+  }
+}

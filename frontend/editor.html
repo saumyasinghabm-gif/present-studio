@@ -172,7 +172,10 @@
               <button class="button button-soft" id="generateLink" type="button">↗ <span>Generate Link</span></button>
               <button class="button button-soft" id="copyLink" type="button">▣ <span>Copy Link</span></button>
             </div>
-            <p class="share-status" id="shareStatus" role="status"></p>
+            <div class="share-link-row">
+              <p class="share-status" id="shareStatus" role="status" aria-live="polite"></p>
+              <button class="button button-soft button-small share-open-button" id="openShareLink" type="button" disabled aria-label="Open generated link in a new tab">↗ <span>Open Link</span></button>
+            </div>
           </section>
 
           <section class="tool-card">

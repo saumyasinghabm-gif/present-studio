@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "present-studio-cloud",
+  "account_id": "83cbbfaf13693b857885a1f6e0153bdf",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "secrets": {
+    "required": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "PUBLIC_BASE_URL",
+      "CLOUDINARY_CLOUD_NAME",
+      "CLOUDINARY_API_KEY",
+      "CLOUDINARY_API_SECRET",
+      "CLOUDINARY_FOLDER"
+    ]
+  },
+  "containers": [
+    {
+      "name": "present-studio-backend",
+      "class_name": "PresentStudioContainer",
+      "image": "./backend/Dockerfile",
+      "image_build_context": ".",
+      "instance_type": "lite",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PRESENT_STUDIO",
+        "class_name": "PresentStudioContainer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PresentStudioContainer"]
+    }
+  ]
+}
