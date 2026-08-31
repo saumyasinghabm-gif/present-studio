@@ -318,6 +318,28 @@ button { cursor: pointer; }
 .media-icon { font-size: 1.3rem; }
 .media-option strong { font-family: var(--sans); font-size: .8rem; color: var(--ink); }
 .media-option small { font-family: var(--mono); font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.upload-status { margin: .75rem 0 0; }
+.upload-status:empty { display: none; }
+.upload-status-line { display: flex; align-items: center; gap: .45rem; min-width: 0; }
+.upload-status-message { min-width: 0; overflow-wrap: anywhere; }
+.upload-state-icon { display: inline-grid; place-items: center; flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; font-size: .68rem; font-weight: 900; }
+.upload-status.is-uploading .upload-state-icon { border: 2px solid rgba(17,17,17,.16); border-top-color: var(--yellow-dk); animation: upload-spinner .75s linear infinite; }
+.upload-status.is-success { color: var(--green-txt); }
+.upload-status.is-success .upload-state-icon { background: var(--green-txt); color: #fff; animation: upload-success-pop .35s cubic-bezier(.2,.9,.3,1.35) both; }
+.upload-status.is-error { color: var(--red-txt); }
+.upload-status.is-error .upload-state-icon { border: 1px solid currentColor; }
+.upload-retry { margin-left: auto; border: 1px solid currentColor; padding: .28rem .48rem; background: transparent; color: inherit; font: inherit; font-size: .62rem; font-weight: 800; text-transform: uppercase; }
+.upload-retry:hover { background: var(--red-bg); }
+.upload-progress { width: 100%; height: 4px; margin-top: .5rem; border-radius: 2px; overflow: hidden; background: var(--line); }
+.upload-progress-bar { width: 42%; height: 100%; border-radius: inherit; background: var(--yellow-dk); animation: upload-progress-slide 1.15s ease-in-out infinite; }
+@keyframes upload-spinner { to { transform: rotate(360deg); } }
+@keyframes upload-progress-slide { from { transform: translateX(-110%); } to { transform: translateX(340%); } }
+@keyframes upload-success-pop { from { opacity: 0; transform: scale(.45); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .upload-status.is-uploading .upload-state-icon { animation-duration: 1.5s; }
+  .upload-progress-bar { animation-duration: 2.3s; }
+  .upload-status.is-success .upload-state-icon { animation: none; }
+}
 
 .presenter-list { display: flex; flex-direction: column; gap: .5rem; }
 .presenter-option {
@@ -360,9 +382,6 @@ button { cursor: pointer; }
 .media-library-item img, .media-library-item video { width: 100%; height: 60px; object-fit: cover; border-radius: 2px; }
 .media-library-item span { font-family: var(--mono); font-size: .55rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .media-library-item .media-type-icon { font-size: 1.2rem; width: 100%; height: 60px; display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--muted); }
-.upload-progress { width: 100%; height: 4px; background: var(--line); margin-top: 0.5rem; border-radius: 2px; overflow: hidden; }
-.upload-progress-bar { height: 100%; background: var(--yellow); transition: width 0.3s ease; }
-
 /* ============================================================
    DASHBOARD MAIN
    ============================================================ */
