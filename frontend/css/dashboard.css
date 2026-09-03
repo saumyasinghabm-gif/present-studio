@@ -1,4 +1,5 @@
-.dashboard-page { min-width: 900px; min-height: 100vh; color: #101010; background: #f8f8f6; }
+html { height: auto; min-height: 100%; overflow-x: auto; overflow-y: auto; }
+.dashboard-page { min-width: 900px; min-height: 100vh; height: auto; overflow-x: hidden; overflow-y: visible; color: #101010; background: #f8f8f6; }
 .dashboard-page a { color: inherit; text-decoration: none; }
 .dashboard-header { position: sticky; z-index: 50; top: 0; min-height: var(--header-h); }
 .dashboard-navigation { display: flex; align-self: stretch; align-items: stretch; gap: 4px; }
