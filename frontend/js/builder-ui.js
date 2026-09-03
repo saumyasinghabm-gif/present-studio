@@ -430,7 +430,7 @@
     try {
       await save();
       const index = Math.max(0, Math.min(presentation.slides.length - 1, Number(slideIndex) || 0));
-      const url = `/present.html?id=${encodeURIComponent(presentation.id)}&preview=1&slide=${index + 1}`;
+      const url = `/preview.html?id=${encodeURIComponent(presentation.id)}&slide=${index + 1}`;
       if (previewWindow) previewWindow.location.replace(url);
       else toast("Allow pop-ups to open the presentation preview.");
     } catch (error) {
@@ -439,7 +439,7 @@
     }
   }
 
-  byId("quickPresent").addEventListener("click", () => openPreview(0));
+  byId("quickPresent").addEventListener("click", () => openPreview(currentSlideIndex));
   byId("builderHelp").addEventListener("click", () => toast("Double-click text to edit it. Drag handles to resize and rotate."));
 
   function selectedText() {

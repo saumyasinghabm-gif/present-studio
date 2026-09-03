@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Present Studio — Preview</title>
+    <link rel="stylesheet" href="/css/styles.css?v=20260904-preview">
+  </head>
+  <body class="present-page">
+    <div class="present-loading" id="previewLoading">
+      <div class="loading-spinner"></div>
+      <p>Loading preview...</p>
+    </div>
+    <div class="present-error" id="previewError" hidden>
+      <div class="error-icon">⚠</div>
+      <h2>Unable to load preview</h2>
+      <p id="previewErrorMessage">Something went wrong while loading the presentation.</p>
+      <button class="button button-gold" id="closePreviewError" type="button">Return to editor</button>
+    </div>
+    <main class="present-stage" id="previewStage" hidden>
+      <div class="present-meta">
+        <button class="present-back" id="closePreview" type="button">← Editor</button>
+        <span id="previewStatus" aria-live="polite">Loading preview...</span>
+        <button id="previewAudioToggle" type="button" class="fullscreen-btn" aria-label="Enable preview audio" hidden>🔇 Enable audio</button>
+        <button id="previewFullscreen" type="button" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
+      </div>
+      <div class="present-mode-badge">Preview</div>
+      <div class="canvas-frame present-frame" id="previewFrame">
+        <div class="present-media-layer" id="previewMedia" aria-hidden="true"></div>
+        <canvas id="previewCanvas" width="1280" height="720" aria-label="Presentation preview"></canvas>
+      </div>
+      <nav class="present-controls" aria-label="Preview controls">
+        <button id="previewPrevious" type="button">‹ Previous</button>
+        <span id="previewCounter">1 / 1</span>
+        <button id="previewNext" type="button">Next ›</button>
+        <button id="exitPreview" type="button" class="end-live-button">Exit preview</button>
+      </nav>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+    <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/preview.js?v=20260904-current-slide"></script>
+  </body>
+</html>

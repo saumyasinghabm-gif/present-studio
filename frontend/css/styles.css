@@ -596,6 +596,7 @@ button { cursor: pointer; }
   color: var(--yellow);
   text-decoration: none;
 }
+button.present-back { border: 0; padding: 0; background: transparent; cursor: pointer; }
 
 .present-mode-badge {
   display: inline-flex;
