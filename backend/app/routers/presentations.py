@@ -47,7 +47,7 @@ def create_presentation(
         presentation_id=presentation.id,
         order=1,
         title=title,
-        canvas={"background": "#f8f4ea", "elements": []},
+        canvas={"background": "#ffffff", "elements": []},
     )
     db.add(presentation)
     db.add(slide)
