@@ -640,6 +640,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-width: max-content;
   height: 100%;
 }
+.builder-page .ribbon-group { padding: 8px 10px 24px; }
+.builder-page .tool-button { gap: 5px; min-height: 28px; padding: 4px 7px; font-size: 11px; line-height: 1.05; }
+.builder-page .tool-button.tool-tall { min-width: 50px; min-height: 66px; padding: 5px 7px; }
+.builder-page .tool-button.tool-tall i { font-size: 21px; }
+.builder-page .preset-card { min-width: 78px; height: 76px; padding: 7px; font-size: 11px; }
+.builder-page .theme-card { min-width: 72px; padding: 5px; font-size: 10px; }
+.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack { display: grid; grid-template-columns: repeat(2, minmax(72px, 1fr)); align-content: start; gap: 1px 5px; }
+.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack .tool-button { min-height: 22px; }
 .builder-page .ribbon-panel[hidden] { display: none !important; }
 .builder-page .builder-font-group[hidden] { display: flex !important; opacity: .48; }
 .builder-page .builder-font-group:not([hidden]) { display: flex; }
@@ -681,12 +689,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   aspect-ratio: 16 / 9;
 }
 .builder-page .fabric-slide-canvas canvas { max-width: 100%; height: auto !important; }
+.builder-page .fabric-slide-canvas .upper-canvas { z-index: 3 !important; }
 .builder-page .builder-canvas-index { position: absolute; right: 18px; bottom: 12px; z-index: 4; color: #666; font-size: 11px; pointer-events: none; }
 .builder-page .slide-item {
   position: relative;
   width: 100%;
   min-height: 108px;
-  padding: 18px 12px;
+  padding: 0;
   overflow: hidden;
   border: 1px solid #d2d2ce;
   border-radius: 3px;
@@ -694,10 +703,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: #111;
   font-size: 13px;
   font-weight: 700;
-  text-align: center;
+  text-align: left;
 }
-.builder-page .slide-item::before { position: absolute; top: 7px; left: 8px; color: #777; font-size: 10px; content: attr(data-index); }
+.builder-page .slide-item::before { position: absolute; z-index: 4; top: 5px; left: 7px; color: #666; font-size: 10px; content: attr(data-slide-number); }
 .builder-page .slide-item.active { border: 2px solid var(--yellow-strong); box-shadow: 0 0 0 1px rgba(245,200,66,.2); }
+.builder-page .slide-thumbnail-stage { position: absolute; inset: 0; overflow: hidden; background: var(--slide-thumbnail-bg, #fffefb); pointer-events: none; }
+.builder-page .slide-thumbnail-object { position: absolute; overflow: hidden; color: #111; line-height: 1.05; transform-origin: center; }
+.builder-page .slide-thumbnail-object.is-text { display: flex; align-items: center; white-space: pre-wrap; }
+.builder-page .slide-thumbnail-object img,
+.builder-page .slide-thumbnail-object video { width: 100%; height: 100%; object-fit: cover; background: #111; }
+.builder-page .slide-thumbnail-object.is-video::after { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(0,0,0,.18); font-family: bootstrap-icons; font-size: 20px; content: "\f4f4"; }
+.builder-page .slide-actions-inline { position: absolute; z-index: 6; top: 5px; right: 5px; display: flex; gap: 3px; opacity: .2; transition: opacity .15s ease; }
+.builder-page .slide-item:hover .slide-actions-inline,
+.builder-page .slide-item:focus-within .slide-actions-inline,
+.builder-page .slide-item.active .slide-actions-inline { opacity: 1; }
+.builder-page .slide-actions-inline button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid rgba(0,0,0,.18); border-radius: 3px; color: #111; background: rgba(255,255,255,.92); font-size: 12px; }
+.builder-page .slide-actions-inline button:hover { color: #fff; background: #111; }
+.builder-page .slide-actions-inline button.is-danger:hover { background: #b9382f; }
+.builder-page .fabric-video-overlay { position: absolute; z-index: 2; object-fit: cover; background: #111; pointer-events: none; }
+.builder-page .fabric-video-control { position: absolute; z-index: 5; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(255,255,255,.65); border-radius: 50%; color: #fff; background: rgba(0,0,0,.72); box-shadow: 0 3px 12px rgba(0,0,0,.28); }
+.builder-page .fabric-video-control:hover { background: #000; transform: scale(1.05); }
 .builder-page .notes-tray:not([hidden]) { display: block; }
 .builder-page .notes-tray textarea { width: 100%; min-height: 92px; resize: vertical; }
 .builder-page .save-status.is-saving span:first-child { background: #e7a928; }
@@ -709,6 +734,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .presenter-option { min-width: 90px; padding: 12px; border: 1px solid #ccc; background: #fff; }
 .builder-page .presenter-option.active { border-color: var(--yellow-strong); background: #fff8d9; }
 .builder-page .builder-compat { display: none !important; }
+.builder-upload-overlay { position: fixed; z-index: 1200; inset: 0; display: grid; place-items: center; background: rgba(15,15,15,.34); backdrop-filter: blur(3px); }
+.builder-upload-overlay[hidden] { display: none !important; }
+.builder-upload-card { display: grid; justify-items: center; width: min(390px, calc(100vw - 32px)); padding: 28px 30px; border: 1px solid #cfcfc9; border-radius: 7px; background: #fff; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+.builder-upload-card strong { margin-top: 13px; font-size: 18px; }
+.builder-upload-card > span { max-width: 100%; margin-top: 5px; overflow: hidden; color: #666; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.builder-upload-spinner { width: 42px; height: 42px; border: 4px solid #e5e5df; border-top-color: var(--yellow-strong); border-radius: 50%; animation: builderSpin .75s linear infinite; }
+.builder-upload-track { width: 100%; height: 8px; margin-top: 20px; overflow: hidden; border-radius: 8px; background: #ecece7; }
+.builder-upload-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #e4ae12, var(--yellow-strong)); transition: width .12s linear; }
+.builder-upload-card b { margin-top: 8px; font-variant-numeric: tabular-nums; }
+@keyframes builderSpin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
   body.builder-page { min-width: 760px; overflow-x: auto; }

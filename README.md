@@ -36,7 +36,7 @@ password123
 frontend/
   login.html
   dashboard.html
-  editor.html
+  builder.html
   controller.html
   screen.html
   present.html

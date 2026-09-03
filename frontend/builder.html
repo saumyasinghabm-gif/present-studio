@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260903-foundation">
+  <link rel="stylesheet" href="/css/builder.css?v=20260903-media-preview">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -188,6 +188,15 @@
     <select id="playbackMode"><option value="manual">Manual</option></select><select id="playbackInterval"><option value="5000">5 seconds</option></select>
     <select id="mediaMode"><option value="all">All</option></select><select id="mediaCycle"><option value="all">All</option></select><select id="mediaInterval"><option value="5000">5 seconds</option></select><div id="playbackSlides"></div>
   </div>
+  <div class="builder-upload-overlay" id="builderUploadOverlay" hidden role="status" aria-live="polite" aria-busy="true">
+    <div class="builder-upload-card">
+      <div class="builder-upload-spinner" aria-hidden="true"></div>
+      <strong id="builderUploadTitle">Uploading media…</strong>
+      <span id="builderUploadFile"></span>
+      <div class="builder-upload-track" aria-hidden="true"><span id="builderUploadBar"></span></div>
+      <b id="builderUploadPercent">0%</b>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
@@ -196,6 +205,6 @@
   <script src="/js/api.js"></script>
   <script src="/js/editor.js"></script>
   <script src="/js/builder-ribbon.js?v=20260903-full-ribbon"></script>
-  <script src="/js/builder-ui.js?v=20260903-foundation"></script>
+  <script src="/js/builder-ui.js?v=20260903-media-preview"></script>
 </body>
 </html>

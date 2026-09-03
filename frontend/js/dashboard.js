@@ -57,7 +57,7 @@ function renderDecks(presentations) {
 
   grid.querySelectorAll("[data-open]").forEach((button) => {
     button.addEventListener("click", () => {
-      window.location.href = `/editor.html?id=${encodeURIComponent(button.dataset.open)}`;
+      window.location.href = `/builder.html?id=${encodeURIComponent(button.dataset.open)}`;
     });
   });
   grid.querySelectorAll("[data-toast]").forEach((button) => {
@@ -98,7 +98,7 @@ createButton?.addEventListener("click", async () => {
   createButton.disabled = true;
   try {
     const { presentation } = await api.createPresentation("Untitled presentation");
-    window.location.href = `/editor.html?id=${encodeURIComponent(presentation.id)}`;
+    window.location.href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
   } catch (error) {
     createButton.disabled = false;
     showToast(error.message);

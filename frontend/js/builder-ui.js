@@ -8,8 +8,190 @@
   const notesTray = byId("notesTray");
   const notesEditor = byId("notesEditor");
   const shareModal = byId("shareModal");
+  const uploadOverlay = byId("builderUploadOverlay");
   let builderClipboard = null;
   let zoom = 100;
+  let builderUploadRequestId = 0;
+
+  function safeColor(value, fallback = "#171717") {
+    return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(value || "")) ? value : fallback;
+  }
+
+  function thumbnailObjectMarkup(object, legacy = false) {
+    const left = legacy ? Number(object.x || 0) : Number(object.left || 0) / 12.8;
+    const top = legacy ? Number(object.y || 0) : Number(object.top || 0) / 7.2;
+    const width = legacy ? Number(object.width || 40) : Number(object.width || 40) * Number(object.scaleX || 1) / 12.8;
+    const height = legacy ? Number(object.height || 18) : Number(object.height || object.fontSize || 40) * Number(object.scaleY || 1) / 7.2;
+    const rotation = Number(object.angle || 0);
+    const style = `left:${left}%;top:${top}%;width:${Math.max(2, width)}%;height:${Math.max(2, height)}%;transform:rotate(${rotation}deg);`;
+    const mediaType = object.mediaType || object.type;
+    if (mediaType === "image" && object.src) {
+      return `<span class="slide-thumbnail-object is-image" style="${style}"><img src="${esc(object.src)}" alt=""></span>`;
+    }
+    if (mediaType === "video" && object.src) {
+      return `<span class="slide-thumbnail-object is-video" style="${style}"><video src="${esc(object.src)}" muted preload="metadata" playsinline></video></span>`;
+    }
+    if (["textbox", "text", "i-text"].includes(object.type)) {
+      const fontSize = legacy ? Number(object.fontSize || 32) / 7 : Number(object.fontSize || 32) / 7;
+      const font = ["Arial", "Inter", "Georgia", "Verdana", "Courier New"].includes(object.fontFamily) ? object.fontFamily : "Arial";
+      return `<span class="slide-thumbnail-object is-text" style="${style}font-size:${Math.max(5, fontSize)}px;font-family:${font};font-weight:${esc(object.fontWeight || "normal")};color:${safeColor(object.fill || object.color)};text-align:${esc(object.textAlign || "left")};">${esc(object.text || "")}</span>`;
+    }
+    return `<span class="slide-thumbnail-object" style="${style}background:${safeColor(object.fill, "#f5c842")};border:1px solid ${safeColor(object.stroke, "transparent")};"></span>`;
+  }
+
+  renderList = function renderBuilderSlideList() {
+    if (!presentation) return;
+    byId("slideList").innerHTML = presentation.slides.map((slide, index) => {
+      const data = ensure(slide).canvas;
+      const fabricObjects = data.fabric?.objects || [];
+      const legacyObjects = fabricObjects.length ? [] : (data.elements || []);
+      const objects = fabricObjects.map((object) => thumbnailObjectMarkup(object)).join("") + legacyObjects.map((object) => thumbnailObjectMarkup(object, true)).join("");
+      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}"><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
+    }).join("");
+    all("#slideList .slide-item").forEach((item) => {
+      const open = () => { capture(); currentSlideIndex = Number(item.dataset.index); render(); };
+      item.addEventListener("click", (event) => { if (!event.target.closest(".slide-actions-inline")) open(); });
+      item.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
+    });
+    all("[data-slide-duplicate]").forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation(); capture(); currentSlideIndex = Number(button.dataset.slideDuplicate); duplicateSlide();
+    }));
+    all("[data-slide-delete]").forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation(); currentSlideIndex = Number(button.dataset.slideDelete); deleteSlide();
+    }));
+  };
+
+  function updateVideoOverlays() {
+    if (!canvas || !byId("slideCanvas")) return;
+    const host = byId("slideCanvas");
+    const container = host.querySelector(".canvas-container");
+    if (!container) return;
+    const scaleX = container.clientWidth / canvas.getWidth();
+    const scaleY = container.clientHeight / canvas.getHeight();
+    const liveIds = new Set();
+    canvas.getObjects().filter((object) => object.mediaType === "video" && object.src).forEach((object) => {
+      const id = String(object.id || `video_${canvas.getObjects().indexOf(object)}`);
+      liveIds.add(id);
+      let video = [...host.querySelectorAll(".fabric-video-overlay")].find((item) => item.dataset.objectId === id);
+      let control = [...host.querySelectorAll(".fabric-video-control")].find((item) => item.dataset.objectId === id);
+      if (!video) {
+        video = document.createElement("video");
+        video.className = "fabric-video-overlay";
+        video.dataset.objectId = id;
+        video.src = object.src;
+        video.preload = "metadata";
+        video.playsInline = true;
+        video.muted = Boolean(object.muted ?? true);
+        video.loop = Boolean(object.loop ?? true);
+        host.append(video);
+      }
+      if (!control) {
+        control = document.createElement("button");
+        control.className = "fabric-video-control";
+        control.dataset.objectId = id;
+        control.type = "button";
+        control.setAttribute("aria-label", "Play video");
+        control.innerHTML = '<i class="bi bi-play-fill"></i>';
+        control.addEventListener("click", async () => {
+          if (video.paused) {
+            try { await video.play(); control.innerHTML = '<i class="bi bi-pause-fill"></i>'; control.setAttribute("aria-label", "Pause video"); }
+            catch { toast("The browser could not play this video format."); }
+          } else {
+            video.pause(); control.innerHTML = '<i class="bi bi-play-fill"></i>'; control.setAttribute("aria-label", "Play video");
+          }
+        });
+        host.append(control);
+      }
+      const bounds = object.getBoundingRect(true, true);
+      const left = container.offsetLeft + bounds.left * scaleX;
+      const top = container.offsetTop + bounds.top * scaleY;
+      const width = Math.max(36, bounds.width * scaleX);
+      const height = Math.max(30, bounds.height * scaleY);
+      Object.assign(video.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+      Object.assign(control.style, { left: `${left + width / 2 - 16}px`, top: `${top + height / 2 - 16}px` });
+    });
+    all(".fabric-video-overlay, .fabric-video-control").forEach((item) => { if (!liveIds.has(item.dataset.objectId)) item.remove(); });
+  }
+
+  function queueVideoOverlayUpdate() { window.requestAnimationFrame(updateVideoOverlays); }
+
+  const originalAddAsset = addAsset;
+  addAsset = function addBuilderAsset(asset, announce = true) {
+    originalAddAsset(asset, announce);
+    if (!asset || asset.mimeType.startsWith("audio/")) return;
+    const refreshThumbnail = () => {
+      if (!presentation || loading) return;
+      capture();
+      renderList();
+      queueVideoOverlayUpdate();
+      schedule();
+    };
+    window.setTimeout(refreshThumbnail, 30);
+    if (asset.mimeType.startsWith("image/")) window.setTimeout(refreshThumbnail, 900);
+  };
+
+  uploadFile = async function uploadFileWithProgress(file) {
+    const requestId = ++builderUploadRequestId;
+    retryUploadFile = null;
+    const title = byId("builderUploadTitle");
+    const filename = byId("builderUploadFile");
+    const bar = byId("builderUploadBar");
+    const percentage = byId("builderUploadPercent");
+    const setProgress = (value) => {
+      const progress = Math.max(0, Math.min(100, Math.round(value)));
+      bar.style.width = `${progress}%`;
+      percentage.textContent = `${progress}%`;
+    };
+    title.textContent = "Uploading media…";
+    filename.textContent = file.name;
+    setProgress(0);
+    uploadOverlay.hidden = false;
+    uploadOverlay.setAttribute("aria-busy", "true");
+    renderUploadStatus("uploading", `Uploading… ${file.name}`);
+
+    return new Promise((resolve) => {
+      const request = new XMLHttpRequest();
+      request.open("POST", "/api/media/upload");
+      request.withCredentials = true;
+      const token = localStorage.getItem("presentStudio.accessToken");
+      if (token) request.setRequestHeader("Authorization", `Bearer ${token}`);
+      request.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable && requestId === builderUploadRequestId) setProgress(event.loaded / event.total * 100);
+      });
+      const fail = (message) => {
+        if (requestId !== builderUploadRequestId) return resolve(null);
+        retryUploadFile = file;
+        title.textContent = "Upload failed";
+        uploadOverlay.setAttribute("aria-busy", "false");
+        renderUploadStatus("error", message);
+        window.setTimeout(() => { uploadOverlay.hidden = true; }, 900);
+        resolve(null);
+      };
+      request.addEventListener("error", () => fail("Upload failed because the server could not be reached."));
+      request.addEventListener("load", () => {
+        let body = {};
+        try { body = JSON.parse(request.responseText || "{}"); } catch { body = {}; }
+        if (request.status < 200 || request.status >= 300 || !body.asset) {
+          const message = body.detail || body.error || `Upload failed (${request.status || "network error"}).`;
+          return fail(String(message).includes("Cloudinary") ? "Media storage is not configured on this server." : message);
+        }
+        if (requestId !== builderUploadRequestId) return resolve(null);
+        setProgress(100);
+        title.textContent = "Upload complete";
+        uploadOverlay.setAttribute("aria-busy", "false");
+        mediaAssets.unshift(body.asset);
+        addAsset(body.asset, false);
+        mediaLibrary();
+        renderUploadStatus("success", `${file.name} uploaded successfully.`);
+        window.setTimeout(() => { uploadOverlay.hidden = true; }, 450);
+        window.setTimeout(queueVideoOverlayUpdate, 80);
+        resolve(body);
+      });
+      const form = new FormData();
+      form.append("file", file);
+      request.send(form);
+    });
+  };
 
   function setSaveAppearance(value) {
     saveStatus.classList.toggle("is-saving", /saving|loading/i.test(value));
@@ -27,13 +209,20 @@
       const slide = activeSlide();
       notesEditor.value = slide?.canvas?.notes || "";
     }
+    window.setTimeout(queueVideoOverlayUpdate, 60);
+    window.setTimeout(queueVideoOverlayUpdate, 300);
   };
+
+  ["object:added", "object:removed", "object:moving", "object:scaling", "object:rotating", "object:modified"].forEach((eventName) => canvas.on(eventName, queueVideoOverlayUpdate));
+  window.addEventListener("resize", queueVideoOverlayUpdate);
 
   const originalSave = save;
   save = async function saveBuilder() {
     setSaveAppearance("Saving");
     try {
       const result = await originalSave();
+      renderList();
+      queueVideoOverlayUpdate();
       setSaveAppearance("Saved");
       return result;
     } catch (error) {

@@ -85,7 +85,7 @@
     presentation = result.presentation;
     targets = collectTargets();
     $("#controllerTitle").textContent = presentation.title;
-    $("#backToEditor").href = `/editor.html?id=${encodeURIComponent(presentation.id)}`;
+    $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
     renderTargets("slide", "#slideTargets", "#slideTargetCount");
     renderTargets("image", "#imageTargets", "#imageTargetCount");
     renderTargets("video", "#videoTargets", "#videoTargetCount");
