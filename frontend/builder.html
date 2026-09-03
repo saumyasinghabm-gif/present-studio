@@ -154,6 +154,13 @@
             <canvas id="fabricCanvas" width="1280" height="720" aria-label="Editable presentation canvas"></canvas>
             <span id="canvasIndex" class="builder-canvas-index">01 / 01</span>
           </div>
+          <div class="builder-audio-dock" id="slideAudioPlayer" hidden>
+            <span class="builder-audio-icon"><i class="bi bi-music-note-beamed"></i></span>
+            <div><strong id="slideAudioName">Slide music</strong><small>Plays with this slide</small></div>
+            <button class="builder-audio-toggle" type="button" id="slideAudioToggle" aria-label="Play slide music"><i class="bi bi-play-fill"></i><span>Play</span></button>
+            <audio id="slideAudioElement" controls preload="metadata"></audio>
+            <button type="button" id="removeSlideAudio" aria-label="Remove slide music" title="Remove music"><i class="bi bi-x-lg"></i></button>
+          </div>
         </div>
       </section>
     </main>
@@ -205,6 +212,6 @@
   <script src="/js/api.js"></script>
   <script src="/js/editor.js"></script>
   <script src="/js/builder-ribbon.js?v=20260903-full-ribbon"></script>
-  <script src="/js/builder-ui.js?v=20260903-media-preview"></script>
+  <script src="/js/builder-ui.js?v=20260903-live-audio"></script>
 </body>
 </html>

@@ -872,6 +872,7 @@ button { cursor: pointer; }
 .controller-preview-panel strong, .controller-preview-panel span { display: block; }
 .controller-preview-stage { height: 135px; display: grid; place-items: center; overflow: hidden; background: #000; color: #888; }
 .controller-preview-stage img, .controller-preview-stage video { width: 100%; height: 100%; object-fit: contain; }
+.controller-preview-stage audio { width: calc(100% - 28px); }
 .controller-empty { color: var(--muted); }
 
 /* Clean audience/projector output */

@@ -21,6 +21,8 @@
       const objects = slide.canvas?.fabric?.objects || [];
       const firstImage = objects.find(object => object.mediaType === "image");
       result.push({ id: `slide:${slide.id}`, kind: "slide", slideId: slide.id, mediaId: "", title: slide.title || `Slide ${slideIndex + 1}`, src: firstImage?.src || "", audioSrc: "" });
+      const track = slide.canvas?.audio;
+      if (track?.src) result.push({ id: `audio:${slide.id}:${track.id || "track"}`, kind: "audio", slideId: slide.id, mediaId: track.id || "track", title: track.name || `${slide.title || `Slide ${slideIndex + 1}`} · Music`, src: track.src, audioSrc: track.src });
       objects.forEach((object, mediaIndex) => {
         if (!object.mediaType || !["image", "video"].includes(object.mediaType) || !object.src) return;
         result.push({
@@ -38,7 +40,7 @@
   }
 
   function cardMarkup(target) {
-    const visual = target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted preload="metadata"></video><span class="controller-play-mark">▶</span>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span class="controller-slide-number">${escapeHtml(target.title.slice(0, 2))}</span>`;
+    const visual = target.kind === "audio" ? '<span class="controller-slide-number">♫</span>' : target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted preload="metadata"></video><span class="controller-play-mark">▶</span>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span class="controller-slide-number">${escapeHtml(target.title.slice(0, 2))}</span>`;
     return `<button class="controller-target-card" type="button" data-target-id="${escapeHtml(target.id)}"><span class="controller-target-thumb">${visual}</span><span><strong>${escapeHtml(target.title)}</strong><small>${target.kind}${target.audioSrc ? " · linked audio" : ""}</small></span></button>`;
   }
 
@@ -53,13 +55,31 @@
     $(selector).innerHTML = items.map(target => `<label><input type="checkbox" value="${escapeHtml(target.id)}" checked><span>${escapeHtml(target.title)}</span></label>`).join("");
   }
 
+  function bindTargetCards() {
+    document.querySelectorAll("[data-target-id]").forEach(button => button.addEventListener("click", () => selectTarget(targets.find(target => target.id === button.dataset.targetId))));
+  }
+
+  function renderControllerTargets() {
+    targets = collectTargets();
+    $("#controllerTitle").textContent = presentation.title;
+    renderTargets("slide", "#slideTargets", "#slideTargetCount");
+    renderTargets("image", "#imageTargets", "#imageTargetCount");
+    renderTargets("video", "#videoTargets", "#videoTargetCount");
+    renderTargets("audio", "#audioTargets", "#audioTargetCount");
+    renderLoopList("image", "#imageLoopList");
+    renderLoopList("video", "#videoLoopList");
+    bindTargetCards();
+    if (activeTargetId) document.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.classList.add("active");
+  }
+
   function selectTarget(target) {
     if (!target || !socket) return;
     activeTargetId = target.id;
-    socket.emit("media_selected", { ...credentials(), slideId: target.slideId, mediaId: target.mediaId, kind: target.kind });
+    if (target.kind === "slide") socket.emit("slide_changed", { ...credentials(), slideId: target.slideId });
+    else socket.emit("media_selected", { ...credentials(), slideId: target.slideId, mediaId: target.mediaId, kind: target.kind });
     document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
     $("#previewTitle").textContent = target.title;
-    $("#previewStage").innerHTML = target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted autoplay loop></video>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span>${escapeHtml(target.title)}</span>`;
+    $("#previewStage").innerHTML = target.kind === "audio" ? `<audio src="${escapeHtml(target.src)}" controls autoplay></audio>` : target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted autoplay loop></video>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span>${escapeHtml(target.title)}</span>`;
   }
 
   function selectedLoopTargets(kind, selector) {
@@ -83,15 +103,8 @@
     const result = await api.getPresentation(presentationId, shareToken);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
-    targets = collectTargets();
-    $("#controllerTitle").textContent = presentation.title;
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
-    renderTargets("slide", "#slideTargets", "#slideTargetCount");
-    renderTargets("image", "#imageTargets", "#imageTargetCount");
-    renderTargets("video", "#videoTargets", "#videoTargetCount");
-    renderLoopList("image", "#imageLoopList");
-    renderLoopList("video", "#videoLoopList");
-    document.querySelectorAll("[data-target-id]").forEach(button => button.addEventListener("click", () => selectTarget(targets.find(target => target.id === button.dataset.targetId))));
+    renderControllerTargets();
     $("#startImageLoop").onclick = () => startLoop("image", "#imageLoopList");
     $("#startVideoLoop").onclick = () => startLoop("video", "#videoLoopList");
     $("#stopLoop").onclick = stopLoop;
@@ -99,9 +112,25 @@
     $("#replayMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "replay" });
     $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; $("#previewStage").innerHTML = "<span>Black screen</span>"; };
     $("#openScreen").onclick = () => window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}${shareToken ? `&token=${encodeURIComponent(shareToken)}` : ""}`, "_blank", "noopener");
-    socket?.on("connect", () => { $("#connectionStatus").innerHTML = "<i></i> Live"; socket.emit("join_presentation", { presentationId }); });
+    const joinRoom = () => { $("#connectionStatus").innerHTML = "<i></i> Live"; socket.emit("join_presentation", { presentationId }); };
+    socket?.on("connect", joinRoom);
+    if (socket?.connected) joinRoom();
     socket?.on("disconnect", () => { $("#connectionStatus").innerHTML = "<i></i> Reconnecting"; });
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
+    socket?.on("active_slide_changed", event => {
+      const target = targets.find(item => item.kind === "slide" && item.slideId === event.slideId);
+      if (!target) return;
+      activeTargetId = target.id;
+      document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
+      $("#previewTitle").textContent = target.title;
+      $("#previewStage").innerHTML = target.src ? `<img src="${escapeHtml(target.src)}" alt="">` : `<span>${escapeHtml(target.title)}</span>`;
+    });
+    socket?.on("presentation_updated", event => {
+      if (event.presentationId !== presentationId || !event.presentation) return;
+      presentation = event.presentation;
+      if (event.activeSlideId) activeTargetId = `slide:${event.activeSlideId}`;
+      renderControllerTargets();
+    });
   } catch (error) {
     $("#controllerTitle").textContent = "Controller unavailable";
     $("#previewStage").textContent = error.message;

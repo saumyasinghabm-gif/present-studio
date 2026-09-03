@@ -6,6 +6,7 @@ from ..database import get_db
 from ..models import LiveSession, Presentation, ShareLink, Slide, User
 from ..schemas import LiveSessionOut, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ShareLinkCreate, ShareLinkOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, new_id, optional_current_user, resolve_share_permission
+from ..socket_manager import sio
 
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
@@ -84,7 +85,7 @@ def get_presentation(
 
 
 @router.put("/{presentation_id}")
-def save_presentation(
+async def save_presentation(
     presentation_id: str,
     payload: PresentationSave,
     user: User = Depends(current_user),
@@ -98,9 +99,23 @@ def save_presentation(
     db.query(Slide).filter(Slide.presentation_id == presentation.id).delete()
     for slide in payload.slides:
         db.add(Slide(id=slide.id, presentation_id=presentation.id, order=slide.order, title=slide.title, canvas=slide.canvas))
+    live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation.id).first()
+    slide_ids = [slide.id for slide in payload.slides]
+    if live and live.active_slide_id not in slide_ids:
+        live.active_slide_id = slide_ids[0] if slide_ids else None
     db.commit()
     db.refresh(presentation)
-    return PresentationPayload(presentation=serialize_presentation(presentation), permission="presenter")
+    serialized = serialize_presentation(presentation)
+    await sio.emit(
+        "presentation_updated",
+        {
+            "presentationId": presentation.id,
+            "presentation": serialized.model_dump(),
+            "activeSlideId": live.active_slide_id if live else (slide_ids[0] if slide_ids else None),
+        },
+        room=presentation.id,
+    )
+    return PresentationPayload(presentation=serialized, permission="presenter")
 
 
 @router.post("/{presentation_id}/share")

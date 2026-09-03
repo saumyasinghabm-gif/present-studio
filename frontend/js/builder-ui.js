@@ -46,7 +46,8 @@
       const fabricObjects = data.fabric?.objects || [];
       const legacyObjects = fabricObjects.length ? [] : (data.elements || []);
       const objects = fabricObjects.map((object) => thumbnailObjectMarkup(object)).join("") + legacyObjects.map((object) => thumbnailObjectMarkup(object, true)).join("");
-      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}"><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
+      const audioBadge = data.audio?.src ? '<span class="slide-thumbnail-audio" title="Slide has music"><i class="bi bi-music-note-beamed"></i></span>' : "";
+      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}"><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
     }).join("");
     all("#slideList .slide-item").forEach((item) => {
       const open = () => { capture(); currentSlideIndex = Number(item.dataset.index); render(); };
@@ -115,10 +116,35 @@
 
   function queueVideoOverlayUpdate() { window.requestAnimationFrame(updateVideoOverlays); }
 
+  function renderSlideAudio() {
+    const dock = byId("slideAudioPlayer");
+    const player = byId("slideAudioElement");
+    const track = presentation ? ensure(activeSlide()).canvas.audio : null;
+    if (!track?.src) {
+      player.pause();
+      player.removeAttribute("src");
+      dock.hidden = true;
+      return;
+    }
+    if (player.src !== new URL(track.src, location.href).href) player.src = track.src;
+    player.loop = track.loop !== false;
+    byId("slideAudioName").textContent = track.name || "Slide music";
+    dock.hidden = false;
+  }
+
   const originalAddAsset = addAsset;
   addAsset = function addBuilderAsset(asset, announce = true) {
+    if (!asset) return;
+    if (asset.mimeType.startsWith("audio/")) {
+      ensure(activeSlide()).canvas.audio = { id: asset.id, src: asset.url, name: asset.name, loop: true };
+      renderSlideAudio();
+      renderList();
+      schedule();
+      renderUploadStatus("success", `${asset.name} added as music for this slide.`);
+      if (announce) toast("Music added to this slide.");
+      return;
+    }
     originalAddAsset(asset, announce);
-    if (!asset || asset.mimeType.startsWith("audio/")) return;
     const refreshThumbnail = () => {
       if (!presentation || loading) return;
       capture();
@@ -209,12 +235,34 @@
       const slide = activeSlide();
       notesEditor.value = slide?.canvas?.notes || "";
     }
+    renderSlideAudio();
     window.setTimeout(queueVideoOverlayUpdate, 60);
     window.setTimeout(queueVideoOverlayUpdate, 300);
   };
 
   ["object:added", "object:removed", "object:moving", "object:scaling", "object:rotating", "object:modified"].forEach((eventName) => canvas.on(eventName, queueVideoOverlayUpdate));
   window.addEventListener("resize", queueVideoOverlayUpdate);
+
+  byId("removeSlideAudio").addEventListener("click", () => {
+    const data = ensure(activeSlide()).canvas;
+    delete data.audio;
+    renderSlideAudio();
+    renderList();
+    schedule();
+    toast("Slide music removed.");
+  });
+
+  const slideAudioToggle = byId("slideAudioToggle");
+  const slideAudioElement = byId("slideAudioElement");
+  function syncAudioToggle() {
+    const playing = !slideAudioElement.paused;
+    slideAudioToggle.innerHTML = playing ? '<i class="bi bi-pause-fill"></i><span>Pause</span>' : '<i class="bi bi-play-fill"></i><span>Play</span>';
+    slideAudioToggle.setAttribute("aria-label", `${playing ? "Pause" : "Play"} slide music`);
+  }
+  slideAudioToggle.addEventListener("click", () => slideAudioElement.paused ? slideAudioElement.play().catch(() => toast("This audio format could not be played.")) : slideAudioElement.pause());
+  slideAudioElement.addEventListener("play", syncAudioToggle);
+  slideAudioElement.addEventListener("pause", syncAudioToggle);
+  slideAudioElement.addEventListener("ended", syncAudioToggle);
 
   const originalSave = save;
   save = async function saveBuilder() {

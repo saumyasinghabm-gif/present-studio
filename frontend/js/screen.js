@@ -32,14 +32,23 @@
     return objects.find((object, index) => object.mediaType === kind && String(object.id || index) === String(id));
   }
 
-  function playLinkedAudio(src) {
+  function playLinkedAudio(src, loop = false) {
     if (!src || !audioUnlocked) return;
     linkedAudio = new Audio(src);
     linkedAudio.volume = 1;
+    linkedAudio.loop = loop;
+    linkedAudio.hidden = true;
+    linkedAudio.dataset.slideMusic = "true";
+    mediaLayer.append(linkedAudio);
+    activeMedia = linkedAudio;
     linkedAudio.play().catch(() => {});
   }
 
   function renderDirectMedia(slide, mediaId, kind) {
+    if (kind === "audio") {
+      renderSlide(slide);
+      return;
+    }
     const object = objectById(slide, mediaId, kind);
     if (!object?.src) return renderSlide(slide);
     stopMedia();
@@ -57,11 +66,15 @@
       activeMedia = linkedAudio;
     }
     mediaLayer.append(node);
+    stage.dataset.slideId = slide.id;
+    stage.dataset.presentationTitle = presentation.title;
     transition();
   }
 
   function renderSlide(slide) {
     if (!slide) return;
+    stage.dataset.slideId = slide.id;
+    stage.dataset.presentationTitle = presentation.title;
     stopMedia();
     mediaLayer.replaceChildren();
     canvasWrap.hidden = false;
@@ -87,7 +100,9 @@
         activeMedia = video;
         video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
       });
-      if (!videos.length) playLinkedAudio(firstAudio);
+      playLinkedAudio(data.audio?.src || (!videos.length ? firstAudio : ""), data.audio?.loop !== false);
+    } else {
+      playLinkedAudio(data.audio?.src, data.audio?.loop !== false);
     }
     transition();
   }
@@ -95,8 +110,17 @@
   function handleSelection(event) {
     const slide = slideById(event.slideId);
     if (!slide) return;
-    if (["image", "video"].includes(event.kind)) renderDirectMedia(slide, event.mediaId, event.kind);
+    if (["image", "video", "audio"].includes(event.kind)) renderDirectMedia(slide, event.mediaId, event.kind);
     else renderSlide(slide);
+  }
+
+  function joinRoom() { socket?.emit("join_presentation", { presentationId }); }
+
+  function handlePresentationUpdate(event) {
+    if (event.presentationId !== presentationId || !event.presentation) return;
+    const previousSlideId = presentation?.slides?.find(slide => slide.id === event.activeSlideId)?.id;
+    presentation = event.presentation;
+    renderSlide(slideById(previousSlideId || event.activeSlideId) || presentation.slides[0]);
   }
 
   function control(action) {
@@ -111,17 +135,21 @@
     audioUnlocked = true;
     document.getElementById("audioGate").hidden = true;
     try { await document.documentElement.requestFullscreen?.(); } catch {}
-    if (activeMedia) { activeMedia.muted = false; activeMedia.play?.().catch(() => {}); }
+    const slide = slideById(stage.dataset.slideId);
+    if (slide) renderSlide(slide);
+    else if (activeMedia) { activeMedia.muted = false; activeMedia.play?.().catch(() => {}); }
   });
 
   try {
-    const result = await api.getPresentation(presentationId, shareToken);
+    const [result, live] = await Promise.all([api.getPresentation(presentationId, shareToken), api.getLiveSession(presentationId)]);
     presentation = result.presentation;
     canvas = new fabric.StaticCanvas("outputCanvas", { width: 1280, height: 720, selection: false });
-    if (presentation.slides.length) renderSlide(presentation.slides[0]);
-    socket?.on("connect", () => socket.emit("join_presentation", { presentationId }));
+    if (presentation.slides.length) renderSlide(slideById(live.activeSlideId) || presentation.slides[0]);
+    socket?.on("connect", joinRoom);
+    if (socket?.connected) joinRoom();
     socket?.on("presentation_media_changed", handleSelection);
     socket?.on("active_slide_changed", event => { const slide = slideById(event.slideId); if (slide) renderSlide(slide); });
+    socket?.on("presentation_updated", handlePresentationUpdate);
     socket?.on("presentation_media_control", event => control(event.action));
     socket?.on("session_ended", () => control("stop"));
   } catch {

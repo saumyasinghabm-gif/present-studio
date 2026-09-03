@@ -4,6 +4,7 @@ const createButton = document.querySelector("#createPresentation");
 const toast = document.querySelector("#toast");
 const profileButton = document.querySelector("#profileButton");
 const builderButtons = [document.querySelector("#builderNav"), document.querySelector("#openBuilder")].filter(Boolean);
+const searchInput = document.querySelector("#presentationSearch");
 
 let toastTimer = null;
 let dashboardPresentations = [];
@@ -30,7 +31,7 @@ function getAccent(deck, index) {
 function renderDecks(presentations) {
   if (!grid) return;
   if (!presentations.length) {
-    grid.innerHTML = `<p class="status-text">No presentations yet. Use “New presentation” to start your first deck.</p>`;
+    grid.innerHTML = `<p class="dashboard-status">No presentations yet. Use “New Presentation” to start your first deck.</p>`;
     return;
   }
 
@@ -41,13 +42,13 @@ function renderDecks(presentations) {
     const updated = deck.updatedAt ? new Date(deck.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Draft";
     const accent = getAccent(deck, index);
     return `
-      <article class="deck-card">
+      <article class="presentation-card">
         <button class="presentation-preview" data-accent="${accent}" type="button" data-open="${escapeHtml(deck.id)}" aria-label="Open ${title}">
           <span class="preview-kicker">PRESENT STUDIO</span>
           <span class="preview-number">${String(index + 1).padStart(2, "0")}</span>
           <span class="preview-title">${title}</span>
         </button>
-        <div class="deck-card-info">
+        <div class="presentation-card-footer">
           <div><h3>${title}</h3><p>${slideLabel} · ${escapeHtml(updated)}</p></div>
           <button type="button" class="card-menu" data-toast="Presentation options will connect to the backend.">•••</button>
         </div>
@@ -70,9 +71,12 @@ function renderDecks(presentations) {
 
 async function loadDashboard() {
   if (!grid) return;
-  grid.innerHTML = `<p class="status-text">Loading your presentations...</p>`;
+  grid.innerHTML = `<p class="dashboard-status">Loading your presentations…</p>`;
   const { presentations } = await api.listPresentations();
   dashboardPresentations = presentations;
+  document.querySelector("#presentationCount").textContent = String(presentations.length).padStart(2, "0");
+  document.querySelector("#recentCount").textContent = String(presentations.filter(deck => deck.updatedAt && Date.now() - new Date(deck.updatedAt).getTime() < 30 * 86400000).length).padStart(2, "0");
+  document.querySelector("#slideTotal").textContent = String(presentations.reduce((total, deck) => total + (deck.slides?.length || 0), 0)).padStart(2, "0");
   renderDecks(presentations);
 }
 
@@ -116,6 +120,25 @@ document.querySelectorAll("[data-toast]").forEach((element) => {
   element.addEventListener("click", () => showToast(element.dataset.toast));
 });
 
+searchInput?.addEventListener("input", () => {
+  const query = searchInput.value.trim().toLowerCase();
+  renderDecks(dashboardPresentations.filter(deck => String(deck.title || "").toLowerCase().includes(query)));
+});
+
+document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => {
+  document.querySelectorAll("[data-view]").forEach(item => item.classList.toggle("is-active", item === button));
+  grid.classList.toggle("is-list", button.dataset.view === "list");
+}));
+
+const session = api.getCachedSession();
+if (session) {
+  const firstName = String(session.name || "Presenter").trim().split(/\s+/)[0];
+  const hour = new Date().getHours();
+  document.querySelector("#dashboardGreeting").textContent = `${hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}, ${firstName}.`;
+  document.querySelector("#profileInitials").textContent = String(session.name || "PS").split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
+}
+document.querySelector("#dashboardDate").textContent = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(new Date()).toUpperCase();
+
 if (!api.getCachedSession()) {
   window.location.replace("/login.html");
 } else loadDashboard().catch((error) => {
@@ -123,5 +146,5 @@ if (!api.getCachedSession()) {
     window.location.replace("/login.html");
     return;
   }
-  if (grid) grid.innerHTML = `<p class="status-text status-text error">${escapeHtml(error.message)}</p>`;
+  if (grid) grid.innerHTML = `<p class="dashboard-status error">${escapeHtml(error.message)}</p>`;
 });

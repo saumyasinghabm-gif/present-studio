@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, patch
 from app.main import fastapi_app
 
 
@@ -77,3 +78,22 @@ def test_share_link_rejects_invalid_permission():
             headers={"Authorization": f"Bearer {token}"},
         )
     assert response.status_code == 422
+
+
+def test_saving_presentation_emits_live_update():
+    with TestClient(fastapi_app) as client:
+        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        token = login.json()["accessToken"]
+        headers = {"Authorization": f"Bearer {token}"}
+        current = client.get("/api/presentations/pres_demo", headers=headers).json()["presentation"]
+
+        with patch("app.routers.presentations.sio.emit", new_callable=AsyncMock) as emit:
+            response = client.put("/api/presentations/pres_demo", json=current, headers=headers)
+
+        assert response.status_code == 200
+        emit.assert_awaited_once()
+        event_name, event = emit.await_args.args
+        assert event_name == "presentation_updated"
+        assert event["presentationId"] == "pres_demo"
+        assert event["presentation"]["slides"]
+        assert emit.await_args.kwargs["room"] == "pres_demo"
