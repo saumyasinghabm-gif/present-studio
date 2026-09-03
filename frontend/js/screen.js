@@ -150,6 +150,7 @@
     socket?.on("presentation_media_changed", handleSelection);
     socket?.on("active_slide_changed", event => { const slide = slideById(event.slideId); if (slide) renderSlide(slide); });
     socket?.on("presentation_updated", handlePresentationUpdate);
+    socket?.on("presentation_deleted", event => { if (event.presentationId === presentationId) control("stop"); });
     socket?.on("presentation_media_control", event => control(event.action));
     socket?.on("session_ended", () => control("stop"));
   } catch {

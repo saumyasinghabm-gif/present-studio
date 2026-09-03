@@ -131,6 +131,13 @@
       if (event.activeSlideId) activeTargetId = `slide:${event.activeSlideId}`;
       renderControllerTargets();
     });
+    socket?.on("presentation_deleted", event => {
+      if (event.presentationId !== presentationId) return;
+      stopLoop();
+      $("#controllerTitle").textContent = "Presentation deleted";
+      $("#previewStage").textContent = "This presentation is no longer available.";
+      document.querySelectorAll("button").forEach(button => { if (button.id !== "backToEditor") button.disabled = true; });
+    });
   } catch (error) {
     $("#controllerTitle").textContent = "Controller unavailable";
     $("#previewStage").textContent = error.message;

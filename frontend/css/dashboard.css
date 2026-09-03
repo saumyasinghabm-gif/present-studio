@@ -44,6 +44,9 @@
 .presentation-card-footer p { margin: 0; color: #555; font-size: 13px; }
 .presentation-card-footer button { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 4px; background: transparent; }
 .presentation-card-footer button:hover { background: #eee; }
+.presentation-card-footer .card-menu { display: none; }
+.presentation-card-footer .card-delete { order: 2; margin-left: auto; color: #8f2c26; }
+.presentation-card-footer .card-delete:hover { color: #fff; background: #b83b32; }
 .presentation-grid.is-list .presentation-card { display: grid; grid-template-columns: 280px minmax(0,1fr); }
 .presentation-grid.is-list .presentation-preview { min-height: 150px; border-right: 1px solid #d7d7d4; border-bottom: 0; }
 .dashboard-status { grid-column: 1 / -1; padding: 35px; border: 1px dashed #ccc; color: #666; background: #fff; text-align: center; }

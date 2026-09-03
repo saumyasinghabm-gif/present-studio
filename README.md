@@ -35,14 +35,17 @@ password123
 ```text
 frontend/
   login.html
+  signup.html
   dashboard.html
   builder.html
   controller.html
   screen.html
   present.html
   css/styles.css
+  css/dashboard.css
   js/api.js
   js/login.js
+  js/signup.js
   js/dashboard.js
   js/editor.js
   js/present.js

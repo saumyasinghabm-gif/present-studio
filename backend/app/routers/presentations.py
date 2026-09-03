@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
-from ..models import LiveSession, Presentation, ShareLink, Slide, User
+from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
 from ..schemas import LiveSessionOut, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ShareLinkCreate, ShareLinkOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, new_id, optional_current_user, resolve_share_permission
 from ..socket_manager import sio
@@ -175,3 +175,22 @@ def get_live_session(
         activeSlideId=live.active_slide_id if live else None,
         isLive=bool(live and live.is_live),
     )
+
+
+@router.delete("/{presentation_id}")
+async def delete_presentation(
+    presentation_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str | bool]:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation or presentation.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    db.query(PresentationMember).filter(PresentationMember.presentation_id == presentation_id).delete()
+    db.query(ShareLink).filter(ShareLink.presentation_id == presentation_id).delete()
+    db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).delete()
+    db.delete(presentation)
+    db.commit()
+    await sio.emit("presentation_deleted", {"presentationId": presentation_id}, room=presentation_id)
+    return {"ok": True, "presentationId": presentation_id}

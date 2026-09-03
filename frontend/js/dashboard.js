@@ -28,6 +28,17 @@ function getAccent(deck, index) {
   return ["warm", "cream", "dark", "soft"][index % 4];
 }
 
+function updateDashboardStats(presentations) {
+  document.querySelector("#presentationCount").textContent = String(presentations.length).padStart(2, "0");
+  document.querySelector("#recentCount").textContent = String(presentations.filter(deck => deck.updatedAt && Date.now() - new Date(deck.updatedAt).getTime() < 30 * 86400000).length).padStart(2, "0");
+  document.querySelector("#slideTotal").textContent = String(presentations.reduce((total, deck) => total + (deck.slides?.length || 0), 0)).padStart(2, "0");
+}
+
+function filteredPresentations() {
+  const query = searchInput?.value.trim().toLowerCase() || "";
+  return dashboardPresentations.filter(deck => String(deck.title || "").toLowerCase().includes(query));
+}
+
 function renderDecks(presentations) {
   if (!grid) return;
   if (!presentations.length) {
@@ -49,6 +60,7 @@ function renderDecks(presentations) {
           <span class="preview-title">${title}</span>
         </button>
         <div class="presentation-card-footer">
+          <button type="button" class="card-delete" data-delete="${escapeHtml(deck.id)}" aria-label="Delete ${title}" title="Delete presentation"><i class="bi bi-trash"></i></button>
           <div><h3>${title}</h3><p>${slideLabel} · ${escapeHtml(updated)}</p></div>
           <button type="button" class="card-menu" data-toast="Presentation options will connect to the backend.">•••</button>
         </div>
@@ -67,6 +79,22 @@ function renderDecks(presentations) {
       showToast(button.dataset.toast);
     });
   });
+  grid.querySelectorAll("[data-delete]").forEach(button => button.addEventListener("click", async event => {
+    event.stopPropagation();
+    const deck = dashboardPresentations.find(item => item.id === button.dataset.delete);
+    if (!deck || !window.confirm(`Delete “${deck.title || "Untitled presentation"}”? This cannot be undone.`)) return;
+    button.disabled = true;
+    try {
+      await api.deletePresentation(deck.id);
+      dashboardPresentations = dashboardPresentations.filter(item => item.id !== deck.id);
+      updateDashboardStats(dashboardPresentations);
+      renderDecks(filteredPresentations());
+      showToast("Presentation deleted.");
+    } catch (error) {
+      button.disabled = false;
+      showToast(error.message);
+    }
+  }));
 }
 
 async function loadDashboard() {
@@ -74,9 +102,7 @@ async function loadDashboard() {
   grid.innerHTML = `<p class="dashboard-status">Loading your presentations…</p>`;
   const { presentations } = await api.listPresentations();
   dashboardPresentations = presentations;
-  document.querySelector("#presentationCount").textContent = String(presentations.length).padStart(2, "0");
-  document.querySelector("#recentCount").textContent = String(presentations.filter(deck => deck.updatedAt && Date.now() - new Date(deck.updatedAt).getTime() < 30 * 86400000).length).padStart(2, "0");
-  document.querySelector("#slideTotal").textContent = String(presentations.reduce((total, deck) => total + (deck.slides?.length || 0), 0)).padStart(2, "0");
+  updateDashboardStats(presentations);
   renderDecks(presentations);
 }
 
@@ -121,8 +147,7 @@ document.querySelectorAll("[data-toast]").forEach((element) => {
 });
 
 searchInput?.addEventListener("input", () => {
-  const query = searchInput.value.trim().toLowerCase();
-  renderDecks(dashboardPresentations.filter(deck => String(deck.title || "").toLowerCase().includes(query)));
+  renderDecks(filteredPresentations());
 });
 
 document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => {

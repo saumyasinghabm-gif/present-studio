@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 from app.main import fastapi_app
 
 
@@ -97,3 +98,46 @@ def test_saving_presentation_emits_live_update():
         assert event["presentationId"] == "pres_demo"
         assert event["presentation"]["slides"]
         assert emit.await_args.kwargs["room"] == "pres_demo"
+
+
+def test_signup_creates_authenticated_user():
+    email = f"new-user-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        response = client.post("/api/auth/signup", json={"name": "New Presenter", "email": email, "password": "securepass123"})
+        assert response.status_code == 200
+        token = response.json()["accessToken"]
+        profile = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.json()["user"]["email"] == email
+    assert profile.status_code == 200
+    assert profile.json()["user"]["name"] == "New Presenter"
+
+
+def test_signup_rejects_invalid_email():
+    with TestClient(fastapi_app) as client:
+        response = client.post("/api/auth/signup", json={"name": "New Presenter", "email": "not-an-email", "password": "securepass123"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Enter a valid email address"
+
+
+def test_owner_can_delete_presentation():
+    email = f"delete-owner-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        signup = client.post("/api/auth/signup", json={"name": "Delete Owner", "email": email, "password": "securepass123"})
+        headers = {"Authorization": f"Bearer {signup.json()['accessToken']}"}
+        created = client.post("/api/presentations", json={"title": "Delete me"}, headers=headers).json()["presentation"]
+        client.post(f"/api/presentations/{created['id']}/share", json={"permission": "viewer"}, headers=headers)
+        other_login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        other_headers = {"Authorization": f"Bearer {other_login.json()['accessToken']}"}
+        forbidden = client.delete(f"/api/presentations/{created['id']}", headers=other_headers)
+
+        with patch("app.routers.presentations.sio.emit", new_callable=AsyncMock) as emit:
+            deleted = client.delete(f"/api/presentations/{created['id']}", headers=headers)
+
+        missing = client.get(f"/api/presentations/{created['id']}", headers=headers)
+
+    assert deleted.status_code == 200
+    assert forbidden.status_code == 404
+    assert deleted.json() == {"ok": True, "presentationId": created["id"]}
+    assert missing.status_code == 404
+    emit.assert_awaited_once_with("presentation_deleted", {"presentationId": created["id"]}, room=created["id"])

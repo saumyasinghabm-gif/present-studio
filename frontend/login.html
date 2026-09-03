@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Login</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260827-ui">
+    <link rel="stylesheet" href="/css/styles.css?v=20260903-account-management">
   </head>
   <body class="login-page">
     <main class="login-layout">
@@ -24,16 +24,17 @@
         <form class="auth-card login-form-card" id="loginForm">
           <h2>Sign in</h2>
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="email" value="owner@presentstudio.local" placeholder="you@example.com" required>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" value="password123" placeholder="Enter your password" required>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
           <button class="primary-button full-button" type="submit">Open workspace</button>
           <p id="loginStatus" class="status-text" role="status" aria-live="polite"></p>
+          <p class="auth-switch">New to Present Studio? <a href="/signup.html">Create an account</a></p>
         </form>
       </section>
     </main>
     <script src="/js/api.js"></script>
-    <script src="/js/login.js"></script>
+    <script src="/js/login.js?v=20260903-auth"></script>
   </body>
 </html>
 

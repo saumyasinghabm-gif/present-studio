@@ -805,6 +805,15 @@ button { cursor: pointer; }
 .remember-row input { width: 16px; height: 16px; accent-color: var(--yellow-dk); }
 .full-button { width: 100%; justify-content: center; }
 .login-form-card .status-text { margin: .8rem 0 0; min-height: 1.1rem; }
+.auth-switch { margin: 1.15rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .86rem; }
+.auth-switch a { color: var(--ink); font-weight: 800; text-decoration: underline; text-decoration-color: var(--yellow-dk); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.signup-form-card { padding-top: 2rem; padding-bottom: 1.6rem; }
+.signup-form-card > .eyebrow { margin-bottom: .4rem; color: var(--yellow-dk); }
+.password-requirements { margin: -.7rem 0 .9rem; color: var(--muted); font-size: .75rem; }
+.password-requirements.is-valid { color: #237944; }
+.terms-row { display: flex !important; align-items: flex-start; gap: .65rem; margin: .25rem 0 1.15rem !important; color: var(--muted) !important; font-family: var(--sans) !important; font-size: .77rem !important; font-weight: 500 !important; letter-spacing: 0 !important; line-height: 1.4; text-transform: none !important; }
+.terms-row input { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; accent-color: var(--yellow-dk); }
+.signup-page .login-form-wrap { padding-top: 1.5rem; padding-bottom: 1.5rem; }
 .demo-note { margin: 1.2rem 0 0; color: var(--muted); font-family: var(--mono); font-size: .62rem; line-height: 1.5; }
 
 .presentation-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }

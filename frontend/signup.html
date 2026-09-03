@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Create your Present Studio account.">
+    <title>Present Studio — Create Account</title>
+    <link rel="stylesheet" href="/css/styles.css?v=20260903-account-management">
+  </head>
+  <body class="login-page signup-page">
+    <main class="login-layout">
+      <section class="login-copy" aria-label="Present Studio introduction">
+        <a class="brand brand-light" href="/index.html" aria-label="Present Studio home"><span class="brand-mark" aria-hidden="true"><span></span><i></i></span><span>Present Studio</span></a>
+        <div class="login-art-copy">
+          <p class="eyebrow">Your presentation workspace</p>
+          <h1>Build the story.<br><em>Move the room.</em></h1>
+          <p>Create professional presentations, collaborate through one cloud workspace, and control every live audience screen.</p>
+        </div>
+        <div class="login-art-footer"><span>© 2026 Present Studio</span><span>One account. Every presentation.</span></div>
+      </section>
+      <section class="login-form-wrap" aria-label="Create account">
+        <form class="auth-card login-form-card signup-form-card" id="signupForm">
+          <p class="eyebrow">GET STARTED</p>
+          <h2>Create your account</h2>
+          <p class="form-intro">Set up your private presentation workspace.</p>
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" autocomplete="name" maxlength="160" placeholder="Your name" required>
+          <label for="email">Work email</label>
+          <input id="email" name="email" type="email" autocomplete="email" maxlength="255" placeholder="you@company.com" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="At least 8 characters" aria-describedby="passwordHint" required>
+          <p class="password-requirements" id="passwordHint">Use at least 8 characters.</p>
+          <label for="confirmPassword">Confirm password</label>
+          <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Enter the password again" required>
+          <label class="terms-row"><input name="terms" type="checkbox" required><span>I agree to the Terms of Service and Privacy Policy.</span></label>
+          <button class="primary-button full-button" id="signupButton" type="submit">Create workspace</button>
+          <p id="signupStatus" class="status-text" role="status" aria-live="polite"></p>
+          <p class="auth-switch">Already have an account? <a href="/login.html">Sign in</a></p>
+        </form>
+      </section>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/signup.js?v=20260903-auth"></script>
+  </body>
+</html>

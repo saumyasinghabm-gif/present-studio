@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -16,14 +17,21 @@ def serialize_user(user: User) -> UserOut:
 @router.post("/signup")
 def signup(payload: SignupRequest, response: Response, db: Session = Depends(get_db)) -> AuthOut:
     email = payload.email.strip().lower()
+    name = " ".join(payload.name.strip().split())
+    if len(name) < 2 or len(name) > 160:
+        raise HTTPException(status_code=400, detail="Enter your full name")
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or len(email) > 255:
+        raise HTTPException(status_code=400, detail="Enter a valid email address")
     if len(payload.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(payload.password) > 128:
+        raise HTTPException(status_code=400, detail="Password must be 128 characters or fewer")
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     user = User(
         id=new_id("usr"),
-        name=payload.name.strip() or "Studio User",
+        name=name,
         email=email,
         password_hash=hash_password(payload.password),
         role="owner",
