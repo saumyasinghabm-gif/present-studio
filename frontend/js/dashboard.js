@@ -79,13 +79,13 @@ async function loadDashboard() {
 async function openBuilder() {
   const existing = dashboardPresentations[0];
   if (existing) {
-    window.location.href = `/editor.html?id=${encodeURIComponent(existing.id)}`;
+    window.location.href = `/builder.html?id=${encodeURIComponent(existing.id)}`;
     return;
   }
   builderButtons.forEach(button => { button.disabled = true; });
   try {
     const { presentation } = await api.createPresentation("Untitled presentation");
-    window.location.href = `/editor.html?id=${encodeURIComponent(presentation.id)}`;
+    window.location.href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
   } catch (error) {
     builderButtons.forEach(button => { button.disabled = false; });
     showToast(error.message);

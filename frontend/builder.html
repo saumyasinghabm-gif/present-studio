@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Present Studio professional presentation builder.">
+  <title>Present Studio — Builder</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/builder.css?v=20260903-foundation">
+</head>
+<body class="builder-page">
+  <div class="app-shell" id="appShell">
+    <header class="app-header">
+      <div class="header-left">
+        <a class="brand" href="/dashboard.html" aria-label="Present Studio dashboard">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>PRESENT STUDIO</span>
+        </a>
+        <span class="header-divider" aria-hidden="true"></span>
+        <a class="header-icon" href="/dashboard.html" aria-label="Go back" data-tooltip="Back"><i class="bi bi-arrow-left"></i></a>
+        <div class="title-editor" title="Click to rename">
+          <input id="presentationTitleInput" value="Loading presentation…" maxlength="255" aria-label="Presentation title" readonly>
+          <button class="title-pencil" id="editPresentationTitle" type="button" aria-label="Rename presentation"><i class="bi bi-pencil"></i></button>
+        </div>
+        <div class="save-status" id="saveStatus"><span></span><span id="modeLabel">Loading…</span></div>
+      </div>
+      <div class="header-right">
+        <button class="header-icon" type="button" aria-label="Cloud status" data-tooltip="Synced"><i class="bi bi-cloud-check"></i></button>
+        <button class="header-icon" type="button" aria-label="Help" data-tooltip="Help" id="builderHelp"><i class="bi bi-question-circle"></i></button>
+        <button class="header-present" type="button" id="quickPresent"><i class="bi bi-play-fill"></i> Present</button>
+        <button class="header-share" type="button" id="quickShare"><i class="bi bi-people"></i> Share</button>
+        <a class="account-button" href="/dashboard.html" aria-label="Return to account dashboard"><span>PS</span><i class="bi bi-chevron-down"></i></a>
+      </div>
+    </header>
+
+    <nav class="tab-nav" aria-label="Presentation editor tabs">
+      <button class="tab-button is-active" type="button" data-builder-tab="home">Home</button>
+      <button class="tab-button" type="button" data-builder-tab="insert">Insert</button>
+      <button class="tab-button" type="button" data-builder-tab="design">Design</button>
+      <button class="tab-button" type="button" data-builder-tab="transitions">Transitions</button>
+      <button class="tab-button" type="button" data-builder-tab="animate">Animate</button>
+      <button class="tab-button" type="button" data-builder-tab="ai">AI Tools</button>
+      <button class="tab-button" type="button" data-builder-tab="present">Present</button>
+    </nav>
+
+    <section class="ribbon" aria-label="Presentation tools">
+      <div class="ribbon-panel is-active" data-ribbon-panel="home">
+        <div class="ribbon-group">
+          <button class="tool-button tool-tall" id="pasteObject" type="button"><i class="bi bi-clipboard-plus"></i><span>Paste</span></button>
+          <div class="tool-stack">
+            <button class="tool-button" id="copyObject" type="button"><i class="bi bi-copy"></i><span>Copy</span></button>
+            <button class="tool-button" id="deleteElement" type="button"><i class="bi bi-trash"></i><span>Delete</span></button>
+          </div><span class="ribbon-group-label">Clipboard</span>
+        </div>
+        <div class="ribbon-group">
+          <button class="tool-button tool-tall" id="addSlide" type="button"><i class="bi bi-plus-square"></i><span>New Slide</span></button>
+          <div class="tool-stack">
+            <button class="tool-button" id="duplicateSlide" type="button"><i class="bi bi-copy"></i><span>Duplicate</span></button>
+            <button class="tool-button" id="deleteSlide" type="button"><i class="bi bi-trash"></i><span>Delete Slide</span></button>
+          </div><span class="ribbon-group-label">Slides</span>
+        </div>
+        <div class="ribbon-group builder-font-group" id="editorPanel">
+          <div class="tool-stack">
+            <div class="tool-row">
+              <select class="ribbon-select font-select" id="fontFamily" aria-label="Font family">
+                <option value="Arial">Arial</option><option value="Inter">Inter</option><option value="Georgia">Georgia</option><option value="Courier New">Courier New</option><option value="Verdana">Verdana</option>
+              </select>
+              <input class="ribbon-input size-select" id="fontSize" type="number" min="8" max="240" value="42" aria-label="Font size">
+            </div>
+            <div class="tool-row">
+              <button class="tool-button tool-small" id="boldButton" type="button" aria-label="Bold"><i class="bi bi-type-bold"></i></button>
+              <button class="tool-button tool-small" id="italicButton" type="button" aria-label="Italic"><i class="bi bi-type-italic"></i></button>
+              <input class="builder-color-input" id="textColor" type="color" value="#171717" aria-label="Text color">
+            </div>
+          </div><span class="ribbon-group-label">Font</span>
+          <span id="selectionNote" hidden>Text</span>
+        </div>
+        <div class="ribbon-group">
+          <div class="tool-stack">
+            <div class="tool-row">
+              <button class="tool-button tool-small" type="button" data-align="left" aria-label="Align left"><i class="bi bi-text-left"></i></button>
+              <button class="tool-button tool-small" type="button" data-align="center" aria-label="Align center"><i class="bi bi-text-center"></i></button>
+              <button class="tool-button tool-small" type="button" data-align="right" aria-label="Align right"><i class="bi bi-text-right"></i></button>
+            </div>
+          </div><span class="ribbon-group-label">Paragraph</span>
+        </div>
+        <div class="ribbon-group">
+          <div class="tool-stack">
+            <button class="tool-button" id="bringForward" type="button"><i class="bi bi-layer-forward"></i><span>Bring Forward</span></button>
+            <button class="tool-button" id="sendBackward" type="button"><i class="bi bi-layer-backward"></i><span>Send Backward</span></button>
+            <button class="tool-button" id="duplicateElement" type="button"><i class="bi bi-bounding-box"></i><span>Duplicate</span></button>
+          </div><span class="ribbon-group-label">Arrange</span>
+        </div>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="insert" hidden>
+        <div class="ribbon-group"><button class="tool-button tool-tall" id="insertText" type="button"><i class="bi bi-fonts"></i><span>Text Box</span></button><span class="ribbon-group-label">Text</span></div>
+        <div class="ribbon-group">
+          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="image/*" data-media-input="image"><i class="bi bi-image"></i><span>Image</span></label>
+          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="video/*" data-media-input="video"><i class="bi bi-play-btn"></i><span>Video</span></label>
+          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="audio/*,.mp3" data-media-input="audio"><i class="bi bi-volume-up"></i><span>Audio</span></label>
+          <span class="ribbon-group-label">Media</span>
+        </div>
+        <div class="ribbon-group">
+          <button class="tool-button tool-tall" id="insertRectangle" type="button"><i class="bi bi-square"></i><span>Rectangle</span></button>
+          <button class="tool-button tool-tall" id="insertCircle" type="button"><i class="bi bi-circle"></i><span>Circle</span></button>
+          <span class="ribbon-group-label">Shapes</span>
+        </div>
+        <div class="ribbon-group builder-media-library"><div class="media-library-grid" id="mediaLibraryGrid"></div><span class="ribbon-group-label">My Media · <span id="mediaCount">0 items</span></span></div>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="design" hidden>
+        <div class="ribbon-group">
+          <button class="theme-card" type="button" data-slide-background="#fffefb"><span class="theme-preview">Aa</span><span>Clean White</span></button>
+          <button class="theme-card" type="button" data-slide-background="#ffc928"><span class="theme-preview bold-yellow">Aa</span><span>Bold Yellow</span></button>
+          <button class="theme-card" type="button" data-slide-background="#181818"><span class="theme-preview dark-contrast">Aa</span><span>Dark Contrast</span></button>
+          <span class="ribbon-group-label">Themes</span>
+        </div>
+        <div class="ribbon-group"><label class="tool-button tool-tall"><input class="builder-hidden-color" id="slideBackground" type="color" value="#fffefb"><i class="bi bi-palette"></i><span>Background</span></label><span class="ribbon-group-label">Customize</span></div>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="transitions" hidden>
+        <div class="ribbon-group">
+          <label class="compact-label"><span>Transition</span><select class="ribbon-select" id="transitionType"><option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="zoom">Zoom</option></select></label>
+          <label class="compact-label"><span>Duration</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label>
+          <span class="ribbon-group-label">Transition to This Slide</span>
+        </div>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="animate" hidden>
+        <div class="ribbon-group"><button class="preset-card" type="button" data-animation="none"><i class="bi bi-slash-circle"></i><span>None</span></button><button class="preset-card" type="button" data-animation="fade"><i class="bi bi-star"></i><span>Fade In</span></button><button class="preset-card" type="button" data-animation="zoom"><i class="bi bi-star"></i><span>Zoom</span></button><span class="ribbon-group-label">Animation</span></div>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="ai" hidden>
+        <div class="ribbon-group"><div class="tool-row"><input class="ribbon-input ai-prompt" id="aiPrompt" placeholder="Describe the slide you want to create..."><button class="tool-button is-primary" id="generateAi" type="button"><i class="bi bi-stars"></i><span>Generate Draft</span></button></div><span class="ribbon-group-label">Create</span></div>
+        <p id="aiStatus" class="builder-inline-status">AI generation will use the backend when configured.</p>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="present" hidden>
+        <div class="ribbon-group"><button class="tool-button tool-tall is-primary" id="startLive" type="button"><i class="bi bi-play-circle"></i><span>Presenter View</span></button><button class="tool-button tool-tall" id="openAudience" type="button"><i class="bi bi-people"></i><span>Audience View</span></button><span class="ribbon-group-label">Start Presentation</span></div>
+        <div class="ribbon-group"><button class="presenter-option active" type="button" data-presenter="Self">Self</button><button class="presenter-option" type="button" data-presenter="Partner">Partner</button><span class="ribbon-group-label">Choose Presenter</span></div>
+      </div>
+    </section>
+
+    <main class="editor-main">
+      <aside class="slides-pane" aria-label="Slides">
+        <div class="slides-heading-row"><h2>Slides</h2><button class="new-slide-button" id="addSlideProxy" type="button"><i class="bi bi-plus-lg"></i> New Slide</button></div>
+        <div class="slide-list" id="slideList"></div>
+      </aside>
+      <section class="workspace" id="workspace" aria-label="Slide editing workspace">
+        <div class="canvas-stage" id="canvasStage">
+          <div class="slide-canvas fabric-slide-canvas" id="slideCanvas" tabindex="0" aria-label="Current slide canvas">
+            <canvas id="fabricCanvas" width="1280" height="720" aria-label="Editable presentation canvas"></canvas>
+            <span id="canvasIndex" class="builder-canvas-index">01 / 01</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="notes-tray" id="notesTray" aria-label="Speaker notes" hidden>
+      <div class="notes-tray-header"><strong>Speaker notes</strong><button type="button" aria-label="Close notes" id="closeNotes"><i class="bi bi-x-lg"></i></button></div>
+      <textarea id="notesEditor" placeholder="Add notes for this slide..."></textarea>
+    </section>
+
+    <footer class="status-bar">
+      <div class="status-left"><span id="pageLabel">Slide 1 of 1</span><span id="slideCount" hidden>01 / 01</span><span class="status-separator"></span><button type="button" id="toggleNotes"><i class="bi bi-journal-text"></i> Notes</button><span class="status-separator"></span><span>16:9</span></div>
+      <div class="status-right"><button class="zoom-button" type="button" id="zoomOut" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><span id="zoomValue">100%</span><button class="zoom-button" type="button" id="zoomIn" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button class="zoom-button" type="button" data-fullscreen aria-label="Fit to screen"><i class="bi bi-fullscreen"></i></button></div>
+    </footer>
+  </div>
+
+  <div class="modal-backdrop" id="shareModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
+      <div class="modal-header"><h2 id="shareModalTitle">Share presentation</h2><button type="button" aria-label="Close dialog" id="closeShare"><i class="bi bi-x-lg"></i></button></div>
+      <div class="modal-body">
+        <label class="form-row">Access<select id="sharePermission"><option value="viewer">Audience viewer</option><option value="presenter">Trusted presenter</option></select></label>
+        <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Generate Link</span></button>
+        <p class="share-status" id="shareStatus" role="status"></p>
+      </div>
+      <div class="modal-actions"><button type="button" id="copyLink">Copy Link</button><button type="button" id="openShareLink" disabled><span>Open Link</span></button></div>
+    </section>
+  </div>
+
+  <div class="builder-compat" hidden aria-hidden="true">
+    <span id="presentationTitle"></span><button id="renamePresentation" type="button"></button><button id="renameSlide" type="button"></button>
+    <div id="imageAudioPanel"><select id="imageAudio"><option value="">No linked audio</option></select></div>
+    <p id="uploadStatus"></p><input id="fileUpload" type="file"><input id="mediaFullBleed" type="checkbox"><input id="loopVideos" type="checkbox" checked>
+    <select id="playbackMode"><option value="manual">Manual</option></select><select id="playbackInterval"><option value="5000">5 seconds</option></select>
+    <select id="mediaMode"><option value="all">All</option></select><select id="mediaCycle"><option value="all">All</option></select><select id="mediaInterval"><option value="5000">5 seconds</option></select><div id="playbackSlides"></div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/editor.js"></script>
+  <script src="/js/builder-ribbon.js?v=20260903-full-ribbon"></script>
+  <script src="/js/builder-ui.js?v=20260903-foundation"></script>
+</body>
+</html>
