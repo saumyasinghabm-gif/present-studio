@@ -47,7 +47,7 @@
         muted: !audioEnabled,
         loop: item.loop !== false,
         playsInline: true,
-        controls: true
+        controls: false
       });
     }
     byId("previewMedia").append(node);
@@ -82,8 +82,6 @@
       byId("previewMedia").append(audio);
       audio.play().catch(() => {});
     }
-    const hasAudio = items.some((item) => item.type === "video") || Boolean(track?.src);
-    byId("previewAudioToggle").hidden = !hasAudio;
   }
 
   function animateSlide(slide) {
@@ -159,10 +157,7 @@
     }
     renderMedia(slide);
     animateSlide(slide);
-    byId("previewStatus").textContent = `${presentation.title} - Preview`;
-    byId("previewCounter").textContent = `${currentSlideIndex + 1} / ${presentation.slides.length}`;
-    byId("previewPrevious").disabled = currentSlideIndex === 0;
-    byId("previewNext").disabled = currentSlideIndex === presentation.slides.length - 1;
+    byId("previewStatus").textContent = `${presentation.title} - Slide ${currentSlideIndex + 1} of ${presentation.slides.length}`;
   }
 
   function go(delta) {
@@ -173,15 +168,17 @@
   }
 
   function exitPreview() {
+    stopMedia();
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: "preview:exit" }, location.origin);
+      return;
+    }
     window.close();
     if (!window.closed) location.href = `/builder.html?id=${encodeURIComponent(presentationId)}`;
   }
 
   function toggleAudio() {
     audioEnabled = !audioEnabled;
-    const button = byId("previewAudioToggle");
-    button.textContent = audioEnabled ? "Mute audio" : "Enable audio";
-    button.setAttribute("aria-label", audioEnabled ? "Mute preview audio" : "Enable preview audio");
     byId("previewMedia").querySelectorAll("video,audio").forEach((media) => {
       media.muted = !audioEnabled;
       if (audioEnabled) media.play().catch(() => {});
@@ -202,24 +199,25 @@
     if (!presentation.slides.length) throw new Error("This presentation has no slides.");
     currentSlideIndex = Math.min(requestedSlide, presentation.slides.length - 1);
     canvas = new fabric.StaticCanvas("previewCanvas", { width: 1280, height: 720, selection: false });
-    byId("previewPrevious").addEventListener("click", () => go(-1));
-    byId("previewNext").addEventListener("click", () => go(1));
-    byId("previewAudioToggle").addEventListener("click", toggleAudio);
-    byId("previewFullscreen").addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : byId("previewStage").requestFullscreen());
-    ["closePreview", "exitPreview", "closePreviewError"].forEach((id) => byId(id).addEventListener("click", exitPreview));
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowLeft") go(-1);
-      if (event.key === "ArrowRight" || event.key === " ") {
-        event.preventDefault();
-        go(1);
-      }
-      if (event.key.toLowerCase() === "f") byId("previewFullscreen").click();
-      if (event.key === "Escape" && !document.fullscreenElement) exitPreview();
-    });
     byId("previewLoading").hidden = true;
     byId("previewStage").hidden = false;
     renderSlide();
   }
+
+  // Install before loading so Escape also works during loading and errors.
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      exitPreview();
+      return;
+    }
+    if (!canvas || !presentation?.slides.length) return;
+    if (["ArrowLeft", "ArrowRight", " "].includes(event.key)) {
+      event.preventDefault();
+      go(event.key === "ArrowLeft" ? -1 : 1);
+    }
+    if (event.key.toLowerCase() === "m") toggleAudio();
+  });
 
   init().catch((error) => showError(error.message));
 })();

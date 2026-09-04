@@ -470,16 +470,61 @@
 
   async function openPreview(slideIndex = 0) {
     if (!presentation) return toast("The presentation is still loading.");
+    if (document.getElementById("builderPreviewOverlay")) return;
     capture();
-    const previewWindow = window.open("about:blank", "_blank");
+    const previousFocus = document.activeElement;
+    const overlay = document.createElement("div");
+    overlay.id = "builderPreviewOverlay";
+    overlay.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#000;color:#fff;display:grid;place-items:center;";
+    overlay.textContent = "Loading preview…";
+    overlay.tabIndex = -1;
+    const frame = document.createElement("iframe");
+    frame.title = "Presentation preview. Use arrow keys to navigate and Escape to return to the editor.";
+    frame.allow = "autoplay; fullscreen";
+    frame.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;";
+    let closed = false;
+    let enteredFullscreen = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("message", onMessage);
+      if (document.fullscreenElement === overlay) document.exitFullscreen().catch(() => {});
+      overlay.remove();
+      previousFocus?.focus();
+    };
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement === overlay) enteredFullscreen = true;
+      else if (enteredFullscreen) close();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        close();
+      }
+    };
+    const onMessage = (event) => {
+      if (event.origin === location.origin && event.source === frame.contentWindow && event.data?.type === "preview:exit") close();
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("message", onMessage);
+    document.body.append(overlay);
+    overlay.focus();
+    // Request while the Preview click still has browser user activation.
+    // If fullscreen is unavailable, the overlay still fills the browser viewport.
+    overlay.requestFullscreen?.().catch(() => {});
     try {
       await save();
+      if (closed) return;
       const index = Math.max(0, Math.min(presentation.slides.length - 1, Number(slideIndex) || 0));
-      const url = `/preview.html?id=${encodeURIComponent(presentation.id)}&slide=${index + 1}`;
-      if (previewWindow) previewWindow.location.replace(url);
-      else toast("Allow pop-ups to open the presentation preview.");
+      frame.src = `/preview.html?id=${encodeURIComponent(presentation.id)}&slide=${index + 1}`;
+      frame.addEventListener("load", () => { if (!closed) frame.contentWindow.focus(); });
+      overlay.replaceChildren(frame);
     } catch (error) {
-      previewWindow?.close();
+      close();
       toast(error?.message || "The presentation could not be saved for preview.");
     }
   }
