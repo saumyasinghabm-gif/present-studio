@@ -393,10 +393,15 @@
     ensure(activeSlide()).canvas.transition.type = event.target.value;
     schedule();
   });
-  byId("transitionDuration").addEventListener("change", (event) => {
-    ensure(activeSlide()).canvas.transition.duration_ms = Number(event.target.value);
+  function setTransitionDuration(value) {
+    const duration = Math.max(50, Math.min(10000, Number(value) || 500));
+    ensure(activeSlide()).canvas.transition.duration_ms = duration;
+    const custom = byId("transitionDurationCustom");
+    if (custom) custom.value = duration;
     schedule();
-  });
+  }
+  byId("transitionDuration").addEventListener("change", (event) => setTransitionDuration(event.target.value));
+  byId("transitionDurationCustom")?.addEventListener("input", (event) => setTransitionDuration(event.target.value));
   byId("toggleNotes").addEventListener("click", () => {
     notesTray.hidden = !notesTray.hidden;
     if (!notesTray.hidden) notesEditor.focus();
@@ -599,6 +604,7 @@
       case "comment": { const comment = window.prompt("Comment"); if (comment) { const slide = ensure(activeSlide()); slide.canvas.comments ||= []; slide.canvas.comments.push({ text: comment, createdAt: new Date().toISOString() }); schedule(); toast("Comment saved with this slide."); } break; }
       case "slide-size": { const ratio = window.prompt("Slide ratio: 16:9 or 4:3", ensure(activeSlide()).canvas.ratio || "16:9"); if (ratio === "16:9" || ratio === "4:3") { ensure(activeSlide()).canvas.ratio = ratio; byId("slideCanvas").style.aspectRatio = ratio === "4:3" ? "4 / 3" : "16 / 9"; schedule(); } break; }
       case "transition-menu": showTransitionOptions(button.dataset.transitionMenu); all("[data-transition-menu]").forEach((item) => item.classList.toggle("is-active", item === button)); break;
+      case "fit-media": if (typeof fitMediaToSlide === "function") fitMediaToSlide(); break;
       case "transition": {
         const submenu = byId("transitionSubmenu");
         if (["none", "zoom"].includes(button.dataset.transition) && submenu) {

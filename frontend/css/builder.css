@@ -468,10 +468,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .resize-handle {
   position: absolute;
   z-index: 5;
-  width: 9px;
-  height: 9px;
-  border: 1px solid #101010;
-  background: #fff;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #101010;
+  background: #101010;
 }
 .resize-handle[data-handle="nw"] { top: -5px; left: -5px; cursor: nwse-resize; }
 .resize-handle[data-handle="n"] { top: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
@@ -481,8 +482,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .resize-handle[data-handle="s"] { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
 .resize-handle[data-handle="sw"] { bottom: -5px; left: -5px; cursor: nesw-resize; }
 .resize-handle[data-handle="w"] { top: 50%; left: -5px; transform: translateY(-50%); cursor: ew-resize; }
-.rotation-stem { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 28px; background: var(--yellow-strong); }
-.rotation-handle { position: absolute; bottom: calc(100% + 25px); left: 50%; width: 13px; height: 13px; border: 1px solid #111; border-radius: 50%; background: #fff; transform: translateX(-50%); cursor: grab; }
+.rotation-stem { position: absolute; bottom: 100%; left: 50%; width: 2px; height: 30px; background: #101010; }
+.rotation-handle { position: absolute; bottom: calc(100% + 25px); left: 50%; width: 18px; height: 18px; border: 2px solid #fff; box-shadow: 0 0 0 2px #101010; border-radius: 50%; background: #101010; transform: translateX(-50%); cursor: grab; }
 /* Status and notes */
 .status-bar {
   z-index: 20;
@@ -756,4 +757,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .transition-submenu .tool-button {
   min-width: 72px;
   justify-content: center;
+}
+
+.duration-input {
+  width: 92px;
+}
+
+.media-cover-toggle {
+  align-self: center;
+  min-width: 108px;
+  font-size: 11px;
 }

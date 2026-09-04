@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260904-home-media-text">
+  <link rel="stylesheet" href="/css/builder.css?v=20260904-editor-ux">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -54,6 +54,8 @@
           <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="image/*" data-media-input="image"><i class="bi bi-image"></i><span>Image</span></label>
           <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="video/*" data-media-input="video"><i class="bi bi-play-btn"></i><span>Video</span></label>
           <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="audio/*,.mp3" data-media-input="audio"><i class="bi bi-volume-up"></i><span>Audio</span></label>
+          <label class="checkbox-label media-cover-toggle"><input id="mediaFullBleed" type="checkbox"> Cover slide</label>
+          <button class="tool-button" type="button" data-builder-action="fit-media"><i class="bi bi-arrows-fullscreen"></i><span>Fit Slide</span></button>
           <span class="ribbon-group-label">Media</span>
         </div>
         <div class="ribbon-group builder-media-library"><div class="media-library-grid" id="mediaLibraryGrid"></div><span class="ribbon-group-label">My Media · <span id="mediaCount">0 items</span></span></div>
@@ -102,7 +104,7 @@
         </div>
         <div class="ribbon-group transition-submenu" id="transitionSubmenu" hidden></div>
         <div class="ribbon-group">
-          <label class="compact-label"><span>Duration</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label>
+          <label class="compact-label"><span>Preset</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label><label class="compact-label"><span>Custom ms</span><input class="ribbon-input duration-input" id="transitionDurationCustom" type="number" min="50" max="10000" step="50" value="500"></label>
           <button class="tool-button" type="button" data-builder-action="apply-transition-all"><i class="bi bi-files"></i><span>Apply to All</span></button>
           <select id="transitionType" hidden><option value="none">None</option><option value="fade">Fade In</option><option value="fade-left">Fade Left</option><option value="fade-right">Fade Right</option><option value="fade-up">Fade Up</option><option value="fade-down">Fade Down</option><option value="push-left">Push Left</option><option value="push-right">Push Right</option><option value="push-up">Push Up</option><option value="push-down">Push Down</option><option value="morph">Morph</option><option value="morph-left">Morph Left</option><option value="morph-right">Morph Right</option><option value="morph-up">Morph Up</option><option value="morph-down">Morph Down</option><option value="zoom">Zoom</option></select>
           <span class="ribbon-group-label">Timing</span>
@@ -159,7 +161,7 @@
   <div class="builder-compat" hidden aria-hidden="true">
     <span id="presentationTitle"></span><button id="renamePresentation" type="button"></button><button id="renameSlide" type="button"></button>
     <div id="imageAudioPanel"><select id="imageAudio"><option value="">No linked audio</option></select></div>
-    <p id="uploadStatus"></p><input id="fileUpload" type="file"><input id="mediaFullBleed" type="checkbox"><input id="loopVideos" type="checkbox" checked>
+    <p id="uploadStatus"></p><input id="fileUpload" type="file"><input id="loopVideos" type="checkbox" checked>
     <select id="playbackMode"><option value="manual">Manual</option></select><select id="playbackInterval"><option value="5000">5 seconds</option></select>
     <select id="mediaMode"><option value="all">All</option></select><select id="mediaCycle"><option value="all">All</option></select><select id="mediaInterval"><option value="5000">5 seconds</option></select><div id="playbackSlides"></div>
   </div>
@@ -178,8 +180,8 @@
   <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260904-home-media-text"></script>
-  <script src="/js/builder-ribbon.js?v=20260904-home-media-text"></script>
-  <script src="/js/builder-ui.js?v=20260904-home-media-text"></script>
+  <script src="/js/editor.js?v=20260904-editor-ux"></script>
+  <script src="/js/builder-ribbon.js?v=20260904-editor-ux"></script>
+  <script src="/js/builder-ui.js?v=20260904-editor-ux"></script>
 </body>
 </html>
