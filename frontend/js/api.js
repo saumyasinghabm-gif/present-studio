@@ -28,6 +28,6 @@
     listPresentations: () => request("/api/presentations"), getPresentation: (id, token = "") => request(`/api/presentations/${encodeURIComponent(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`),
     createPresentation: (title) => request("/api/presentations", { method: "POST", body: JSON.stringify({ title }) }), savePresentation: (deck) => request(`/api/presentations/${encodeURIComponent(deck.id)}`, { method: "PUT", body: JSON.stringify(deck) }), deletePresentation: (id) => request(`/api/presentations/${encodeURIComponent(id)}`, { method: "DELETE" }),
     createShareLink: (id, permission = "viewer") => request(`/api/presentations/${encodeURIComponent(id)}/share`, { method: "POST", body: JSON.stringify({ permission }) }), getLiveSession: (id) => request(`/api/presentations/${encodeURIComponent(id)}/live`), endLiveSession: (id) => request(`/api/presentations/${encodeURIComponent(id)}/live/end`, { method: "POST" }),
-    listMedia: () => request("/api/media"), uploadMedia: (file) => { const form = new FormData(); form.append("file", file); return request("/api/media/upload", { method: "POST", body: form }); }, generateAiSlide: (prompt) => request("/api/ai/generate-slide", { method: "POST", body: JSON.stringify({ prompt }) })
+    listMedia: () => request("/api/media"), uploadMedia: (file) => { const form = new FormData(); form.append("file", file); return request("/api/media/upload", { method: "POST", body: form }); }
   };
 })();

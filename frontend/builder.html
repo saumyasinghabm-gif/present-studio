@@ -28,6 +28,7 @@
       <div class="header-right">
         <button class="header-icon" type="button" aria-label="Cloud status" data-tooltip="Synced"><i class="bi bi-cloud-check"></i></button>
         <button class="header-icon" type="button" aria-label="Help" data-tooltip="Help" id="builderHelp"><i class="bi bi-question-circle"></i></button>
+        <button class="header-present" type="button" id="quickPreview"><i class="bi bi-eye"></i> Preview</button>
         <button class="header-present" type="button" id="quickPresent"><i class="bi bi-play-fill"></i> Present</button>
         <button class="header-share" type="button" id="quickShare"><i class="bi bi-people"></i> Share</button>
         <a class="account-button" href="/dashboard.html" aria-label="Return to account dashboard"><span>PS</span><i class="bi bi-chevron-down"></i></a>
@@ -40,7 +41,6 @@
       <button class="tab-button" type="button" data-builder-tab="design">Design</button>
       <button class="tab-button" type="button" data-builder-tab="transitions">Transitions</button>
       <button class="tab-button" type="button" data-builder-tab="animate">Animate</button>
-      <button class="tab-button" type="button" data-builder-tab="ai">AI Tools</button>
       <button class="tab-button" type="button" data-builder-tab="present">Present</button>
     </nav>
 
@@ -130,11 +130,6 @@
 
       <div class="ribbon-panel" data-ribbon-panel="animate" hidden>
         <div class="ribbon-group"><button class="preset-card" type="button" data-animation="none"><i class="bi bi-slash-circle"></i><span>None</span></button><button class="preset-card" type="button" data-animation="fade"><i class="bi bi-star"></i><span>Fade In</span></button><button class="preset-card" type="button" data-animation="zoom"><i class="bi bi-star"></i><span>Zoom</span></button><span class="ribbon-group-label">Animation</span></div>
-      </div>
-
-      <div class="ribbon-panel" data-ribbon-panel="ai" hidden>
-        <div class="ribbon-group"><div class="tool-row"><input class="ribbon-input ai-prompt" id="aiPrompt" placeholder="Describe the slide you want to create..."><button class="tool-button is-primary" id="generateAi" type="button"><i class="bi bi-stars"></i><span>Generate Draft</span></button></div><span class="ribbon-group-label">Create</span></div>
-        <p id="aiStatus" class="builder-inline-status">AI generation will use the backend when configured.</p>
       </div>
 
       <div class="ribbon-panel" data-ribbon-panel="present" hidden>

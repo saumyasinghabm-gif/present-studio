@@ -58,24 +58,15 @@
     group("Reorder", `<div class="tool-stack">${tool("animation-earlier", "bi-arrow-up", "Move Earlier")}${tool("animation-later", "bi-arrow-down", "Move Later")}</div>`)
   ].join("");
 
-  const ai = [
-    group("Create", `<div class="tool-row"><input class="ribbon-input ai-prompt" id="aiPrompt" placeholder="Describe the slide you want to create..."><button class="tool-button is-primary" id="generateAi" type="button" data-builder-action="ai-draft"><i class="bi bi-stars"></i><span>Generate Draft</span></button>${tall("prompt-ideas", "bi-file-earmark-text", "Prompt Ideas")}</div>`),
-    group("Generate", `${tall("ai-new-slide", "bi-file-earmark-plus", "New Slide")}${tall("ai-full-deck", "bi-easel2", "Full Deck")}${tall("ai-image", "bi-image", "Generate Image")}`),
-    group("Improve Content", `${tall("rewrite", "bi-magic", "Rewrite")}${tall("shorten", "bi-list-ul", "Shorten")}${tall("expand", "bi-arrows-angle-expand", "Expand")}${tall("fix-grammar", "bi-spellcheck", "Fix Grammar")}`),
-    group("Smart Design", `${tall("suggest-layout", "bi-layout-sidebar", "Suggest Layout")}${tall("restyle", "bi-arrows-fullscreen", "Restyle Slide")}`),
-    group("Assist", `${tall("speaker-notes", "bi-journal-text", "Speaker Notes")}${tall("summarize", "bi-card-checklist", "Summarize")}${tall("translate", "bi-translate", "Translate")}`),
-    group("History", tool("ai-history", "bi-clock-history", "AI History"))
-  ].join("");
-
   const present = [
-    group("Start Presentation", `${tall("present-beginning", "bi-play-circle", "From Beginning", "is-primary", 'id="startLive"')}${tall("present-current", "bi-display", "From Current Slide")}${tall("presenter-view", "bi-person-workspace", "Presenter View")}`),
-    group("Choose Presenter", `<button class="presenter-option active" type="button" data-presenter="Self">Self</button><button class="presenter-option" type="button" data-presenter="AI">AI</button><button class="presenter-option" type="button" data-presenter="Partner">Partner</button>`),
+    group("Start Presentation", `${tall("preview-current", "bi-eye", "Preview")}${tall("present-beginning", "bi-play-circle", "From Beginning", "is-primary", 'id="startLive"')}${tall("present-current", "bi-display", "From Current Slide")}${tall("presenter-view", "bi-person-workspace", "Presenter View")}`),
+    group("Choose Presenter", `<button class="presenter-option active" type="button" data-presenter="Self">Self</button><button class="presenter-option" type="button" data-presenter="Partner">Partner</button>`),
     group("Live Session", `${tall("toggle-live", "bi-broadcast", "Start Live")}${tall("audience-view", "bi-people", "Audience View", "", 'id="openAudience"')}`),
     group("Prepare", `${tall("rehearse", "bi-stopwatch", "Rehearse Timings")}${tall("record", "bi-record-circle", "Record Presentation")}${tall("speaker-notes", "bi-journal-text", "Speaker Notes")}`),
     group("Playback", `<div class="tool-stack"><label class="checkbox-label"><input type="checkbox" checked> Use Timings</label><label class="checkbox-label"><input type="checkbox" checked> Play Narration</label><label class="checkbox-label"><input type="checkbox"> Show Media Controls</label></div>`),
     group("Display", `<div class="tool-stack"><label class="compact-label"><span>Monitor</span><select class="ribbon-select"><option>Automatic</option><option>Monitor 1</option></select></label><label class="compact-label"><span>Presenter Mode</span><button class="toggle" type="button" data-builder-action="presenter-mode" aria-label="Toggle presenter mode"></button></label></div>`)
   ].join("");
 
-  ribbon.innerHTML = panel("home", home, true) + panel("insert", insert) + panel("design", design) + panel("transitions", transitions) + panel("animate", animate) + panel("ai", ai) + panel("present", present);
+  ribbon.innerHTML = panel("home", home, true) + panel("insert", insert) + panel("design", design) + panel("transitions", transitions) + panel("animate", animate) + panel("present", present);
   ribbon.querySelector('[data-ribbon-panel="home"] .ribbon-group:nth-child(3)').id = "editorPanel";
 })();

@@ -464,14 +464,25 @@
   byId("closeShare").addEventListener("click", closeShare);
   shareModal.addEventListener("mousedown", (event) => { if (event.target === shareModal) closeShare(); });
 
+  async function openPreview(slideIndex = 0) {
+    if (!presentation) return toast("The presentation is still loading.");
+    capture();
+    const previewWindow = window.open("about:blank", "_blank");
+    try {
+      await save();
+      const index = Math.max(0, Math.min(presentation.slides.length - 1, Number(slideIndex) || 0));
+      const url = `/preview.html?id=${encodeURIComponent(presentation.id)}&slide=${index + 1}`;
+      if (previewWindow) previewWindow.location.replace(url);
+      else toast("Allow pop-ups to open the presentation preview.");
+    } catch (error) {
+      previewWindow?.close();
+      toast(error?.message || "The presentation could not be saved for preview.");
+    }
+  }
+
+  byId("quickPreview").addEventListener("click", () => openPreview(currentSlideIndex));
   byId("quickPresent").addEventListener("click", () => start());
   byId("builderHelp").addEventListener("click", () => toast("Double-click text to edit it. Drag handles to resize and rotate."));
-
-  byId("generateAi").addEventListener("click", async () => {
-    const prompt = byId("aiPrompt").value.trim();
-    if (!prompt) return toast("Describe the slide you want to create.");
-    byId("aiStatus").textContent = "AI generation is not connected yet. The builder foundation remains fully usable without it.";
-  });
 
   function selectedText() {
     const object = active();
@@ -645,20 +656,8 @@
       case "animation-pane": case "animation-order": { const animated = canvas.getObjects().filter((item) => item.builderAnimation && item.builderAnimation !== "none"); toast(`${animated.length} animated element${animated.length === 1 ? "" : "s"} on this slide.`); break; }
       case "trigger": if (object) { object.set("builderAnimationStart", "click"); schedule(); toast("Animation starts on click."); } else toast("Select an element first."); break;
       case "animation-earlier": case "animation-later": if (object) { object.set("builderAnimationOrder", Math.max(1, (object.builderAnimationOrder || 1) + (name.endsWith("earlier") ? -1 : 1))); schedule(); toast(`Animation order ${object.builderAnimationOrder}.`); } else toast("Select an element first."); break;
-      case "prompt-ideas": byId("aiPrompt").value = "Create a clear executive-summary slide with three key takeaways"; break;
-      case "ai-new-slide": addSlide(); break;
-      case "ai-full-deck": addSlide(); addSlide(); addSlide(); toast("Three draft slides added. Connect the AI backend to generate content."); break;
-      case "rewrite": if (textObject) { textObject.set("text", `Refined: ${textObject.text}`); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "shorten": if (textObject) { textObject.set("text", textObject.text.split(/\s+/).slice(0, Math.max(3, Math.ceil(textObject.text.split(/\s+/).length / 2))).join(" ")); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "expand": if (textObject) { textObject.set("text", `${textObject.text}\n\nAdd supporting context, evidence, and a clear next step.`); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "fix-grammar": if (textObject) { textObject.set("text", textObject.text.trim().replace(/^./, (value) => value.toUpperCase()).replace(/([^.!?])$/, "$1.")); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "suggest-layout": if (object) { object.set({ left: (W - object.getScaledWidth()) / 2, top: 110 }); object.setCoords(); canvas.requestRenderAll(); schedule(); } else toast("Select an element first."); break;
-      case "restyle": applyTheme(ensure(activeSlide()).canvas.theme === "yellow" ? "clean" : "yellow"); break;
+      case "preview-current": openPreview(currentSlideIndex); break;
       case "speaker-notes": notesTray.hidden = false; notesEditor.focus(); break;
-      case "summarize": addText("Summary: add one clear takeaway for your audience.", { left: 180, top: 540, width: 920, fontSize: 28 }); break;
-      case "translate": if (textObject) { textObject.set("text", `[Translation] ${textObject.text}`); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "ai-history": toast("AI history will become available with the AI backend."); break;
-      case "ai-image": toast("Image generation requires the AI media backend."); break;
       case "present-beginning": currentSlideIndex = 0; render(); start(); break;
       case "present-current": case "presenter-view": case "toggle-live": start(); break;
       case "audience-view": window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}`, "_blank", "noopener"); break;
@@ -669,10 +668,7 @@
     }
   });
 
-  all(".presenter-option").forEach((button) => button.addEventListener("click", () => {
-    if (button.dataset.presenter === "AI") return toast("AI presenter requires the AI backend.");
-    selectPresenter(button.dataset.presenter);
-  }));
+  all(".presenter-option").forEach((button) => button.addEventListener("click", () => selectPresenter(button.dataset.presenter)));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !shareModal.hidden) closeShare();
