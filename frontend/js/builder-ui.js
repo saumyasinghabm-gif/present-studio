@@ -564,6 +564,18 @@
     return {};
   }
 
+  function showTransitionOptions(kind) {
+    const submenu = byId("transitionSubmenu");
+    if (!submenu) return;
+    const options = {
+      fade: [["fade", "Fade In"], ["fade-left", "Left"], ["fade-right", "Right"], ["fade-up", "Up"], ["fade-down", "Down"]],
+      push: [["push-left", "Left"], ["push-right", "Right"], ["push-up", "Up"], ["push-down", "Down"]],
+      morph: [["morph", "Morph"], ["morph-left", "Left"], ["morph-right", "Right"], ["morph-up", "Up"], ["morph-down", "Down"]]
+    }[kind] || [];
+    submenu.hidden = false;
+    submenu.innerHTML = options.map(([value, label]) => `<button class="tool-button" type="button" data-builder-action="transition" data-transition="${value}"><span>${label}</span></button>`).join("");
+  }
+
   function setObjectAnimation(type) {
     const object = active();
     if (!object || object.type === "activeSelection") return toast("Select one element to animate.");
@@ -659,7 +671,14 @@
       case "fit-media": if (typeof fitMediaToSlide === "function") fitMediaToSlide(); break;
       case "animation": setObjectAnimation(button.dataset.animation || "none"); break;
       case "preview-animation": previewObjectAnimation(); break;
+      case "transition-menu": showTransitionOptions(button.dataset.transitionMenu); all("[data-transition-menu]").forEach((item) => item.classList.toggle("is-active", item === button)); break;
       case "transition": {
+        const submenu = byId("transitionSubmenu");
+        if (["none", "zoom"].includes(button.dataset.transition) && submenu) {
+          submenu.hidden = true;
+          submenu.innerHTML = "";
+          all("[data-transition-menu]").forEach((item) => item.classList.remove("is-active"));
+        }
         byId("transitionType").value = button.dataset.transition;
         byId("transitionType").dispatchEvent(new Event("change"));
         all("[data-transition]").forEach((item) => item.classList.toggle("is-active", item === button));

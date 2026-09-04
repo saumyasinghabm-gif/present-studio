@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260904-animation-controls">
+  <link rel="stylesheet" href="/css/builder.css?v=20260904-transition-submenus">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -96,16 +96,17 @@
       <div class="ribbon-panel" data-ribbon-panel="transitions" hidden>
         <div class="ribbon-group">
           <button class="preset-card" type="button" data-builder-action="transition" data-transition="none"><i class="bi bi-slash-circle"></i><span>None</span></button>
-          <button class="preset-card" type="button" data-builder-action="transition" data-transition="fade"><i class="bi bi-layers"></i><span>Fade</span></button>
-          <button class="preset-card" type="button" data-builder-action="transition" data-transition="push-right"><i class="bi bi-box-arrow-right"></i><span>Push</span></button>
-          <button class="preset-card" type="button" data-builder-action="transition" data-transition="morph"><i class="bi bi-intersect"></i><span>Morph</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="fade"><i class="bi bi-layers"></i><span>Fade</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="push"><i class="bi bi-box-arrow-right"></i><span>Push</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="morph"><i class="bi bi-intersect"></i><span>Morph</span></button>
           <button class="preset-card" type="button" data-builder-action="transition" data-transition="zoom"><i class="bi bi-zoom-in"></i><span>Zoom</span></button>
           <span class="ribbon-group-label">Transition</span>
         </div>
+        <div class="ribbon-group transition-submenu" id="transitionSubmenu" hidden></div>
         <div class="ribbon-group">
           <label class="compact-label"><span>Preset</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label><label class="compact-label"><span>Custom ms</span><input class="ribbon-input duration-input" id="transitionDurationCustom" type="number" min="50" max="10000" step="50" value="500"></label>
           <button class="tool-button" type="button" data-builder-action="apply-transition-all"><i class="bi bi-files"></i><span>Apply to All</span></button>
-          <select id="transitionType" hidden><option value="none">None</option><option value="fade">Fade</option><option value="push-right">Push</option><option value="morph">Morph</option><option value="zoom">Zoom</option></select>
+          <select id="transitionType" hidden><option value="none">None</option><option value="fade">Fade In</option><option value="fade-left">Fade Left</option><option value="fade-right">Fade Right</option><option value="fade-up">Fade Up</option><option value="fade-down">Fade Down</option><option value="push-left">Push Left</option><option value="push-right">Push Right</option><option value="push-up">Push Up</option><option value="push-down">Push Down</option><option value="morph">Morph</option><option value="morph-left">Morph Left</option><option value="morph-right">Morph Right</option><option value="morph-up">Morph Up</option><option value="morph-down">Morph Down</option><option value="zoom">Zoom</option></select>
           <span class="ribbon-group-label">Timing</span>
         </div>
       </div>
@@ -200,8 +201,8 @@
   <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260904-animation-controls"></script>
-  <script src="/js/builder-ribbon.js?v=20260904-animation-controls"></script>
-  <script src="/js/builder-ui.js?v=20260904-animation-controls"></script>
+  <script src="/js/editor.js?v=20260904-transition-submenus"></script>
+  <script src="/js/builder-ribbon.js?v=20260904-transition-submenus"></script>
+  <script src="/js/builder-ui.js?v=20260904-transition-submenus"></script>
 </body>
 </html>

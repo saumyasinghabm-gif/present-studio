@@ -26,12 +26,15 @@
   ].join("");
 
   const transitionOptions = [
-    ["none", "None"], ["fade", "Fade"], ["push-right", "Push"], ["morph", "Morph"], ["zoom", "Zoom"]
+    ["none", "None"], ["fade", "Fade In"], ["fade-left", "Fade Left"], ["fade-right", "Fade Right"], ["fade-up", "Fade Up"], ["fade-down", "Fade Down"],
+    ["push-left", "Push Left"], ["push-right", "Push Right"], ["push-up", "Push Up"], ["push-down", "Push Down"],
+    ["morph", "Morph"], ["morph-left", "Morph Left"], ["morph-right", "Morph Right"], ["morph-up", "Morph Up"], ["morph-down", "Morph Down"], ["zoom", "Zoom"]
   ];
 
   const transitions = [
     group("Preview", tall("preview-transition", "bi-play-circle", "Preview")),
-    group("Transition", `<button class="preset-card" type="button" data-builder-action="transition" data-transition="none"><i class="bi bi-slash-circle"></i><span>None</span></button><button class="preset-card" type="button" data-builder-action="transition" data-transition="fade"><i class="bi bi-layers"></i><span>Fade</span></button><button class="preset-card" type="button" data-builder-action="transition" data-transition="push-right"><i class="bi bi-box-arrow-right"></i><span>Push</span></button><button class="preset-card" type="button" data-builder-action="transition" data-transition="morph"><i class="bi bi-intersect"></i><span>Morph</span></button><button class="preset-card" type="button" data-builder-action="transition" data-transition="zoom"><i class="bi bi-zoom-in"></i><span>Zoom</span></button>`),
+    group("Transition", `<button class="preset-card" type="button" data-builder-action="transition" data-transition="none"><i class="bi bi-slash-circle"></i><span>None</span></button><button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="fade"><i class="bi bi-layers"></i><span>Fade</span></button><button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="push"><i class="bi bi-box-arrow-right"></i><span>Push</span></button><button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="morph"><i class="bi bi-intersect"></i><span>Morph</span></button><button class="preset-card" type="button" data-builder-action="transition" data-transition="zoom"><i class="bi bi-zoom-in"></i><span>Zoom</span></button>`),
+    group("Options", `<div class="transition-submenu" id="transitionSubmenu" hidden></div>`),
     group("Timing", `<div class="tool-stack"><label class="compact-label"><span>Preset</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label><label class="compact-label"><span>Custom ms</span><input class="ribbon-input duration-input" id="transitionDurationCustom" type="number" min="50" max="10000" step="50" value="500"></label>${tool("apply-transition-all", "bi-files", "Apply to All")}</div><select id="transitionType" hidden>${transitionOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select>`)
   ].join("");
 
