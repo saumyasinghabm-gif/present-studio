@@ -26,8 +26,9 @@
         <div class="save-status" id="saveStatus"><span></span><span id="modeLabel">Loading…</span></div>
       </div>
       <div class="header-right">
-        <span class="header-icon" role="status" aria-label="Cloud status: synced" data-tooltip="Synced"><i class="bi bi-cloud-check"></i></span>
+        <button class="header-icon" type="button" aria-label="Cloud status" data-tooltip="Synced"><i class="bi bi-cloud-check"></i></button>
         <button class="header-icon" type="button" aria-label="Help" data-tooltip="Help" id="builderHelp"><i class="bi bi-question-circle"></i></button>
+        <button class="header-present" type="button" id="quickPreview"><i class="bi bi-eye"></i> Preview</button>
         <button class="header-present" type="button" id="quickPresent"><i class="bi bi-play-fill"></i> Present</button>
         <button class="header-share" type="button" id="quickShare"><i class="bi bi-people"></i> Share</button>
         <a class="account-button" href="/dashboard.html" aria-label="Return to account dashboard"><span>PS</span><i class="bi bi-chevron-down"></i></a>
@@ -39,6 +40,7 @@
       <button class="tab-button" type="button" data-builder-tab="insert">Insert</button>
       <button class="tab-button" type="button" data-builder-tab="design">Design</button>
       <button class="tab-button" type="button" data-builder-tab="transitions">Transitions</button>
+      <button class="tab-button" type="button" data-builder-tab="animate">Animate</button>
       <button class="tab-button" type="button" data-builder-tab="present">Present</button>
     </nav>
 
@@ -126,6 +128,10 @@
         </div>
       </div>
 
+      <div class="ribbon-panel" data-ribbon-panel="animate" hidden>
+        <div class="ribbon-group"><button class="preset-card" type="button" data-animation="none"><i class="bi bi-slash-circle"></i><span>None</span></button><button class="preset-card" type="button" data-animation="fade"><i class="bi bi-star"></i><span>Fade In</span></button><button class="preset-card" type="button" data-animation="zoom"><i class="bi bi-star"></i><span>Zoom</span></button><span class="ribbon-group-label">Animation</span></div>
+      </div>
+
       <div class="ribbon-panel" data-ribbon-panel="present" hidden>
         <div class="ribbon-group"><button class="tool-button tool-tall is-primary" id="startLive" type="button"><i class="bi bi-play-circle"></i><span>Presenter View</span></button><button class="tool-button tool-tall" id="openAudience" type="button"><i class="bi bi-people"></i><span>Audience View</span></button><span class="ribbon-group-label">Start Presentation</span></div>
         <div class="ribbon-group"><button class="presenter-option active" type="button" data-presenter="Self">Self</button><button class="presenter-option" type="button" data-presenter="Partner">Partner</button><span class="ribbon-group-label">Choose Presenter</span></div>
@@ -161,7 +167,7 @@
 
     <footer class="status-bar">
       <div class="status-left"><span id="pageLabel">Slide 1 of 1</span><span id="slideCount" hidden>01 / 01</span><span class="status-separator"></span><button type="button" id="toggleNotes"><i class="bi bi-journal-text"></i> Notes</button><span class="status-separator"></span><span>16:9</span></div>
-      <div class="status-right"><button class="zoom-button" type="button" id="zoomOut" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><span id="zoomValue">100%</span><button class="zoom-button" type="button" id="zoomIn" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button class="zoom-button" type="button" data-fullscreen aria-label="View slide full screen"><i class="bi bi-fullscreen"></i></button></div>
+      <div class="status-right"><button class="zoom-button" type="button" id="zoomOut" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><span id="zoomValue">100%</span><button class="zoom-button" type="button" id="zoomIn" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button class="zoom-button" type="button" data-fullscreen aria-label="Fit to screen"><i class="bi bi-fullscreen"></i></button></div>
     </footer>
   </div>
 
@@ -199,8 +205,8 @@
   <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260904-white-slides"></script>
-  <script src="/js/builder-ribbon.js?v=20260904-clean-ribbon"></script>
-  <script src="/js/builder-ui.js?v=20260904-clean-ribbon"></script>
+  <script src="/js/editor.js"></script>
+  <script src="/js/builder-ribbon.js?v=20260903-full-ribbon"></script>
+  <script src="/js/builder-ui.js?v=20260903-live-audio"></script>
 </body>
 </html>

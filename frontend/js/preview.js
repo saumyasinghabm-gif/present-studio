@@ -41,12 +41,19 @@
     node.style.width = `${item.width || 100}%`;
     node.style.height = `${item.height || 100}%`;
     node.style.objectFit = item.fit || "cover";
-    if (item.type === "video") Object.assign(node, { autoplay: true, muted: !audioEnabled, loop: item.loop !== false, playsInline: true });
+    if (item.type === "video") {
+      Object.assign(node, {
+        autoplay: true,
+        muted: !audioEnabled,
+        loop: item.loop !== false,
+        playsInline: true,
+        controls: !item.full_bleed
+      });
+    }
     byId("previewMedia").append(node);
   }
 
-  function renderMedia(slide) {
-    stopMedia();
+  function mediaItems(slide) {
     const legacy = (slide.canvas?.elements || []).filter((item) => ["image", "video"].includes(item.type));
     const fabricVideos = (slide.canvas?.fabric?.objects || []).filter((item) => item.mediaType === "video").map((item) => ({
       type: "video",
@@ -59,7 +66,13 @@
       loop: item.loop,
       fit: item.fit || "cover"
     }));
-    [...legacy, ...fabricVideos].filter((item) => item.src).forEach(addMediaNode);
+    return [...legacy, ...fabricVideos].filter((item) => item.src);
+  }
+
+  function renderMedia(slide) {
+    stopMedia();
+    const items = mediaItems(slide);
+    items.forEach(addMediaNode);
     const track = slide.canvas?.audio;
     if (track?.src) {
       const audio = document.createElement("audio");
@@ -68,7 +81,7 @@
       byId("previewMedia").append(audio);
       audio.play().catch(() => {});
     }
-    const hasAudio = fabricVideos.length > 0 || legacy.some((item) => item.type === "video") || Boolean(track?.src);
+    const hasAudio = items.some((item) => item.type === "video") || Boolean(track?.src);
     byId("previewAudioToggle").hidden = !hasAudio;
   }
 
@@ -77,30 +90,43 @@
     const transition = slide.canvas?.transition || { type: "fade", duration_ms: 500 };
     frame.style.setProperty("--transition-duration", `${transition.duration_ms || 500}ms`);
     frame.classList.remove("transition-fade", "transition-slide", "transition-zoom");
-    if (transition.type && transition.type !== "none") requestAnimationFrame(() => frame.classList.add(`transition-${transition.type}`));
+    if (transition.type && transition.type !== "none") {
+      requestAnimationFrame(() => {
+        frame.classList.add(`transition-${transition.type}`);
+        window.setTimeout(() => frame.classList.remove(`transition-${transition.type}`), transition.duration_ms || 500);
+      });
+    }
+  }
+
+  function sanitizeFabricScene(scene) {
+    (scene.objects || []).forEach((object) => {
+      if (object.textBaseline === "alphabetical") object.textBaseline = "alphabetic";
+    });
+    scene.objects = (scene.objects || []).filter((object) => object.mediaType !== "video");
+    return scene;
   }
 
   function renderSlide() {
     const slide = presentation.slides[currentSlideIndex];
     const data = slide.canvas || {};
     canvas.clear();
-    canvas.backgroundColor = data.background || "#ffffff";
-    const finish = () => {
-      canvas.getObjects().forEach((object) => { object.selectable = false; object.evented = false; });
+    canvas.backgroundColor = data.background || "#f8f4ea";
+    const done = () => {
+      canvas.getObjects().forEach((object) => {
+        object.selectable = false;
+        object.evented = false;
+      });
       canvas.renderAll();
     };
     if (data.fabric) {
-      const scene = JSON.parse(JSON.stringify(data.fabric));
-      (scene.objects || []).forEach((object) => { if (object.textBaseline === "alphabetical") object.textBaseline = "alphabetic"; });
-      scene.objects = (scene.objects || []).filter((object) => object.mediaType !== "video");
-      canvas.loadFromJSON(scene, finish);
+      canvas.loadFromJSON(sanitizeFabricScene(JSON.parse(JSON.stringify(data.fabric))), done);
     } else {
       (data.elements || []).filter((item) => item.type === "text").forEach((item) => canvas.add(textObject(item)));
-      finish();
+      done();
     }
     renderMedia(slide);
     animateSlide(slide);
-    byId("previewStatus").textContent = `${presentation.title} · Preview`;
+    byId("previewStatus").textContent = `${presentation.title} - Preview`;
     byId("previewCounter").textContent = `${currentSlideIndex + 1} / ${presentation.slides.length}`;
     byId("previewPrevious").disabled = currentSlideIndex === 0;
     byId("previewNext").disabled = currentSlideIndex === presentation.slides.length - 1;
@@ -121,7 +147,8 @@
   function toggleAudio() {
     audioEnabled = !audioEnabled;
     const button = byId("previewAudioToggle");
-    button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio";
+    button.textContent = audioEnabled ? "Mute audio" : "Enable audio";
+    button.setAttribute("aria-label", audioEnabled ? "Mute preview audio" : "Enable preview audio");
     byId("previewMedia").querySelectorAll("video,audio").forEach((media) => {
       media.muted = !audioEnabled;
       if (audioEnabled) media.play().catch(() => {});
@@ -149,7 +176,10 @@
     ["closePreview", "exitPreview", "closePreviewError"].forEach((id) => byId(id).addEventListener("click", exitPreview));
     document.addEventListener("keydown", (event) => {
       if (event.key === "ArrowLeft") go(-1);
-      if (event.key === "ArrowRight" || event.key === " ") { event.preventDefault(); go(1); }
+      if (event.key === "ArrowRight" || event.key === " ") {
+        event.preventDefault();
+        go(1);
+      }
       if (event.key.toLowerCase() === "f") byId("previewFullscreen").click();
       if (event.key === "Escape" && !document.fullscreenElement) exitPreview();
     });

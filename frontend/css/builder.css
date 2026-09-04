@@ -300,7 +300,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .ribbon-input { padding-right: 10px; }
 .font-select { width: 180px; }
 .size-select { width: 82px; }
-.ai-prompt { width: 280px; }
 .compact-label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .compact-label span { min-width: 70px; }
 .checkbox-label { display: flex; align-items: center; gap: 8px; min-height: 30px; white-space: nowrap; }
