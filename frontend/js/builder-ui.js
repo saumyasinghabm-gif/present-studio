@@ -316,7 +316,7 @@
     }
   });
 
-  byId("addSlideProxy").addEventListener("click", () => byId("addSlide").click());
+  byId("addSlideProxy").addEventListener("click", () => addSlide());
 
   byId("insertText").addEventListener("click", () => {
     const object = new fabric.Textbox("Type your text", {

@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260904-preview-transition-menu">
+  <link rel="stylesheet" href="/css/builder.css?v=20260904-home-media-text">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -37,7 +37,6 @@
 
     <nav class="tab-nav" aria-label="Presentation editor tabs">
       <button class="tab-button is-active" type="button" data-builder-tab="home">Home</button>
-      <button class="tab-button" type="button" data-builder-tab="insert">Insert</button>
       <button class="tab-button" type="button" data-builder-tab="transitions">Transitions</button>
     </nav>
 
@@ -50,13 +49,14 @@
             <button class="tool-button" id="deleteElement" type="button"><i class="bi bi-trash"></i><span>Delete</span></button>
           </div><span class="ribbon-group-label">Clipboard</span>
         </div>
+        <div class="ribbon-group"><button class="tool-button tool-tall" id="insertText" type="button"><i class="bi bi-fonts"></i><span>Text Box</span></button><span class="ribbon-group-label">Text</span></div>
         <div class="ribbon-group">
-          <button class="tool-button tool-tall" id="addSlide" type="button"><i class="bi bi-plus-square"></i><span>New Slide</span></button>
-          <div class="tool-stack">
-            <button class="tool-button" id="duplicateSlide" type="button"><i class="bi bi-copy"></i><span>Duplicate</span></button>
-            <button class="tool-button" id="deleteSlide" type="button"><i class="bi bi-trash"></i><span>Delete Slide</span></button>
-          </div><span class="ribbon-group-label">Slides</span>
+          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="image/*" data-media-input="image"><i class="bi bi-image"></i><span>Image</span></label>
+          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="video/*" data-media-input="video"><i class="bi bi-play-btn"></i><span>Video</span></label>
+          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="audio/*,.mp3" data-media-input="audio"><i class="bi bi-volume-up"></i><span>Audio</span></label>
+          <span class="ribbon-group-label">Media</span>
         </div>
+        <div class="ribbon-group builder-media-library"><div class="media-library-grid" id="mediaLibraryGrid"></div><span class="ribbon-group-label">My Media · <span id="mediaCount">0 items</span></span></div>
         <div class="ribbon-group builder-font-group" id="editorPanel">
           <div class="tool-stack">
             <div class="tool-row">
@@ -89,22 +89,6 @@
             <button class="tool-button" id="duplicateElement" type="button"><i class="bi bi-bounding-box"></i><span>Duplicate</span></button>
           </div><span class="ribbon-group-label">Arrange</span>
         </div>
-      </div>
-
-      <div class="ribbon-panel" data-ribbon-panel="insert" hidden>
-        <div class="ribbon-group"><button class="tool-button tool-tall" id="insertText" type="button"><i class="bi bi-fonts"></i><span>Text Box</span></button><span class="ribbon-group-label">Text</span></div>
-        <div class="ribbon-group">
-          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="image/*" data-media-input="image"><i class="bi bi-image"></i><span>Image</span></label>
-          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="video/*" data-media-input="video"><i class="bi bi-play-btn"></i><span>Video</span></label>
-          <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="audio/*,.mp3" data-media-input="audio"><i class="bi bi-volume-up"></i><span>Audio</span></label>
-          <span class="ribbon-group-label">Media</span>
-        </div>
-        <div class="ribbon-group">
-          <button class="tool-button tool-tall" id="insertRectangle" type="button"><i class="bi bi-square"></i><span>Rectangle</span></button>
-          <button class="tool-button tool-tall" id="insertCircle" type="button"><i class="bi bi-circle"></i><span>Circle</span></button>
-          <span class="ribbon-group-label">Shapes</span>
-        </div>
-        <div class="ribbon-group builder-media-library"><div class="media-library-grid" id="mediaLibraryGrid"></div><span class="ribbon-group-label">My Media · <span id="mediaCount">0 items</span></span></div>
       </div>
 
       <div class="ribbon-panel" data-ribbon-panel="transitions" hidden>
@@ -194,8 +178,8 @@
   <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260904-preview-transition-menu"></script>
-  <script src="/js/builder-ribbon.js?v=20260904-preview-transition-menu"></script>
-  <script src="/js/builder-ui.js?v=20260904-preview-transition-menu"></script>
+  <script src="/js/editor.js?v=20260904-home-media-text"></script>
+  <script src="/js/builder-ribbon.js?v=20260904-home-media-text"></script>
+  <script src="/js/builder-ui.js?v=20260904-home-media-text"></script>
 </body>
 </html>
