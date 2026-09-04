@@ -84,8 +84,6 @@
         video.src = object.src;
         video.preload = "metadata";
         video.playsInline = true;
-        video.muted = Boolean(object.muted ?? true);
-        video.loop = Boolean(object.loop ?? true);
         host.append(video);
       }
       if (!control) {
@@ -97,14 +95,48 @@
         control.innerHTML = '<i class="bi bi-play-fill"></i>';
         control.addEventListener("click", async () => {
           if (video.paused) {
-            try { await video.play(); control.innerHTML = '<i class="bi bi-pause-fill"></i>'; control.setAttribute("aria-label", "Pause video"); }
-            catch { toast("The browser could not play this video format."); }
+            // This click is a browser-approved user gesture, so enable the
+            // video's audio here instead of leaving editor videos permanently muted.
+            video.muted = false;
+            object.muted = false;
+            try {
+              await video.play();
+              control.innerHTML = '<i class="bi bi-pause-fill"></i>';
+              control.setAttribute("aria-label", "Pause video");
+              if (typeof schedule === "function") schedule();
+            } catch {
+              // Some browsers/codecs still require muted playback. Keep playback
+              // usable and tell the user rather than failing silently.
+              video.muted = true;
+              try {
+                await video.play();
+                control.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                control.setAttribute("aria-label", "Pause video");
+                toast("Video is playing muted because the browser blocked audio playback.");
+              } catch {
+                toast("The browser could not play this video format.");
+              }
+            }
           } else {
-            video.pause(); control.innerHTML = '<i class="bi bi-play-fill"></i>'; control.setAttribute("aria-label", "Play video");
+            video.pause();
+            control.innerHTML = '<i class="bi bi-play-fill"></i>';
+            control.setAttribute("aria-label", "Play video");
           }
+        });
+        video.addEventListener("play", () => {
+          control.innerHTML = '<i class="bi bi-pause-fill"></i>';
+          control.setAttribute("aria-label", "Pause video");
+        });
+        video.addEventListener("pause", () => {
+          control.innerHTML = '<i class="bi bi-play-fill"></i>';
+          control.setAttribute("aria-label", "Play video");
         });
         host.append(control);
       }
+      // Keep the HTML media element synchronized with the Fabric placeholder.
+      if (video.src !== new URL(object.src, location.href).href) video.src = object.src;
+      video.loop = Boolean(object.loop ?? true);
+      if (video.paused) video.muted = Boolean(object.muted ?? false);
       const bounds = object.getBoundingRect(true, true);
       const left = container.offsetLeft + bounds.left * scaleX;
       const top = container.offsetTop + bounds.top * scaleY;

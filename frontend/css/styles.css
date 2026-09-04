@@ -762,11 +762,11 @@ button.present-back {
 #playbackSlides input { width: 14px; height: 14px; margin: 0; accent-color: var(--yellow-dk); }
 
 .present-frame { position: relative; overflow: hidden; isolation: isolate; }
-.present-media-layer { position: absolute; inset: 0; z-index: 1; overflow: hidden; background: transparent; }
+.present-media-layer { position: absolute; inset: 0; z-index: 3; overflow: hidden; background: transparent; }
 .present-media-layer:empty { display: none; }
-.present-media-layer .slide-media { position: absolute; display: block; object-fit: cover; max-width: none; }
+.present-media-layer .slide-media { position: absolute; display: block; object-fit: cover; max-width: none; pointer-events: auto; }
 .present-media-layer .slide-media.full-bleed { inset: 0 !important; width: 100% !important; height: 100% !important; }
-.present-frame .canvas-container { position: relative !important; z-index: 2; }
+.present-frame .canvas-container { position: relative !important; z-index: 2; pointer-events: none; }
 .present-frame.transition-fade { animation: present-fade var(--transition-duration, 500ms) ease both; }
 .present-frame.transition-fade-left { animation: present-fade-left var(--transition-duration, 500ms) ease both; }
 .present-frame.transition-fade-right { animation: present-fade-right var(--transition-duration, 500ms) ease both; }

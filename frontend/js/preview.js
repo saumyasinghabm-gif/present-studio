@@ -47,10 +47,11 @@
         muted: !audioEnabled,
         loop: item.loop !== false,
         playsInline: true,
-        controls: !item.full_bleed
+        controls: true
       });
     }
     byId("previewMedia").append(node);
+    if (item.type === "video") node.play().catch(() => {});
   }
 
   function mediaItems(slide) {
