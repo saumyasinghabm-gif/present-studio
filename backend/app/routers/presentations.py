@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
 from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
-from ..schemas import LiveSessionOut, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ShareLinkCreate, ShareLinkOut, SlideOut
+from ..schemas import LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ShareLinkCreate, ShareLinkOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, new_id, optional_current_user, resolve_share_permission
 from ..socket_manager import sio
 
@@ -158,6 +158,38 @@ def end_live_session(
     live.is_live = False
     db.commit()
     return LiveSessionOut(presentationId=presentation_id, activeSlideId=live.active_slide_id, isLive=False)
+
+
+@router.post("/{presentation_id}/live/slide")
+async def update_live_slide(
+    presentation_id: str,
+    payload: LiveSlideUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> LiveSessionOut:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    user = optional_current_user(request, db)
+    token = request.query_params.get("token") or ""
+    has_presenter_access = bool(user and can_edit_presentation(db, presentation, user)) or resolve_share_permission(db, presentation.id, token) == "presenter"
+    if not has_presenter_access:
+        raise HTTPException(status_code=403, detail="Presenter permission required")
+
+    slide = db.query(Slide).filter(Slide.presentation_id == presentation_id, Slide.id == payload.slideId).first()
+    if not slide:
+        raise HTTPException(status_code=404, detail="Slide not found")
+
+    live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).first()
+    if not live:
+        live = LiveSession(id=new_id("live"), presentation_id=presentation_id, presenter_user_id=user.id if user else None)
+        db.add(live)
+    live.active_slide_id = slide.id
+    live.is_live = True
+    db.commit()
+    await sio.emit("active_slide_changed", {"presentationId": presentation_id, "slideId": slide.id}, room=presentation_id)
+    return LiveSessionOut(presentationId=presentation_id, activeSlideId=slide.id, isLive=True)
 
 
 @router.get("/{presentation_id}/live")

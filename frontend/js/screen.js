@@ -108,6 +108,7 @@
   }
 
   function handleSelection(event) {
+    if (event.presentationId !== presentationId) return;
     const slide = slideById(event.slideId);
     if (!slide) return;
     if (["image", "video", "audio"].includes(event.kind)) renderDirectMedia(slide, event.mediaId, event.kind);
@@ -148,11 +149,18 @@
     socket?.on("connect", joinRoom);
     if (socket?.connected) joinRoom();
     socket?.on("presentation_media_changed", handleSelection);
-    socket?.on("active_slide_changed", event => { const slide = slideById(event.slideId); if (slide) renderSlide(slide); });
+    socket?.on("active_slide_changed", event => { if (event.presentationId !== presentationId) return; const slide = slideById(event.slideId); if (slide) renderSlide(slide); });
     socket?.on("presentation_updated", handlePresentationUpdate);
     socket?.on("presentation_deleted", event => { if (event.presentationId === presentationId) control("stop"); });
-    socket?.on("presentation_media_control", event => control(event.action));
-    socket?.on("session_ended", () => control("stop"));
+    socket?.on("presentation_media_control", event => { if (event.presentationId === presentationId) control(event.action); });
+    socket?.on("session_ended", event => { if (!event?.presentationId || event.presentationId === presentationId) control("stop"); });
+    setInterval(async () => {
+      try {
+        const live = await api.getLiveSession(presentationId);
+        const slide = slideById(live.activeSlideId);
+        if (slide && stage.dataset.slideId !== slide.id) renderSlide(slide);
+      } catch {}
+    }, 2000);
   } catch {
     mediaLayer.replaceChildren();
     canvasWrap.hidden = true;

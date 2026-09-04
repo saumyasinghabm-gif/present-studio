@@ -87,6 +87,10 @@ class LiveSlideEvent(BaseModel):
     mode: Literal["presenter", "audience"] = "presenter"
 
 
+class LiveSlideUpdate(BaseModel):
+    slideId: str
+
+
 class LiveSessionOut(BaseModel):
     presentationId: str
     activeSlideId: str | None = None

@@ -72,11 +72,21 @@
     if (activeTargetId) document.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.classList.add("active");
   }
 
+  async function persistSlide(target) {
+    if (target.kind !== "slide") return;
+    try {
+      await api.setLiveSlide(presentationId, target.slideId, shareToken);
+    } catch (error) {
+      toast(error.message || "Could not update the live screen.");
+    }
+  }
+
   function selectTarget(target) {
-    if (!target || !socket) return;
+    if (!target) return;
     activeTargetId = target.id;
-    if (target.kind === "slide") socket.emit("slide_changed", { ...credentials(), slideId: target.slideId });
-    else socket.emit("media_selected", { ...credentials(), slideId: target.slideId, mediaId: target.mediaId, kind: target.kind });
+    if (target.kind === "slide") socket?.emit("slide_changed", { ...credentials(), slideId: target.slideId });
+    else socket?.emit("media_selected", { ...credentials(), slideId: target.slideId, mediaId: target.mediaId, kind: target.kind });
+    persistSlide(target);
     document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
     $("#previewTitle").textContent = target.title;
     $("#previewStage").innerHTML = target.kind === "audio" ? `<audio src="${escapeHtml(target.src)}" controls autoplay></audio>` : target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted autoplay loop></video>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span>${escapeHtml(target.title)}</span>`;
@@ -112,7 +122,7 @@
     $("#replayMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "replay" });
     $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; $("#previewStage").innerHTML = "<span>Black screen</span>"; };
     $("#openScreen").onclick = () => window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}${shareToken ? `&token=${encodeURIComponent(shareToken)}` : ""}`, "_blank", "noopener");
-    const joinRoom = () => { $("#connectionStatus").innerHTML = "<i></i> Live"; socket.emit("join_presentation", { presentationId }); };
+    const joinRoom = () => { $("#connectionStatus").innerHTML = "<i></i> Live"; socket?.emit("join_presentation", { presentationId }); };
     socket?.on("connect", joinRoom);
     if (socket?.connected) joinRoom();
     socket?.on("disconnect", () => { $("#connectionStatus").innerHTML = "<i></i> Reconnecting"; });
