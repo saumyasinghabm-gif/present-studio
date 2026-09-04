@@ -14,6 +14,7 @@
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
   function credentials() { return { presentationId, authToken, shareToken }; }
+  function setConnectionStatus(label) { $("#connectionStatus").innerHTML = `<i></i> ${label}`; }
 
   function collectTargets() {
     const result = [];
@@ -121,11 +122,24 @@
     $("#pauseMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "toggle" });
     $("#replayMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "replay" });
     $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; $("#previewStage").innerHTML = "<span>Black screen</span>"; };
-    $("#openScreen").onclick = () => window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}${shareToken ? `&token=${encodeURIComponent(shareToken)}` : ""}`, "_blank", "noopener");
-    const joinRoom = () => { $("#connectionStatus").innerHTML = "<i></i> Live"; socket?.emit("join_presentation", { presentationId }); };
+    $("#openScreen").onclick = async () => {
+      if (shareToken) {
+        window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`, "_blank", "noopener");
+        return;
+      }
+      try {
+        const link = await api.createShareLink(presentation.id, "viewer");
+        window.open(link.url, "_blank", "noopener");
+      } catch (error) {
+        toast(error.message || "Could not open the presentation screen.");
+      }
+    };
+    if (!socket) setConnectionStatus("Sync ready");
+    const joinRoom = () => { setConnectionStatus("Live"); socket?.emit("join_presentation", { presentationId }); };
     socket?.on("connect", joinRoom);
     if (socket?.connected) joinRoom();
-    socket?.on("disconnect", () => { $("#connectionStatus").innerHTML = "<i></i> Reconnecting"; });
+    socket?.on("connect_error", () => setConnectionStatus("Sync backup"));
+    socket?.on("disconnect", () => setConnectionStatus("Sync backup"));
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
     socket?.on("active_slide_changed", event => {
       const target = targets.find(item => item.kind === "slide" && item.slideId === event.slideId);
