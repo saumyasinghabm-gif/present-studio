@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260903-media-preview">
+  <link rel="stylesheet" href="/css/builder.css?v=20260904-preview-transition-menu">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -38,10 +38,7 @@
     <nav class="tab-nav" aria-label="Presentation editor tabs">
       <button class="tab-button is-active" type="button" data-builder-tab="home">Home</button>
       <button class="tab-button" type="button" data-builder-tab="insert">Insert</button>
-      <button class="tab-button" type="button" data-builder-tab="design">Design</button>
       <button class="tab-button" type="button" data-builder-tab="transitions">Transitions</button>
-      <button class="tab-button" type="button" data-builder-tab="animate">Animate</button>
-      <button class="tab-button" type="button" data-builder-tab="present">Present</button>
     </nav>
 
     <section class="ribbon" aria-label="Presentation tools">
@@ -110,32 +107,24 @@
         <div class="ribbon-group builder-media-library"><div class="media-library-grid" id="mediaLibraryGrid"></div><span class="ribbon-group-label">My Media · <span id="mediaCount">0 items</span></span></div>
       </div>
 
-      <div class="ribbon-panel" data-ribbon-panel="design" hidden>
-        <div class="ribbon-group">
-          <button class="theme-card" type="button" data-slide-background="#fffefb"><span class="theme-preview">Aa</span><span>Clean White</span></button>
-          <button class="theme-card" type="button" data-slide-background="#ffc928"><span class="theme-preview bold-yellow">Aa</span><span>Bold Yellow</span></button>
-          <button class="theme-card" type="button" data-slide-background="#181818"><span class="theme-preview dark-contrast">Aa</span><span>Dark Contrast</span></button>
-          <span class="ribbon-group-label">Themes</span>
-        </div>
-        <div class="ribbon-group"><label class="tool-button tool-tall"><input class="builder-hidden-color" id="slideBackground" type="color" value="#fffefb"><i class="bi bi-palette"></i><span>Background</span></label><span class="ribbon-group-label">Customize</span></div>
-      </div>
-
       <div class="ribbon-panel" data-ribbon-panel="transitions" hidden>
         <div class="ribbon-group">
-          <label class="compact-label"><span>Transition</span><select class="ribbon-select" id="transitionType"><option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="zoom">Zoom</option></select></label>
+          <button class="preset-card" type="button" data-builder-action="transition" data-transition="none"><i class="bi bi-slash-circle"></i><span>None</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="fade"><i class="bi bi-layers"></i><span>Fade</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="push"><i class="bi bi-box-arrow-right"></i><span>Push</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="morph"><i class="bi bi-intersect"></i><span>Morph</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition" data-transition="zoom"><i class="bi bi-zoom-in"></i><span>Zoom</span></button>
+          <span class="ribbon-group-label">Transition</span>
+        </div>
+        <div class="ribbon-group transition-submenu" id="transitionSubmenu" hidden></div>
+        <div class="ribbon-group">
           <label class="compact-label"><span>Duration</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label>
-          <span class="ribbon-group-label">Transition to This Slide</span>
+          <button class="tool-button" type="button" data-builder-action="apply-transition-all"><i class="bi bi-files"></i><span>Apply to All</span></button>
+          <select id="transitionType" hidden><option value="none">None</option><option value="fade">Fade In</option><option value="fade-left">Fade Left</option><option value="fade-right">Fade Right</option><option value="fade-up">Fade Up</option><option value="fade-down">Fade Down</option><option value="push-left">Push Left</option><option value="push-right">Push Right</option><option value="push-up">Push Up</option><option value="push-down">Push Down</option><option value="morph">Morph</option><option value="morph-left">Morph Left</option><option value="morph-right">Morph Right</option><option value="morph-up">Morph Up</option><option value="morph-down">Morph Down</option><option value="zoom">Zoom</option></select>
+          <span class="ribbon-group-label">Timing</span>
         </div>
       </div>
 
-      <div class="ribbon-panel" data-ribbon-panel="animate" hidden>
-        <div class="ribbon-group"><button class="preset-card" type="button" data-animation="none"><i class="bi bi-slash-circle"></i><span>None</span></button><button class="preset-card" type="button" data-animation="fade"><i class="bi bi-star"></i><span>Fade In</span></button><button class="preset-card" type="button" data-animation="zoom"><i class="bi bi-star"></i><span>Zoom</span></button><span class="ribbon-group-label">Animation</span></div>
-      </div>
-
-      <div class="ribbon-panel" data-ribbon-panel="present" hidden>
-        <div class="ribbon-group"><button class="tool-button tool-tall is-primary" id="startLive" type="button"><i class="bi bi-play-circle"></i><span>Presenter View</span></button><button class="tool-button tool-tall" id="openAudience" type="button"><i class="bi bi-people"></i><span>Audience View</span></button><span class="ribbon-group-label">Start Presentation</span></div>
-        <div class="ribbon-group"><button class="presenter-option active" type="button" data-presenter="Self">Self</button><button class="presenter-option" type="button" data-presenter="Partner">Partner</button><span class="ribbon-group-label">Choose Presenter</span></div>
-      </div>
     </section>
 
     <main class="editor-main">
@@ -205,8 +194,8 @@
   <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js"></script>
-  <script src="/js/builder-ribbon.js?v=20260903-full-ribbon"></script>
-  <script src="/js/builder-ui.js?v=20260903-live-audio"></script>
+  <script src="/js/editor.js?v=20260904-preview-transition-menu"></script>
+  <script src="/js/builder-ribbon.js?v=20260904-preview-transition-menu"></script>
+  <script src="/js/builder-ui.js?v=20260904-preview-transition-menu"></script>
 </body>
 </html>

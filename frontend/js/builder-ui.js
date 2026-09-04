@@ -371,13 +371,14 @@
   all("[data-slide-background]").forEach((button) => {
     button.addEventListener("click", () => {
       canvas.backgroundColor = button.dataset.slideBackground;
-      byId("slideBackground").value = button.dataset.slideBackground;
+      const backgroundInput = byId("slideBackground");
+      if (backgroundInput) backgroundInput.value = button.dataset.slideBackground;
       canvas.requestRenderAll();
       schedule();
     });
   });
 
-  byId("slideBackground").addEventListener("input", (event) => {
+  byId("slideBackground")?.addEventListener("input", (event) => {
     canvas.backgroundColor = event.target.value;
     canvas.requestRenderAll();
     schedule();
@@ -396,48 +397,6 @@
     ensure(activeSlide()).canvas.transition.duration_ms = Number(event.target.value);
     schedule();
   });
-  byId("transitionSound").addEventListener("change", (event) => {
-    ensure(activeSlide()).canvas.transition.sound = event.target.value;
-    schedule();
-  });
-  byId("onClickAdvance").addEventListener("change", (event) => {
-    ensure(activeSlide()).canvas.transition.on_click = event.target.checked;
-    schedule();
-  });
-  byId("afterAdvance").addEventListener("change", (event) => {
-    byId("afterTime").disabled = !event.target.checked;
-    ensure(activeSlide()).canvas.transition.auto_advance = event.target.checked;
-    schedule();
-  });
-  byId("afterTime").addEventListener("change", (event) => {
-    ensure(activeSlide()).canvas.transition.after_time = event.target.value;
-    schedule();
-  });
-
-  all("[data-animation]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const object = active();
-      if (!object) return toast("Select an element to animate.");
-      object.set("builderAnimation", button.dataset.animation);
-      all("[data-animation]").forEach((item) => item.classList.toggle("is-active", item === button));
-      schedule();
-      toast(`${button.textContent.trim()} animation applied.`);
-    });
-  });
-
-  ["animationStart", "animationDuration", "animationDelay"].forEach((id) => {
-    byId(id).addEventListener("change", () => {
-      const object = active();
-      if (!object) return toast("Select an animated element first.");
-      object.set({
-        builderAnimationStart: byId("animationStart").value,
-        builderAnimationDuration: Number(byId("animationDuration").value),
-        builderAnimationDelay: Number(byId("animationDelay").value)
-      });
-      schedule();
-    });
-  });
-
   byId("toggleNotes").addEventListener("click", () => {
     notesTray.hidden = !notesTray.hidden;
     if (!notesTray.hidden) notesEditor.focus();
@@ -480,7 +439,7 @@
     }
   }
 
-  byId("quickPreview").addEventListener("click", () => openPreview(currentSlideIndex));
+  byId("quickPreview")?.addEventListener("click", () => openPreview(currentSlideIndex));
   byId("quickPresent").addEventListener("click", () => start());
   byId("builderHelp").addEventListener("click", () => toast("Double-click text to edit it. Drag handles to resize and rotate."));
 
@@ -557,20 +516,6 @@
     toast("Select multiple elements with Shift first.");
   }
 
-  function previewSelectedAnimation() {
-    const object = active();
-    if (!object) return toast("Select an animated element first.");
-    const type = object.builderAnimation || "fade";
-    if (type === "zoom") {
-      const sx = object.scaleX, sy = object.scaleY;
-      object.set({ scaleX: sx * .45, scaleY: sy * .45, opacity: .2 });
-      object.animate({ scaleX: sx, scaleY: sy, opacity: 1 }, { duration: 650, onChange: canvas.renderAll.bind(canvas) });
-    } else {
-      object.set("opacity", .1);
-      object.animate("opacity", 1, { duration: 650, onChange: canvas.renderAll.bind(canvas) });
-    }
-  }
-
   function applyTheme(name) {
     const themes = {
       clean: { background: "#fffefb", text: "#101010", accent: "#f5c842", font: "Arial" },
@@ -587,6 +532,19 @@
     ensure(activeSlide()).canvas.theme = name;
     ensure(activeSlide()).canvas.accent = theme.accent;
     canvas.requestRenderAll(); schedule();
+  }
+
+
+  function showTransitionOptions(kind) {
+    const submenu = byId("transitionSubmenu");
+    if (!submenu) return;
+    const options = {
+      fade: [["fade", "Fade In"], ["fade-left", "Left"], ["fade-right", "Right"], ["fade-up", "Up"], ["fade-down", "Down"]],
+      push: [["push-left", "Left"], ["push-right", "Right"], ["push-up", "Up"], ["push-down", "Down"]],
+      morph: [["morph", "Morph"], ["morph-left", "Left"], ["morph-right", "Right"], ["morph-up", "Up"], ["morph-down", "Down"]]
+    }[kind] || [];
+    submenu.hidden = false;
+    submenu.innerHTML = options.map(([value, label]) => `<button class="tool-button" type="button" data-builder-action="transition" data-transition="${value}"><span>${label}</span></button>`).join("");
   }
 
   document.querySelector(".ribbon").addEventListener("click", (event) => {
@@ -639,36 +597,33 @@
       case "chart": addChart(); break;
       case "link": if (object) { object.set("hyperlink", window.prompt("Link URL", object.hyperlink || "https://") || ""); schedule(); } else toast("Select an element first."); break;
       case "comment": { const comment = window.prompt("Comment"); if (comment) { const slide = ensure(activeSlide()); slide.canvas.comments ||= []; slide.canvas.comments.push({ text: comment, createdAt: new Date().toISOString() }); schedule(); toast("Comment saved with this slide."); } break; }
-      case "theme": applyTheme(button.dataset.theme); break;
-      case "variant": { const [accent, textColor, background] = button.dataset.colors.split(","); canvas.backgroundColor = background; canvas.getObjects().forEach((item) => { if (["textbox", "text", "i-text"].includes(item.type)) item.set("fill", textColor); }); ensure(activeSlide()).canvas.accent = accent; canvas.requestRenderAll(); schedule(); break; }
-      case "colors": byId("slideBackground").click(); break;
-      case "theme-fonts": canvas.getObjects().forEach((item) => { if (["textbox", "text", "i-text"].includes(item.type)) item.set("fontFamily", "Inter"); }); canvas.requestRenderAll(); schedule(); break;
-      case "effects": if (object) { object.set("shadow", new fabric.Shadow({ color: "rgba(0,0,0,.22)", blur: 18, offsetX: 5, offsetY: 7 })); canvas.requestRenderAll(); schedule(); } else toast("Select an element first."); break;
       case "slide-size": { const ratio = window.prompt("Slide ratio: 16:9 or 4:3", ensure(activeSlide()).canvas.ratio || "16:9"); if (ratio === "16:9" || ratio === "4:3") { ensure(activeSlide()).canvas.ratio = ratio; byId("slideCanvas").style.aspectRatio = ratio === "4:3" ? "4 / 3" : "16 / 9"; schedule(); } break; }
-      case "brand-kit": applyTheme("clean"); toast("Present Studio brand styling applied."); break;
-      case "transition": byId("transitionType").value = button.dataset.transition; byId("transitionType").dispatchEvent(new Event("change")); all("[data-transition]").forEach((item) => item.classList.toggle("is-active", item === button)); break;
-      case "preview-transition": byId("slideCanvas").animate([{ opacity: .25, transform: "translateX(22px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: Number(byId("transitionDuration").value), easing: "ease-out" }); break;
-      case "transition-options": { const transition = ensure(activeSlide()).canvas.transition; transition.direction = transition.direction === "left" ? "right" : "left"; schedule(); toast(`Direction: ${transition.direction}`); break; }
+      case "transition-menu": showTransitionOptions(button.dataset.transitionMenu); all("[data-transition-menu]").forEach((item) => item.classList.toggle("is-active", item === button)); break;
+      case "transition": {
+        const submenu = byId("transitionSubmenu");
+        if (["none", "zoom"].includes(button.dataset.transition) && submenu) {
+          submenu.hidden = true;
+          submenu.innerHTML = "";
+          all("[data-transition-menu]").forEach((item) => item.classList.remove("is-active"));
+        }
+        byId("transitionType").value = button.dataset.transition;
+        byId("transitionType").dispatchEvent(new Event("change"));
+        all("[data-transition]").forEach((item) => item.classList.toggle("is-active", item === button));
+        break;
+      }
+      case "preview-transition": {
+        const type = ensure(activeSlide()).canvas.transition.type || "fade";
+        const duration = Number(byId("transitionDuration").value) || 500;
+        const movement = type.endsWith("left") ? "translateX(-42px)" : type.endsWith("right") ? "translateX(42px)" : type.endsWith("up") ? "translateY(-42px)" : type.endsWith("down") ? "translateY(42px)" : "translateX(22px)";
+        const startTransform = type.startsWith("push") || type.startsWith("fade") ? movement : type.startsWith("morph") ? `${movement} scale(.94)` : type === "zoom" ? "scale(.9)" : "none";
+        byId("slideCanvas").animate([{ opacity: type === "none" ? 1 : .25, transform: startTransform, filter: type.startsWith("morph") ? "blur(8px)" : "none" }, { opacity: 1, transform: "none", filter: "none" }], { duration, easing: "ease-out" });
+        break;
+      }
       case "apply-transition-all": { capture(); const transition = JSON.parse(JSON.stringify(ensure(activeSlide()).canvas.transition)); presentation.slides.forEach((slide) => { ensure(slide).canvas.transition = JSON.parse(JSON.stringify(transition)); }); schedule(); toast("Transition applied to all slides."); break; }
-      case "preview-animation": previewSelectedAnimation(); break;
-      case "animation-options": if (object) { object.set("builderAnimationDirection", object.builderAnimationDirection === "left" ? "right" : "left"); schedule(); toast(`Direction: ${object.builderAnimationDirection}`); } else toast("Select an element first."); break;
-      case "add-animation": if (object) { object.set("builderAnimation", "fade"); schedule(); toast("Fade animation added."); } else toast("Select an element first."); break;
-      case "animation-pane": case "animation-order": { const animated = canvas.getObjects().filter((item) => item.builderAnimation && item.builderAnimation !== "none"); toast(`${animated.length} animated element${animated.length === 1 ? "" : "s"} on this slide.`); break; }
-      case "trigger": if (object) { object.set("builderAnimationStart", "click"); schedule(); toast("Animation starts on click."); } else toast("Select an element first."); break;
-      case "animation-earlier": case "animation-later": if (object) { object.set("builderAnimationOrder", Math.max(1, (object.builderAnimationOrder || 1) + (name.endsWith("earlier") ? -1 : 1))); schedule(); toast(`Animation order ${object.builderAnimationOrder}.`); } else toast("Select an element first."); break;
-      case "preview-current": openPreview(currentSlideIndex); break;
       case "speaker-notes": notesTray.hidden = false; notesEditor.focus(); break;
-      case "present-beginning": currentSlideIndex = 0; render(); start(); break;
-      case "present-current": case "presenter-view": case "toggle-live": start(); break;
-      case "audience-view": window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}`, "_blank", "noopener"); break;
-      case "rehearse": toast("Rehearsal timer started for this session."); break;
-      case "record": toast("Recording requires browser microphone permission and will be added with media recording."); break;
-      case "presenter-mode": button.classList.toggle("is-on"); break;
       default: break;
     }
   });
-
-  all(".presenter-option").forEach((button) => button.addEventListener("click", () => selectPresenter(button.dataset.presenter)));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !shareModal.hidden) closeShare();

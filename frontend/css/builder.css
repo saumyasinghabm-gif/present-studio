@@ -483,23 +483,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .resize-handle[data-handle="w"] { top: 50%; left: -5px; transform: translateY(-50%); cursor: ew-resize; }
 .rotation-stem { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 28px; background: var(--yellow-strong); }
 .rotation-handle { position: absolute; bottom: calc(100% + 25px); left: 50%; width: 13px; height: 13px; border: 1px solid #111; border-radius: 50%; background: #fff; transform: translateX(-50%); cursor: grab; }
-.animation-badge { position: absolute; top: 0; left: -42px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #111; background: var(--yellow-strong); font-weight: 800; }
-
-.transition-play { animation: slideFade .55s ease both; }
-.animation-appear { animation: objectAppear .55s ease both; }
-.animation-fade-in { animation: objectFade .55s ease both; }
-.animation-fly-in { animation: objectFly .55s ease both; }
-.animation-float-in { animation: objectFloat 1s ease both; }
-.animation-zoom { animation: objectZoom .55s ease both; }
-.animation-wipe { animation: objectWipe .65s ease both; }
-@keyframes slideFade { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
-@keyframes objectAppear { 0%, 49% { opacity: 0; } 50% { opacity: 1; } }
-@keyframes objectFade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes objectFly { from { opacity: 0; transform: translateX(-150px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes objectFloat { from { opacity: 0; transform: translateY(70px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes objectZoom { from { opacity: 0; transform: scale(.35); } to { opacity: 1; transform: scale(1); } }
-@keyframes objectWipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-
 /* Status and notes */
 .status-bar {
   z-index: 20;
@@ -757,4 +740,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 @media (max-width: 900px) {
   body.builder-page { min-width: 760px; overflow-x: auto; }
+}
+
+.transition-submenu {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.transition-submenu[hidden] {
+  display: none !important;
+}
+
+.transition-submenu .tool-button {
+  min-width: 72px;
+  justify-content: center;
 }

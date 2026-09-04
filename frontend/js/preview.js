@@ -89,7 +89,7 @@
     const frame = byId("previewFrame");
     const transition = slide.canvas?.transition || { type: "fade", duration_ms: 500 };
     frame.style.setProperty("--transition-duration", `${transition.duration_ms || 500}ms`);
-    frame.classList.remove("transition-fade", "transition-slide", "transition-zoom");
+    frame.classList.remove("transition-fade", "transition-fade-left", "transition-fade-right", "transition-fade-up", "transition-fade-down", "transition-slide", "transition-push-left", "transition-push-right", "transition-push-up", "transition-push-down", "transition-morph", "transition-morph-left", "transition-morph-right", "transition-morph-up", "transition-morph-down", "transition-zoom");
     if (transition.type && transition.type !== "none") {
       requestAnimationFrame(() => {
         frame.classList.add(`transition-${transition.type}`);
