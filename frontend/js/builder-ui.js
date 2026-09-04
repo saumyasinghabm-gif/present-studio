@@ -9,6 +9,8 @@
   const notesEditor = byId("notesEditor");
   const shareModal = byId("shareModal");
   const uploadOverlay = byId("builderUploadOverlay");
+  const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
+  const MAX_MEDIA_UPLOAD_LABEL = "100 MB";
   let builderClipboard = null;
   let zoom = 100;
   let builderUploadRequestId = 0;
@@ -33,7 +35,7 @@
     }
     if (["textbox", "text", "i-text"].includes(object.type)) {
       const fontSize = legacy ? Number(object.fontSize || 32) / 7 : Number(object.fontSize || 32) / 7;
-      const font = ["Arial", "Inter", "Georgia", "Verdana", "Courier New"].includes(object.fontFamily) ? object.fontFamily : "Arial";
+      const font = ["Arial", "Calibri", "Inter", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Garamond", "Palatino Linotype", "Courier New", "Impact"].includes(object.fontFamily) ? object.fontFamily : "Arial";
       return `<span class="slide-thumbnail-object is-text" style="${style}font-size:${Math.max(5, fontSize)}px;font-family:${font};font-weight:${esc(object.fontWeight || "normal")};color:${safeColor(object.fill || object.color)};text-align:${esc(object.textAlign || "left")};">${esc(object.text || "")}</span>`;
     }
     return `<span class="slide-thumbnail-object" style="${style}background:${safeColor(object.fill, "#f5c842")};border:1px solid ${safeColor(object.stroke, "transparent")};"></span>`;
@@ -157,6 +159,12 @@
   };
 
   uploadFile = async function uploadFileWithProgress(file) {
+    if (file.size > MAX_MEDIA_UPLOAD_BYTES) {
+      retryUploadFile = null;
+      renderUploadStatus("error", `${file.name} is too large. Maximum upload size is ${MAX_MEDIA_UPLOAD_LABEL}.`);
+      toast(`Maximum upload size is ${MAX_MEDIA_UPLOAD_LABEL}.`);
+      return null;
+    }
     const requestId = ++builderUploadRequestId;
     retryUploadFile = null;
     const title = byId("builderUploadTitle");
@@ -540,16 +548,61 @@
   }
 
 
-  function showTransitionOptions(kind) {
-    const submenu = byId("transitionSubmenu");
-    if (!submenu) return;
-    const options = {
-      fade: [["fade", "Fade In"], ["fade-left", "Left"], ["fade-right", "Right"], ["fade-up", "Up"], ["fade-down", "Down"]],
-      push: [["push-left", "Left"], ["push-right", "Right"], ["push-up", "Up"], ["push-down", "Down"]],
-      morph: [["morph", "Morph"], ["morph-left", "Left"], ["morph-right", "Right"], ["morph-up", "Up"], ["morph-down", "Down"]]
-    }[kind] || [];
-    submenu.hidden = false;
-    submenu.innerHTML = options.map(([value, label]) => `<button class="tool-button" type="button" data-builder-action="transition" data-transition="${value}"><span>${label}</span></button>`).join("");
+  function animationStartState(object, type) {
+    const base = {
+      opacity: object.opacity ?? 1,
+      left: object.left || 0,
+      top: object.top || 0,
+      scaleX: object.scaleX || 1,
+      scaleY: object.scaleY || 1
+    };
+    if (type === "fade") return { opacity: 0 };
+    if (type === "zoom") return { opacity: 0, scaleX: base.scaleX * 0.78, scaleY: base.scaleY * 0.78 };
+    if (type === "fly") return { opacity: 0, left: base.left - 140 };
+    if (type === "rise") return { opacity: 0, top: base.top + 90 };
+    if (type === "wipe") return { opacity: 0, scaleX: base.scaleX * 0.08 };
+    return {};
+  }
+
+  function setObjectAnimation(type) {
+    const object = active();
+    if (!object || object.type === "activeSelection") return toast("Select one element to animate.");
+    object.set({
+      animation: type,
+      animationDuration: Math.max(100, Math.min(5000, Number(byId("animationDuration")?.value) || 600)),
+      animationDelay: Math.max(0, Math.min(5000, Number(byId("animationDelay")?.value) || 0))
+    });
+    all("[data-animation]").forEach((item) => item.classList.toggle("is-active", item.dataset.animation === type));
+    schedule();
+    if (type !== "none") previewObjectAnimation(object);
+    else toast("Animation removed.");
+  }
+
+  function previewObjectAnimation(target = active()) {
+    const object = target;
+    if (!object || object.type === "activeSelection") return toast("Select one element to preview.");
+    const type = object.animation || "fade";
+    if (type === "none") return toast("No animation selected.");
+    const duration = Math.max(100, Math.min(5000, Number(object.animationDuration || byId("animationDuration")?.value) || 600));
+    const delay = Math.max(0, Math.min(5000, Number(object.animationDelay || byId("animationDelay")?.value) || 0));
+    const finalState = {
+      opacity: object.opacity ?? 1,
+      left: object.left || 0,
+      top: object.top || 0,
+      scaleX: object.scaleX || 1,
+      scaleY: object.scaleY || 1
+    };
+    object.set(animationStartState(object, type));
+    object.setCoords();
+    canvas.requestRenderAll();
+    window.setTimeout(() => {
+      Object.entries(finalState).forEach(([key, value]) => object.animate(key, value, {
+        duration,
+        easing: fabric.util.ease.easeOutCubic,
+        onChange: canvas.renderAll.bind(canvas),
+        onComplete: () => { object.set(finalState); object.setCoords(); canvas.requestRenderAll(); }
+      }));
+    }, delay);
   }
 
   document.querySelector(".ribbon").addEventListener("click", (event) => {
@@ -603,15 +656,10 @@
       case "link": if (object) { object.set("hyperlink", window.prompt("Link URL", object.hyperlink || "https://") || ""); schedule(); } else toast("Select an element first."); break;
       case "comment": { const comment = window.prompt("Comment"); if (comment) { const slide = ensure(activeSlide()); slide.canvas.comments ||= []; slide.canvas.comments.push({ text: comment, createdAt: new Date().toISOString() }); schedule(); toast("Comment saved with this slide."); } break; }
       case "slide-size": { const ratio = window.prompt("Slide ratio: 16:9 or 4:3", ensure(activeSlide()).canvas.ratio || "16:9"); if (ratio === "16:9" || ratio === "4:3") { ensure(activeSlide()).canvas.ratio = ratio; byId("slideCanvas").style.aspectRatio = ratio === "4:3" ? "4 / 3" : "16 / 9"; schedule(); } break; }
-      case "transition-menu": showTransitionOptions(button.dataset.transitionMenu); all("[data-transition-menu]").forEach((item) => item.classList.toggle("is-active", item === button)); break;
       case "fit-media": if (typeof fitMediaToSlide === "function") fitMediaToSlide(); break;
+      case "animation": setObjectAnimation(button.dataset.animation || "none"); break;
+      case "preview-animation": previewObjectAnimation(); break;
       case "transition": {
-        const submenu = byId("transitionSubmenu");
-        if (["none", "zoom"].includes(button.dataset.transition) && submenu) {
-          submenu.hidden = true;
-          submenu.innerHTML = "";
-          all("[data-transition-menu]").forEach((item) => item.classList.remove("is-active"));
-        }
         byId("transitionType").value = button.dataset.transition;
         byId("transitionType").dispatchEvent(new Event("change"));
         all("[data-transition]").forEach((item) => item.classList.toggle("is-active", item === button));
@@ -619,7 +667,7 @@
       }
       case "preview-transition": {
         const type = ensure(activeSlide()).canvas.transition.type || "fade";
-        const duration = Number(byId("transitionDuration").value) || 500;
+        const duration = Number(ensure(activeSlide()).canvas.transition.duration_ms || byId("transitionDurationCustom")?.value || byId("transitionDuration").value) || 500;
         const movement = type.endsWith("left") ? "translateX(-42px)" : type.endsWith("right") ? "translateX(42px)" : type.endsWith("up") ? "translateY(-42px)" : type.endsWith("down") ? "translateY(42px)" : "translateX(22px)";
         const startTransform = type.startsWith("push") || type.startsWith("fade") ? movement : type.startsWith("morph") ? `${movement} scale(.94)` : type === "zoom" ? "scale(.9)" : "none";
         byId("slideCanvas").animate([{ opacity: type === "none" ? 1 : .25, transform: startTransform, filter: type.startsWith("morph") ? "blur(8px)" : "none" }, { opacity: 1, transform: "none", filter: "none" }], { duration, easing: "ease-out" });

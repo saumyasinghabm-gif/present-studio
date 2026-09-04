@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260904-editor-ux">
+  <link rel="stylesheet" href="/css/builder.css?v=20260904-animation-controls">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -38,6 +38,7 @@
     <nav class="tab-nav" aria-label="Presentation editor tabs">
       <button class="tab-button is-active" type="button" data-builder-tab="home">Home</button>
       <button class="tab-button" type="button" data-builder-tab="transitions">Transitions</button>
+      <button class="tab-button" type="button" data-builder-tab="animations">Animations</button>
     </nav>
 
     <section class="ribbon" aria-label="Presentation tools">
@@ -54,16 +55,15 @@
           <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="image/*" data-media-input="image"><i class="bi bi-image"></i><span>Image</span></label>
           <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="video/*" data-media-input="video"><i class="bi bi-play-btn"></i><span>Video</span></label>
           <label class="tool-button tool-tall file-ribbon-tool"><input type="file" accept="audio/*,.mp3" data-media-input="audio"><i class="bi bi-volume-up"></i><span>Audio</span></label>
-          <label class="checkbox-label media-cover-toggle"><input id="mediaFullBleed" type="checkbox"> Cover slide</label>
           <button class="tool-button" type="button" data-builder-action="fit-media"><i class="bi bi-arrows-fullscreen"></i><span>Fit Slide</span></button>
-          <span class="ribbon-group-label">Media</span>
+          <small class="media-limit-note">Max 100 MB</small><span class="ribbon-group-label">Media</span>
         </div>
         <div class="ribbon-group builder-media-library"><div class="media-library-grid" id="mediaLibraryGrid"></div><span class="ribbon-group-label">My Media · <span id="mediaCount">0 items</span></span></div>
         <div class="ribbon-group builder-font-group" id="editorPanel">
           <div class="tool-stack">
             <div class="tool-row">
               <select class="ribbon-select font-select" id="fontFamily" aria-label="Font family">
-                <option value="Arial">Arial</option><option value="Inter">Inter</option><option value="Georgia">Georgia</option><option value="Courier New">Courier New</option><option value="Verdana">Verdana</option>
+                <option value="Arial">Arial</option><option value="Calibri">Calibri</option><option value="Inter">Inter</option><option value="Verdana">Verdana</option><option value="Tahoma">Tahoma</option><option value="Trebuchet MS">Trebuchet MS</option><option value="Georgia">Georgia</option><option value="Times New Roman">Times New Roman</option><option value="Garamond">Garamond</option><option value="Palatino Linotype">Palatino</option><option value="Courier New">Courier New</option><option value="Impact">Impact</option>
               </select>
               <input class="ribbon-input size-select" id="fontSize" type="number" min="8" max="240" value="42" aria-label="Font size">
             </div>
@@ -96,17 +96,37 @@
       <div class="ribbon-panel" data-ribbon-panel="transitions" hidden>
         <div class="ribbon-group">
           <button class="preset-card" type="button" data-builder-action="transition" data-transition="none"><i class="bi bi-slash-circle"></i><span>None</span></button>
-          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="fade"><i class="bi bi-layers"></i><span>Fade</span></button>
-          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="push"><i class="bi bi-box-arrow-right"></i><span>Push</span></button>
-          <button class="preset-card" type="button" data-builder-action="transition-menu" data-transition-menu="morph"><i class="bi bi-intersect"></i><span>Morph</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition" data-transition="fade"><i class="bi bi-layers"></i><span>Fade</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition" data-transition="push-right"><i class="bi bi-box-arrow-right"></i><span>Push</span></button>
+          <button class="preset-card" type="button" data-builder-action="transition" data-transition="morph"><i class="bi bi-intersect"></i><span>Morph</span></button>
           <button class="preset-card" type="button" data-builder-action="transition" data-transition="zoom"><i class="bi bi-zoom-in"></i><span>Zoom</span></button>
           <span class="ribbon-group-label">Transition</span>
         </div>
-        <div class="ribbon-group transition-submenu" id="transitionSubmenu" hidden></div>
         <div class="ribbon-group">
           <label class="compact-label"><span>Preset</span><select class="ribbon-select" id="transitionDuration"><option value="250">0.25 sec</option><option value="500" selected>0.5 sec</option><option value="900">0.9 sec</option></select></label><label class="compact-label"><span>Custom ms</span><input class="ribbon-input duration-input" id="transitionDurationCustom" type="number" min="50" max="10000" step="50" value="500"></label>
           <button class="tool-button" type="button" data-builder-action="apply-transition-all"><i class="bi bi-files"></i><span>Apply to All</span></button>
-          <select id="transitionType" hidden><option value="none">None</option><option value="fade">Fade In</option><option value="fade-left">Fade Left</option><option value="fade-right">Fade Right</option><option value="fade-up">Fade Up</option><option value="fade-down">Fade Down</option><option value="push-left">Push Left</option><option value="push-right">Push Right</option><option value="push-up">Push Up</option><option value="push-down">Push Down</option><option value="morph">Morph</option><option value="morph-left">Morph Left</option><option value="morph-right">Morph Right</option><option value="morph-up">Morph Up</option><option value="morph-down">Morph Down</option><option value="zoom">Zoom</option></select>
+          <select id="transitionType" hidden><option value="none">None</option><option value="fade">Fade</option><option value="push-right">Push</option><option value="morph">Morph</option><option value="zoom">Zoom</option></select>
+          <span class="ribbon-group-label">Timing</span>
+        </div>
+      </div>
+
+      <div class="ribbon-panel" data-ribbon-panel="animations" hidden>
+        <div class="ribbon-group">
+          <button class="tool-button tool-tall" type="button" data-builder-action="preview-animation"><i class="bi bi-play-circle"></i><span>Preview</span></button>
+          <span class="ribbon-group-label">Preview</span>
+        </div>
+        <div class="ribbon-group">
+          <button class="preset-card" type="button" data-builder-action="animation" data-animation="none"><i class="bi bi-slash-circle"></i><span>None</span></button>
+          <button class="preset-card" type="button" data-builder-action="animation" data-animation="fade"><i class="bi bi-stars"></i><span>Fade</span></button>
+          <button class="preset-card" type="button" data-builder-action="animation" data-animation="zoom"><i class="bi bi-zoom-in"></i><span>Zoom</span></button>
+          <button class="preset-card" type="button" data-builder-action="animation" data-animation="fly"><i class="bi bi-arrow-right"></i><span>Fly In</span></button>
+          <button class="preset-card" type="button" data-builder-action="animation" data-animation="rise"><i class="bi bi-arrow-up"></i><span>Rise</span></button>
+          <button class="preset-card" type="button" data-builder-action="animation" data-animation="wipe"><i class="bi bi-layout-sidebar-inset"></i><span>Wipe</span></button>
+          <span class="ribbon-group-label">Entrance</span>
+        </div>
+        <div class="ribbon-group">
+          <label class="compact-label"><span>Duration</span><input class="ribbon-input duration-input" id="animationDuration" type="number" min="100" max="5000" step="50" value="600"></label>
+          <label class="compact-label"><span>Delay</span><input class="ribbon-input duration-input" id="animationDelay" type="number" min="0" max="5000" step="50" value="0"></label>
           <span class="ribbon-group-label">Timing</span>
         </div>
       </div>
@@ -150,7 +170,7 @@
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
       <div class="modal-header"><h2 id="shareModalTitle">Share presentation</h2><button type="button" aria-label="Close dialog" id="closeShare"><i class="bi bi-x-lg"></i></button></div>
       <div class="modal-body">
-        <label class="form-row">Access<select id="sharePermission"><option value="viewer">Audience viewer</option><option value="presenter">Trusted presenter</option></select></label>
+        <label class="form-row">Access<select id="sharePermission"><option value="viewer">Presentation Screen</option><option value="presenter">Remote Control</option></select></label>
         <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Generate Link</span></button>
         <p class="share-status" id="shareStatus" role="status"></p>
       </div>
@@ -180,8 +200,8 @@
   <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260904-editor-ux"></script>
-  <script src="/js/builder-ribbon.js?v=20260904-editor-ux"></script>
-  <script src="/js/builder-ui.js?v=20260904-editor-ux"></script>
+  <script src="/js/editor.js?v=20260904-animation-controls"></script>
+  <script src="/js/builder-ribbon.js?v=20260904-animation-controls"></script>
+  <script src="/js/builder-ui.js?v=20260904-animation-controls"></script>
 </body>
 </html>

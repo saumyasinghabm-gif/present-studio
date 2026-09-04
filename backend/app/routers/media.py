@@ -47,7 +47,7 @@ async def upload_media(
     configure_cloudinary()
     content = await file.read()
     if len(content) > 100 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File is too large")
+        raise HTTPException(status_code=413, detail="Maximum upload size is 100 MB")
 
     settings = get_settings()
     content_type = file.content_type or ""

@@ -98,6 +98,37 @@
     }
   }
 
+  function animateObjects() {
+    canvas.getObjects().forEach((object) => {
+      const type = object.animation || "none";
+      if (type === "none") return;
+      const duration = Math.max(100, Math.min(5000, Number(object.animationDuration) || 600));
+      const delay = Math.max(0, Math.min(5000, Number(object.animationDelay) || 0));
+      const finalState = {
+        opacity: object.opacity ?? 1,
+        left: object.left || 0,
+        top: object.top || 0,
+        scaleX: object.scaleX || 1,
+        scaleY: object.scaleY || 1
+      };
+      const startState = {};
+      if (type === "fade") Object.assign(startState, { opacity: 0 });
+      if (type === "zoom") Object.assign(startState, { opacity: 0, scaleX: finalState.scaleX * 0.78, scaleY: finalState.scaleY * 0.78 });
+      if (type === "fly") Object.assign(startState, { opacity: 0, left: finalState.left - 140 });
+      if (type === "rise") Object.assign(startState, { opacity: 0, top: finalState.top + 90 });
+      if (type === "wipe") Object.assign(startState, { opacity: 0, scaleX: finalState.scaleX * 0.08 });
+      object.set(startState);
+      window.setTimeout(() => {
+        Object.entries(finalState).forEach(([key, value]) => object.animate(key, value, {
+          duration,
+          easing: fabric.util.ease.easeOutCubic,
+          onChange: canvas.renderAll.bind(canvas),
+          onComplete: () => { object.set(finalState); canvas.requestRenderAll(); }
+        }));
+      }, delay);
+    });
+  }
+
   function sanitizeFabricScene(scene) {
     (scene.objects || []).forEach((object) => {
       if (object.textBaseline === "alphabetical") object.textBaseline = "alphabetic";
@@ -117,6 +148,7 @@
         object.evented = false;
       });
       canvas.renderAll();
+      animateObjects();
     };
     if (data.fabric) {
       canvas.loadFromJSON(sanitizeFabricScene(JSON.parse(JSON.stringify(data.fabric))), done);

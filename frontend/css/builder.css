@@ -763,8 +763,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   width: 92px;
 }
 
-.media-cover-toggle {
+.media-limit-note {
   align-self: center;
-  min-width: 108px;
+  min-width: 84px;
+  color: #555;
   font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
 }
