@@ -89,6 +89,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   white-space: nowrap;
 }
 
+.app-logo {
+  display: block;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  max-width: 34px;
+  max-height: 34px;
+  border-radius: 7px;
+  object-fit: contain;
+}
+
 .brand-mark {
   display: grid;
   place-items: center;
@@ -647,7 +658,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .file-ribbon-tool input,
 .builder-page .builder-hidden-color { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .builder-page .builder-media-library { min-width: 280px; max-width: 520px; }
-.builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(2, minmax(118px, 1fr)); gap: 1px 8px; }
+.builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(3, minmax(118px, 1fr)); gap: 1px 8px; }
 .builder-page .builder-media-count { align-self: center; color: #666; font-size: 11px; white-space: nowrap; }
 .builder-page .media-library-grid { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 16px; }
 .builder-page .media-library-item {
@@ -694,7 +705,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .slide-thumbnail-object { position: absolute; overflow: hidden; color: #111; line-height: 1.05; transform-origin: center; }
 .builder-page .slide-thumbnail-object.is-text { display: flex; align-items: center; white-space: pre-wrap; }
 .builder-page .slide-thumbnail-object img,
-.builder-page .slide-thumbnail-object video { width: 100%; height: 100%; object-fit: cover; background: #111; }
+.builder-page .slide-thumbnail-object video { width: 100%; height: 100%; object-fit: contain; background: #111; }
 .builder-page .slide-thumbnail-object.is-video::after { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(0,0,0,.18); font-family: bootstrap-icons; font-size: 20px; content: "\f4f4"; }
 .builder-page .slide-thumbnail-audio { position: absolute; z-index: 5; right: 6px; bottom: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #111; background: var(--yellow-strong); font-size: 11px; box-shadow: 0 2px 7px rgba(0,0,0,.2); }
 .builder-page .slide-actions-inline { position: absolute; z-index: 6; top: 5px; right: 5px; display: flex; gap: 3px; opacity: .2; transition: opacity .15s ease; }
@@ -704,7 +715,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .slide-actions-inline button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid rgba(0,0,0,.18); border-radius: 3px; color: #111; background: rgba(255,255,255,.92); font-size: 12px; }
 .builder-page .slide-actions-inline button:hover { color: #fff; background: #111; }
 .builder-page .slide-actions-inline button.is-danger:hover { background: #b9382f; }
-.builder-page .fabric-video-overlay { position: absolute; z-index: 2; object-fit: cover; background: #111; pointer-events: none; }
+.builder-page .fabric-video-overlay { position: absolute; z-index: 2; object-fit: contain; background: #111; pointer-events: none; }
 .builder-page .fabric-video-control { position: absolute; z-index: 5; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(255,255,255,.65); border-radius: 50%; color: #fff; background: rgba(0,0,0,.72); box-shadow: 0 3px 12px rgba(0,0,0,.28); }
 .builder-page .fabric-video-control:hover { background: #000; transform: scale(1.05); }
 .builder-page .builder-audio-dock { position: absolute; z-index: 8; right: 14px; bottom: 14px; left: 14px; display: grid; grid-template-columns: 36px minmax(120px, .8fr) auto minmax(190px, 1.7fr) 30px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; color: #fff; background: rgba(17,17,17,.94); box-shadow: 0 8px 28px rgba(0,0,0,.3); }
@@ -770,4 +781,315 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* === SnapKey branding + compact builder ribbon icons === */
+.builder-logo {
+  width: 105px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
+}
+
+.builder-page .tool-button i {
+  font-size: 15px;
+}
+
+.builder-page .tool-button.tool-tall i {
+  font-size: 18px;
+}
+
+.builder-page .preset-card {
+  min-width: 66px;
+  height: 62px;
+  padding: 5px;
+  font-size: 10px;
+}
+
+.builder-page .preset-card i {
+  font-size: 16px;
+}
+
+/* =========================================================
+   PROFESSIONAL COMPACT BUILDER LAYOUT
+   Keeps functionality unchanged while giving more room
+   to slide thumbnails and the main slide canvas.
+   ========================================================= */
+
+/* Reduce vertical chrome and sidebar width.
+   These variables are already used by .app-shell and .canvas-stage,
+   so the freed space automatically becomes workspace space. */
+.builder-page {
+  --header-h: 58px;
+  --tabs-h: 40px;
+  --ribbon-h: 92px;
+  --status-h: 48px;
+  --sidebar-w: 248px;
+}
+
+/* Compact, professional top navigation tabs */
+.builder-page .tab-nav {
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  min-height: var(--tabs-h);
+}
+
+.builder-page .tab-button {
+  min-width: auto;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 5px 5px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.builder-page .tab-button:hover {
+  background: #f5f5f3;
+}
+
+.builder-page .tab-button.is-active {
+  background: #fff8d7;
+  font-weight: 700;
+}
+
+.builder-page .tab-button::after {
+  right: 10px;
+  bottom: -4px;
+  left: 10px;
+  height: 2px;
+}
+
+/* Compact ribbon container */
+.builder-page .ribbon {
+  min-height: var(--ribbon-h);
+  height: var(--ribbon-h);
+}
+
+.builder-page .ribbon-panel {
+  align-items: stretch;
+  height: 100%;
+}
+
+/* Smaller ribbon groups with less unused spacing */
+.builder-page .ribbon-group {
+  gap: 5px;
+  min-width: 72px;
+  padding: 6px 8px 19px;
+}
+
+.builder-page .ribbon-group-label {
+  right: 5px;
+  bottom: 3px;
+  left: 5px;
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* Compact buttons */
+.builder-page .tool-button {
+  gap: 4px;
+  min-width: 30px;
+  min-height: 26px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.builder-page .tool-button i {
+  font-size: 14px;
+}
+
+/* Large ribbon tools such as Paste/New Slide */
+.builder-page .tool-button.tool-tall {
+  min-width: 44px;
+  min-height: 54px;
+  height: 54px;
+  padding: 4px 5px;
+  font-size: 9px;
+}
+
+.builder-page .tool-button.tool-tall i {
+  font-size: 17px;
+}
+
+.builder-page .tool-button.tool-small {
+  min-width: 28px;
+  height: 28px;
+  padding: 4px;
+}
+
+.builder-page .tool-stack {
+  gap: 2px;
+}
+
+.builder-page .tool-row {
+  gap: 3px;
+}
+
+.builder-page .ribbon-separator {
+  height: 46px;
+  margin: 0 1px;
+}
+
+/* Compact form controls in the Home ribbon */
+.builder-page .ribbon-select,
+.builder-page .ribbon-input {
+  height: 28px;
+  padding: 0 26px 0 8px;
+  font-size: 10px;
+}
+
+.builder-page .font-select {
+  width: 132px;
+}
+
+.builder-page .size-select {
+  width: 58px;
+}
+
+.builder-page .builder-color-input {
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+}
+
+/* Smaller Home clipboard stack */
+.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack {
+  grid-template-columns: repeat(2, minmax(58px, 1fr));
+  gap: 1px 3px;
+}
+
+.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack .tool-button {
+  min-height: 20px;
+}
+
+/* Compact transition / animation cards */
+.builder-page .preset-card {
+  min-width: 58px;
+  width: 58px;
+  height: 56px;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  line-height: 1.05;
+}
+
+.builder-page .preset-card i {
+  font-size: 16px;
+}
+
+/* Compact theme cards too, so Design doesn't become taller than other tabs */
+.builder-page .theme-card {
+  min-width: 62px;
+  height: 58px;
+  gap: 2px;
+  padding: 4px;
+  font-size: 9px;
+}
+
+.builder-page .theme-preview {
+  width: 44px;
+  height: 30px;
+  font-size: 18px;
+}
+
+/* Give more useful space to the left slides panel */
+.builder-page .slides-pane {
+  padding: 11px 10px 14px;
+}
+
+.builder-page .slides-heading-row h2 {
+  font-size: 13px;
+}
+
+.builder-page .new-slide-button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.builder-page .slide-list {
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.builder-page .slide-item {
+  min-height: 92px;
+}
+
+/* Use more of the newly available area for the actual slide */
+.builder-page .workspace {
+  padding: 14px 24px;
+}
+
+.builder-page .canvas-stage {
+  width: min(
+    100%,
+    calc(
+      (100dvh - var(--header-h) - var(--tabs-h) - var(--ribbon-h) - var(--status-h) - 28px)
+      * var(--slide-ratio)
+    )
+  );
+  max-width: 1320px;
+}
+
+/* Slightly more compact header, while keeping it easy to use */
+.builder-page .app-header {
+  padding: 0 16px;
+}
+
+.builder-page .header-left {
+  gap: 10px;
+}
+
+.builder-page .header-right {
+  gap: 6px;
+}
+
+.builder-page .header-icon {
+  width: 34px;
+  height: 34px;
+  font-size: 17px;
+}
+
+.builder-page .header-present,
+.builder-page .header-share {
+  height: 36px;
+  padding: 0 15px;
+  font-size: 12px;
+}
+
+/* SnapKey logo sizing if the builder navbar uses .builder-logo */
+.builder-page .builder-logo {
+  display: block;
+  width: 100px;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+/* Smaller-screen safeguard */
+@media (max-width: 1280px) {
+  .builder-page {
+    --sidebar-w: 226px;
+    --tabs-h: 38px;
+    --ribbon-h: 88px;
+  }
+
+  .builder-page .tab-button {
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .builder-page .workspace {
+    padding: 10px 16px;
+  }
+
+  .builder-page .preset-card {
+    min-width: 54px;
+    width: 54px;
+  }
 }

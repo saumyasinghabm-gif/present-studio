@@ -61,3 +61,14 @@ html { height: auto; min-height: 100%; overflow-x: auto; overflow-y: auto; }
 .dashboard-page .toast { position: fixed; z-index: 1000; right: 24px; bottom: 24px; display: none; padding: 12px 16px; color: #fff; background: #111; }
 .dashboard-page .toast.show { display: block; }
 @media (max-width: 1100px) { .dashboard-main { width: calc(100vw - 42px); padding-top: 30px; } .dashboard-stats, .presentation-grid { gap: 15px; } .dashboard-cta { gap: 12px; padding: 20px; } }
+.dashboard-logo {
+    width: 105px;
+    height: 32px;
+    object-fit: contain;
+    display: block;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+}

@@ -9,7 +9,8 @@
   let presentation;
   let canvas;
   let currentSlideIndex = 0;
-  let audioEnabled = false;
+  let audioEnabled = true;
+  let controlsTimer;
 
   function textObject(item) {
     return new fabric.Textbox(item.text || "", {
@@ -40,18 +41,23 @@
     node.style.top = `${item.y || 0}%`;
     node.style.width = `${item.width || 100}%`;
     node.style.height = `${item.height || 100}%`;
-    node.style.objectFit = item.fit || "cover";
+    node.style.objectFit = item.fit || "contain";
     if (item.type === "video") {
       Object.assign(node, {
         autoplay: true,
-        muted: !audioEnabled,
+        muted: item.muted === true || !audioEnabled,
         loop: item.loop !== false,
         playsInline: true,
         controls: false
       });
     }
     byId("previewMedia").append(node);
-    if (item.type === "video") node.play().catch(() => {});
+    if (item.type === "video") node.play().catch(() => {
+      node.muted = true;
+      audioEnabled = false;
+      syncAudioControl();
+      node.play().catch(() => {});
+    });
   }
 
   function mediaItems(slide) {
@@ -65,7 +71,8 @@
       width: (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100,
       height: (((item.height || 0) * (item.scaleY || 1)) / 720) * 100,
       loop: item.loop,
-      fit: item.fit || "cover"
+      fit: item.fit || "contain",
+      muted: item.muted
     }));
     return [...legacy, ...fabricVideos].filter((item) => item.src);
   }
@@ -80,7 +87,12 @@
       audio.src = track.src;
       Object.assign(audio, { autoplay: true, muted: !audioEnabled, loop: track.loop !== false, playsInline: true });
       byId("previewMedia").append(audio);
-      audio.play().catch(() => {});
+      audio.play().catch(() => {
+        audio.muted = true;
+        audioEnabled = false;
+        syncAudioControl();
+        audio.play().catch(() => {});
+      });
     }
   }
 
@@ -165,6 +177,7 @@
     if (next === currentSlideIndex) return;
     currentSlideIndex = next;
     renderSlide();
+    syncNavigationControls();
   }
 
   function exitPreview() {
@@ -183,6 +196,28 @@
       media.muted = !audioEnabled;
       if (audioEnabled) media.play().catch(() => {});
     });
+    syncAudioControl();
+  }
+
+  function syncAudioControl() {
+    const button = byId("previewAudio");
+    if (!button) return;
+    button.textContent = audioEnabled ? "🔊" : "🔇";
+    button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio");
+  }
+
+  function syncNavigationControls() {
+    byId("previewPrevious").disabled = currentSlideIndex === 0;
+    byId("previewNext").disabled = currentSlideIndex === presentation.slides.length - 1;
+  }
+
+  function revealControls() {
+    const controls = byId("previewControls");
+    controls.classList.add("is-visible");
+    window.clearTimeout(controlsTimer);
+    controlsTimer = window.setTimeout(() => {
+      if (!controls.matches(":focus-within")) controls.classList.remove("is-visible");
+    }, 2400);
   }
 
   function showError(message) {
@@ -201,6 +236,14 @@
     canvas = new fabric.StaticCanvas("previewCanvas", { width: 1280, height: 720, selection: false });
     byId("previewLoading").hidden = true;
     byId("previewStage").hidden = false;
+    byId("previewPrevious").addEventListener("click", () => go(-1));
+    byId("previewNext").addEventListener("click", () => go(1));
+    byId("previewAudio").addEventListener("click", toggleAudio);
+    byId("previewExit").addEventListener("click", exitPreview);
+    ["pointermove", "pointerdown", "touchstart"].forEach((name) => document.addEventListener(name, revealControls, { passive: true }));
+    document.addEventListener("focusin", revealControls);
+    syncAudioControl();
+    syncNavigationControls();
     renderSlide();
   }
 

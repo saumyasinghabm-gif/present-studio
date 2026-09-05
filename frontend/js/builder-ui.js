@@ -12,6 +12,7 @@
   const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
   const MAX_MEDIA_UPLOAD_LABEL = "100 MB";
   let builderClipboard = null;
+  let builderClipboardText = "";
   let zoom = 100;
   let builderUploadRequestId = 0;
 
@@ -137,6 +138,7 @@
       if (video.src !== new URL(object.src, location.href).href) video.src = object.src;
       video.loop = Boolean(object.loop ?? true);
       if (video.paused) video.muted = Boolean(object.muted ?? false);
+      video.style.objectFit = object.fit || "contain";
       const bounds = object.getBoundingRect(true, true);
       const left = container.offsetLeft + bounds.left * scaleX;
       const top = container.offsetTop + bounds.top * scaleY;
@@ -332,6 +334,7 @@
 
   function editPresentationTitle() {
     if (!presentation) return;
+    if (!titleInput.readOnly) return;
     titleInput.readOnly = false;
     titleInput.focus();
     titleInput.select();
@@ -346,6 +349,7 @@
   }
 
   byId("editPresentationTitle").addEventListener("click", editPresentationTitle);
+  titleInput.addEventListener("click", editPresentationTitle);
   titleInput.addEventListener("dblclick", editPresentationTitle);
   titleInput.addEventListener("blur", commitPresentationTitle);
   titleInput.addEventListener("keydown", (event) => {
@@ -356,7 +360,7 @@
     }
   });
 
-  byId("addSlideProxy").addEventListener("click", () => addSlide());
+  byId("addSlideProxy")?.addEventListener("click", () => addSlide());
 
   byId("insertText").addEventListener("click", () => {
     const object = new fabric.Textbox("Type your text", {
@@ -390,23 +394,93 @@
   byId("insertRectangle")?.addEventListener("click", () => insertShape("rectangle"));
   byId("insertCircle")?.addEventListener("click", () => insertShape("circle"));
 
-  byId("copyObject").addEventListener("click", () => {
+  function copyObject() {
     const object = active();
-    if (!object) return toast("Select an element to copy.");
-    object.clone((clone) => { builderClipboard = clone; toast("Copied."); });
-  });
+    if (!object) { toast("Select an element to copy."); return false; }
+    object.clone((clone) => {
+      builderClipboard = clone;
+      builderClipboardText = ["textbox", "text", "i-text"].includes(object.type) ? object.text : `Present Studio object ${object.id || Date.now()}`;
+      navigator.clipboard?.writeText(builderClipboardText).catch(() => {});
+      toast("Object copied.");
+    });
+    return true;
+  }
 
-  byId("pasteObject").addEventListener("click", () => {
-    if (!builderClipboard) return toast("Copy an element first.");
+  function pasteObject() {
+    if (!builderClipboard) { toast("Copy an element first."); return; }
     builderClipboard.clone((clone) => {
       clone.set({ id: `element_${Date.now()}`, left: (clone.left || 0) + 28, top: (clone.top || 0) + 28 });
-      canvas.add(clone);
-      canvas.setActiveObject(clone);
+      if (clone.type === "activeSelection") {
+        clone.canvas = canvas;
+        clone.forEachObject((object, index) => {
+          object.set({ id: `element_${Date.now()}_${index}` });
+          canvas.add(object);
+        });
+        clone.setCoords();
+        canvas.setActiveObject(clone);
+      } else {
+        canvas.add(clone);
+        canvas.setActiveObject(clone);
+      }
       builderClipboard = clone;
       canvas.requestRenderAll();
+      panel();
       schedule();
+      toast("Object pasted.");
     });
-  });
+  }
+
+  function insertClipboardText(value) {
+    if (!value || !value.trim()) return false;
+    addText(value, { left: 220, top: 180, width: 840, fontSize: 36, textAlign: "left" });
+    toast("Text pasted as a new text box.");
+    return true;
+  }
+
+  function insertClipboardImage(blob) {
+    if (!blob) return false;
+    if (blob.size > MAX_MEDIA_UPLOAD_BYTES) { toast(`Clipboard image exceeds ${MAX_MEDIA_UPLOAD_LABEL}.`); return false; }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      image({ id: `image_${Date.now()}`, type: "image", src: reader.result, x: 15, y: 15, width: 70, height: 70, full_bleed: false, fit: "contain" });
+      toast("Image pasted onto the slide.");
+    });
+    reader.readAsDataURL(blob);
+    return true;
+  }
+
+  function imageSourceFromHtml(html) {
+    if (!html) return "";
+    try { return new DOMParser().parseFromString(html, "text/html").querySelector("img")?.src || ""; }
+    catch { return ""; }
+  }
+
+  function insertClipboardImageSource(src) {
+    if (!src) return false;
+    image({ id: `image_${Date.now()}`, type: "image", src, x: 15, y: 15, width: 70, height: 70, full_bleed: false, fit: "contain" });
+    toast("Image pasted onto the slide.");
+    return true;
+  }
+
+  async function pasteFromSystemClipboard() {
+    try {
+      if (navigator.clipboard?.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find((type) => type.startsWith("image/"));
+          if (imageType) return insertClipboardImage(await item.getType(imageType));
+        }
+      }
+      const value = await navigator.clipboard?.readText();
+      if (builderClipboard && value === builderClipboardText) return pasteObject();
+      if (insertClipboardText(value || "")) return;
+    } catch {}
+    if (builderClipboard) return pasteObject();
+    toast("Copy text or an image, then press Ctrl+V on the slide.");
+  }
+
+  byId("copyObject").addEventListener("click", copyObject);
+  byId("pasteObject").addEventListener("click", pasteFromSystemClipboard);
 
   all("[data-slide-background]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -424,9 +498,6 @@
     schedule();
   });
 
-  byId("fontFamily").addEventListener("change", (event) => format({ fontFamily: event.target.value }));
-  byId("fontSize").addEventListener("input", (event) => format({ fontSize: Number(event.target.value) }));
-  byId("textColor").addEventListener("input", (event) => format({ fill: event.target.value }));
   all("[data-media-input]").forEach((input) => input.addEventListener("change", upload));
 
   byId("transitionType").addEventListener("change", (event) => {
@@ -530,7 +601,7 @@
   }
 
   byId("quickPreview")?.addEventListener("click", () => openPreview(currentSlideIndex));
-  byId("quickPresent").addEventListener("click", () => start());
+  byId("quickPresent")?.addEventListener("click", () => start());
   byId("builderHelp").addEventListener("click", () => toast("Double-click text to edit it. Drag handles to resize and rotate."));
 
   function selectedText() {
@@ -714,11 +785,13 @@
         if (!object) return toast("Select an element to cut.");
         object.clone((clone) => { builderClipboard = clone; canvas.remove(object); canvas.requestRenderAll(); schedule(); });
         break;
-      case "bold": format({ fontWeight: textObject && (String(textObject.fontWeight) === "bold" || Number(textObject.fontWeight) >= 700) ? "normal" : "bold" }); break;
-      case "italic": format({ fontStyle: textObject?.fontStyle === "italic" ? "normal" : "italic" }); break;
-      case "underline": format({ underline: !textObject?.underline }); break;
-      case "strike": format({ linethrough: !textObject?.linethrough }); break;
-      case "highlight": format({ textBackgroundColor: textObject?.textBackgroundColor ? "" : "#fff0a8" }); break;
+      case "bold": { const value = selectedTextStyle(textObject, "fontWeight"); format({ fontWeight: String(value) === "bold" || Number(value) >= 700 ? "normal" : "bold" }); break; }
+      case "italic": format({ fontStyle: selectedTextStyle(textObject, "fontStyle") === "italic" ? "normal" : "italic" }); break;
+      case "underline": format({ underline: !selectedTextStyle(textObject, "underline") }); break;
+      case "strike": format({ linethrough: !selectedTextStyle(textObject, "linethrough") }); break;
+      case "highlight": format({ textBackgroundColor: selectedTextStyle(textObject, "textBackgroundColor") ? "" : "#fff0a8" }); break;
+      case "font-size-decrease": { const size = Number(selectedTextStyle(textObject, "fontSize") || textObject?.fontSize || 42); format({ fontSize: Math.max(8, size - 2) }); break; }
+      case "font-size-increase": { const size = Number(selectedTextStyle(textObject, "fontSize") || textObject?.fontSize || 42); format({ fontSize: Math.min(240, size + 2) }); break; }
       case "align-left": format({ textAlign: "left" }); break;
       case "align-center": format({ textAlign: "center" }); break;
       case "align-right": format({ textAlign: "right" }); break;
@@ -781,9 +854,32 @@
       event.preventDefault();
       byId("copyObject").click();
     }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && !event.target.matches("input,textarea")) {
+    if ((event.ctrlKey || event.metaKey) && ["b", "u", "i"].includes(event.key.toLowerCase()) && active()?.isEditing) {
       event.preventDefault();
-      byId("pasteObject").click();
+      const actionName = { b: "bold", u: "underline", i: "italic" }[event.key.toLowerCase()];
+      document.querySelector(`[data-builder-action="${actionName}"]`)?.click();
     }
+  });
+
+  document.addEventListener("paste", (event) => {
+    const target = event.target;
+    if (target?.matches?.("input,textarea,[contenteditable=true]") || active()?.isEditing) return;
+    const imageItem = [...(event.clipboardData?.items || [])].find((item) => item.kind === "file" && item.type.startsWith("image/"));
+    if (imageItem) {
+      event.preventDefault();
+      insertClipboardImage(imageItem.getAsFile());
+      return;
+    }
+    const htmlImage = imageSourceFromHtml(event.clipboardData?.getData("text/html") || "");
+    if (htmlImage) {
+      event.preventDefault();
+      insertClipboardImageSource(htmlImage);
+      return;
+    }
+    const value = event.clipboardData?.getData("text/plain") || "";
+    event.preventDefault();
+    if (builderClipboard && value === builderClipboardText) pasteObject();
+    else if (!insertClipboardText(value) && builderClipboard) pasteObject();
+    else if (!value) toast("Clipboard does not contain text or an image.");
   });
 })();

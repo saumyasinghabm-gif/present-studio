@@ -95,6 +95,7 @@
         video.style.top = `${((object.top || 0) / 720) * 100}%`;
         video.style.width = `${(((object.width || 0) * (object.scaleX || 1)) / 1280) * 100}%`;
         video.style.height = `${(((object.height || 0) * (object.scaleY || 1)) / 720) * 100}%`;
+        video.style.objectFit = object.fit || "contain";
         Object.assign(video, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked });
         mediaLayer.append(video);
         activeMedia = video;

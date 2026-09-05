@@ -37,3 +37,47 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.preview-page .preview-controls {
+  position: fixed;
+  z-index: 20;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 7px;
+  background: rgba(18,18,18,.78);
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+.preview-page .preview-controls.is-visible,
+.preview-page .preview-controls:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.preview-page .preview-controls button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  background: transparent;
+  font: 600 22px/1 Arial, sans-serif;
+  cursor: pointer;
+}
+
+.preview-page .preview-controls button:hover,
+.preview-page .preview-controls button:focus-visible { background: rgba(255,255,255,.18); }
+.preview-page .preview-controls button:disabled { opacity: .35; cursor: default; }
+#previewAudio { font-size: 16px; }
