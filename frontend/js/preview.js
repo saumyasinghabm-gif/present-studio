@@ -11,6 +11,10 @@
   let currentSlideIndex = 0;
   let audioEnabled = true;
   let controlsTimer;
+  let penEnabled = false;
+  let drawing = false;
+  let zoomIndex = 0;
+  const zoomLevels = [1, 1.25, 1.5, 2];
 
   function textObject(item) {
     return new fabric.Textbox(item.text || "", {
@@ -41,7 +45,7 @@
     node.style.top = `${item.y || 0}%`;
     node.style.width = `${item.width || 100}%`;
     node.style.height = `${item.height || 100}%`;
-    node.style.objectFit = item.fit || "contain";
+    node.style.objectFit = item.fit || (item.full_bleed ? "fill" : "contain");
     if (item.type === "video") {
       Object.assign(node, {
         autoplay: true,
@@ -71,7 +75,7 @@
       width: (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100,
       height: (((item.height || 0) * (item.scaleY || 1)) / 720) * 100,
       loop: item.loop,
-      fit: item.fit || "contain",
+      fit: item.fit || (item.full_bleed ? "fill" : "contain"),
       muted: item.muted
     }));
     return [...legacy, ...fabricVideos].filter((item) => item.src);
@@ -176,6 +180,7 @@
     const next = Math.max(0, Math.min(presentation.slides.length - 1, currentSlideIndex + delta));
     if (next === currentSlideIndex) return;
     currentSlideIndex = next;
+    clearInk();
     renderSlide();
     syncNavigationControls();
   }
@@ -211,6 +216,65 @@
     byId("previewNext").disabled = currentSlideIndex === presentation.slides.length - 1;
   }
 
+  function inkPoint(event) {
+    const ink = byId("previewInkCanvas");
+    const bounds = ink.getBoundingClientRect();
+    return { x: (event.clientX - bounds.left) * ink.width / bounds.width, y: (event.clientY - bounds.top) * ink.height / bounds.height };
+  }
+
+  function togglePen() {
+    penEnabled = !penEnabled;
+    const ink = byId("previewInkCanvas");
+    const button = byId("previewPen");
+    ink.classList.toggle("is-drawing", penEnabled);
+    button.classList.toggle("is-active", penEnabled);
+    button.setAttribute("aria-pressed", String(penEnabled));
+    button.setAttribute("aria-label", penEnabled ? "Turn off highlighter" : "Turn on highlighter");
+    revealControls();
+  }
+
+  function clearInk() {
+    const ink = byId("previewInkCanvas");
+    if (ink) ink.getContext("2d").clearRect(0, 0, ink.width, ink.height);
+  }
+
+  function cycleZoom() {
+    zoomIndex = (zoomIndex + 1) % zoomLevels.length;
+    const scale = zoomLevels[zoomIndex];
+    const frame = byId("previewFrame");
+    frame.style.transformOrigin = "center center";
+    frame.style.transform = `scale(${scale})`;
+    byId("previewZoom").textContent = `${Math.round(scale * 100)}%`;
+    byId("previewZoom").setAttribute("aria-label", `Zoom preview, currently ${Math.round(scale * 100)} percent`);
+    revealControls();
+  }
+
+  function bindInkCanvas() {
+    const ink = byId("previewInkCanvas");
+    const context = ink.getContext("2d");
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.lineWidth = 18;
+    context.strokeStyle = "rgba(255, 220, 45, .72)";
+    ink.addEventListener("pointerdown", (event) => {
+      if (!penEnabled) return;
+      drawing = true;
+      ink.setPointerCapture(event.pointerId);
+      const point = inkPoint(event);
+      context.beginPath();
+      context.moveTo(point.x, point.y);
+    });
+    ink.addEventListener("pointermove", (event) => {
+      if (!drawing) return;
+      const point = inkPoint(event);
+      context.lineTo(point.x, point.y);
+      context.stroke();
+    });
+    const finish = () => { drawing = false; context.closePath(); };
+    ink.addEventListener("pointerup", finish);
+    ink.addEventListener("pointercancel", finish);
+  }
+
   function revealControls() {
     const controls = byId("previewControls");
     controls.classList.add("is-visible");
@@ -238,12 +302,16 @@
     byId("previewStage").hidden = false;
     byId("previewPrevious").addEventListener("click", () => go(-1));
     byId("previewNext").addEventListener("click", () => go(1));
+    byId("previewPen").addEventListener("click", togglePen);
+    byId("previewClearInk").addEventListener("click", clearInk);
+    byId("previewZoom").addEventListener("click", cycleZoom);
     byId("previewAudio").addEventListener("click", toggleAudio);
     byId("previewExit").addEventListener("click", exitPreview);
     ["pointermove", "pointerdown", "touchstart"].forEach((name) => document.addEventListener(name, revealControls, { passive: true }));
     document.addEventListener("focusin", revealControls);
     syncAudioControl();
     syncNavigationControls();
+    bindInkCanvas();
     renderSlide();
   }
 

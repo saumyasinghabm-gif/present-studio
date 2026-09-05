@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio - Preview</title>
     <link rel="stylesheet" href="/css/styles.css?v=20260905-media-fit">
-    <link rel="stylesheet" href="/css/preview.css?v=20260905-office-controls">
+    <link rel="stylesheet" href="/css/preview.css?v=20260905-pen-zoom">
   </head>
   <body class="present-page preview-page">
     <div class="present-loading" id="previewLoading">
@@ -23,10 +23,14 @@
       <div class="canvas-frame present-frame" id="previewFrame">
         <div class="present-media-layer" id="previewMedia" aria-hidden="true"></div>
         <canvas id="previewCanvas" width="1280" height="720" aria-label="Presentation preview"></canvas>
+        <canvas class="preview-ink-canvas" id="previewInkCanvas" width="1280" height="720" aria-label="Presentation annotations"></canvas>
       </div>
       <nav class="preview-controls" id="previewControls" aria-label="Preview controls">
         <button type="button" id="previewPrevious" aria-label="Previous slide" title="Previous slide">‹</button>
         <button type="button" id="previewNext" aria-label="Next slide" title="Next slide">›</button>
+        <button type="button" id="previewPen" aria-label="Turn on highlighter" title="Pen / highlighter" aria-pressed="false">✎</button>
+        <button type="button" id="previewClearInk" aria-label="Clear annotations" title="Clear annotations">⌫</button>
+        <button type="button" id="previewZoom" aria-label="Zoom preview" title="Zoom preview">100%</button>
         <button type="button" id="previewAudio" aria-label="Mute presentation audio" title="Sound">🔊</button>
         <button type="button" id="previewExit" aria-label="Exit preview" title="Exit preview">×</button>
       </nav>
@@ -34,6 +38,6 @@
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
     <script src="/js/api.js"></script>
-    <script src="/js/preview.js?v=20260905-office-controls"></script>
+    <script src="/js/preview.js?v=20260905-pen-zoom"></script>
   </body>
 </html>

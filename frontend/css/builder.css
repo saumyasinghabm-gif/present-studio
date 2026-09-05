@@ -640,8 +640,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .tool-button.tool-tall i { font-size: 21px; }
 .builder-page .preset-card { min-width: 78px; height: 76px; padding: 7px; font-size: 11px; }
 .builder-page .theme-card { min-width: 72px; padding: 5px; font-size: 10px; }
-.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack { display: grid; grid-template-columns: repeat(2, minmax(72px, 1fr)); align-content: start; gap: 1px 5px; }
-.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack .tool-button { min-height: 22px; }
+.builder-page .builder-clipboard-group > .tool-stack { display: grid; grid-template-columns: repeat(2, minmax(72px, 1fr)); align-content: start; gap: 1px 5px; }
+.builder-page .builder-clipboard-group > .tool-stack .tool-button { min-height: 22px; }
 .builder-page .ribbon-panel[hidden] { display: none !important; }
 .builder-page .builder-font-group[hidden] { display: flex !important; opacity: .48; }
 .builder-page .builder-font-group:not([hidden]) { display: flex; }
@@ -658,7 +658,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .file-ribbon-tool input,
 .builder-page .builder-hidden-color { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .builder-page .builder-media-library { min-width: 280px; max-width: 520px; }
-.builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(3, minmax(118px, 1fr)); gap: 1px 8px; }
+.builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 2px 6px; }
+.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(3, minmax(76px, 1fr)); gap: 3px 5px; }
+.builder-page .media-options-stack { align-items: flex-start; min-width: 138px; }
+.builder-page .media-limit-note { color: #666; font-size: 9px; line-height: 1.2; white-space: nowrap; }
+.builder-page .smart-guide-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .builder-page .builder-media-count { align-self: center; color: #666; font-size: 11px; white-space: nowrap; }
 .builder-page .media-library-grid { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 16px; }
 .builder-page .media-library-item {
@@ -822,7 +833,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page {
   --header-h: 58px;
   --tabs-h: 40px;
-  --ribbon-h: 92px;
+  --ribbon-h: 108px;
   --status-h: 48px;
   --sidebar-w: 248px;
 }
@@ -874,16 +885,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Smaller ribbon groups with less unused spacing */
 .builder-page .ribbon-group {
+  box-sizing: border-box;
   gap: 5px;
   min-width: 72px;
-  padding: 6px 8px 19px;
+  padding: 7px 8px 22px;
 }
 
 .builder-page .ribbon-group-label {
   right: 5px;
-  bottom: 3px;
+  bottom: 5px;
   left: 5px;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
 }
 
@@ -891,11 +903,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .tool-button {
   gap: 4px;
   min-width: 30px;
-  min-height: 26px;
-  padding: 3px 6px;
+  min-height: 27px;
+  padding: 4px 6px;
   border-radius: 4px;
   font-size: 10px;
-  line-height: 1;
+  line-height: 1.15;
 }
 
 .builder-page .tool-button i {
@@ -905,8 +917,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Large ribbon tools such as Paste/New Slide */
 .builder-page .tool-button.tool-tall {
   min-width: 44px;
-  min-height: 54px;
-  height: 54px;
+  min-height: 62px;
+  height: 62px;
   padding: 4px 5px;
   font-size: 9px;
 }
@@ -947,7 +959,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .builder-page .size-select {
-  width: 58px;
+  width: 64px;
+  padding: 0 6px;
+  text-align: center;
 }
 
 .builder-page .builder-color-input {
@@ -957,12 +971,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 /* Smaller Home clipboard stack */
-.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack {
+.builder-page .builder-clipboard-group > .tool-stack {
   grid-template-columns: repeat(2, minmax(58px, 1fr));
   gap: 1px 3px;
 }
 
-.builder-page [data-ribbon-panel="home"] .ribbon-group:nth-child(2) > .tool-stack .tool-button {
+.builder-page .builder-clipboard-group > .tool-stack .tool-button {
   min-height: 20px;
 }
 
@@ -1076,7 +1090,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .builder-page {
     --sidebar-w: 226px;
     --tabs-h: 38px;
-    --ribbon-h: 88px;
+    --ribbon-h: 104px;
   }
 
   .builder-page .tab-button {

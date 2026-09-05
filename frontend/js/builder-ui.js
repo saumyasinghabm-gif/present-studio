@@ -381,10 +381,14 @@
   });
 
   function insertShape(type) {
-    const common = { id: `shape_${Date.now()}`, left: 440, top: 240, fill: "#f5c842", stroke: "#101010", strokeWidth: 2 };
-    const object = type === "circle"
-      ? new fabric.Circle({ ...common, radius: 100 })
-      : new fabric.Rect({ ...common, width: 260, height: 180, rx: 4, ry: 4 });
+    const common = { id: `shape_${Date.now()}`, left: 510, top: 270, fill: "#f5c842", stroke: "#101010", strokeWidth: 2 };
+    const shapes = {
+      circle: () => new fabric.Circle({ ...common, left: 540, top: 250, radius: 100 }),
+      triangle: () => new fabric.Triangle({ ...common, left: 530, top: 255, width: 220, height: 190 }),
+      line: () => new fabric.Line([0, 0, 260, 0], { ...common, top: 360, fill: null, strokeWidth: 6 }),
+      arrow: () => new fabric.Path("M 0 35 L 180 35 L 180 0 L 260 60 L 180 120 L 180 85 L 0 85 Z", { ...common, top: 300 })
+    };
+    const object = shapes[type]?.() || new fabric.Rect({ ...common, width: 260, height: 180, rx: 4, ry: 4 });
     canvas.add(object);
     canvas.setActiveObject(object);
     canvas.requestRenderAll();
@@ -394,12 +398,15 @@
   byId("insertRectangle")?.addEventListener("click", () => insertShape("rectangle"));
   byId("insertCircle")?.addEventListener("click", () => insertShape("circle"));
 
+  let internalCopyPending = false;
+
   function copyObject() {
     const object = active();
     if (!object) { toast("Select an element to copy."); return false; }
     object.clone((clone) => {
       builderClipboard = clone;
       builderClipboardText = ["textbox", "text", "i-text"].includes(object.type) ? object.text : `Present Studio object ${object.id || Date.now()}`;
+      internalCopyPending = true;
       navigator.clipboard?.writeText(builderClipboardText).catch(() => {});
       toast("Object copied.");
     });
@@ -809,6 +816,7 @@
       case "section": ensure(activeSlide()).canvas.section = window.prompt("Section name", ensure(activeSlide()).canvas.section || "New section") || ""; schedule(); break;
       case "format-painter": if (!object) toast("Select a source element first."); else { const style = { fill: object.fill, fontFamily: object.fontFamily, fontSize: object.fontSize, fontWeight: object.fontWeight, fontStyle: object.fontStyle, stroke: object.stroke, strokeWidth: object.strokeWidth }; toast("Format copied. Select another element."); canvas.once("selection:created", (selection) => { selection.selected?.[0]?.set(style); canvas.requestRenderAll(); schedule(); }); } break;
       case "insert-text": break;
+      case "insert-shape": insertShape(button.dataset.shape || "rectangle"); break;
       case "word-art": addText("WORD ART", { fontSize: 74, fontWeight: "bold", fill: "#f5c842", backgroundColor: "#101010" }); break;
       case "shapes": { const kind = (window.prompt("Shape: rectangle or circle", "rectangle") || "rectangle").toLowerCase(); insertShape(kind === "circle" ? "circle" : "rectangle"); break; }
       case "icon": addSymbol("★"); break;
@@ -848,11 +856,110 @@
     }
   });
 
+  const SMART_GUIDE_THRESHOLD = 7;
+  let smartGuides = [];
+  let transformMeasurement = null;
+  const smartGuideCanvas = document.createElement("canvas");
+  smartGuideCanvas.width = W;
+  smartGuideCanvas.height = H;
+  smartGuideCanvas.className = "smart-guide-overlay";
+  smartGuideCanvas.setAttribute("aria-hidden", "true");
+  canvas.wrapperEl.append(smartGuideCanvas);
+  const smartGuideContext = smartGuideCanvas.getContext("2d");
+
+  function boundsFor(object) {
+    return object.getBoundingRect(true, true);
+  }
+
+  function nearestGuide(points, candidates) {
+    let best = null;
+    points.forEach((point) => candidates.forEach((candidate) => {
+      const delta = candidate - point;
+      if (Math.abs(delta) <= SMART_GUIDE_THRESHOLD && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, value: candidate };
+    }));
+    return best;
+  }
+
+  function updateSmartGuides(event, snap = true) {
+    const target = event.target;
+    if (!target) return;
+    let bounds = boundsFor(target);
+    const xCandidates = [0, W / 2, W];
+    const yCandidates = [0, H / 2, H];
+    canvas.getObjects().filter((object) => object !== target).forEach((object) => {
+      const other = boundsFor(object);
+      xCandidates.push(other.left, other.left + other.width / 2, other.left + other.width);
+      yCandidates.push(other.top, other.top + other.height / 2, other.top + other.height);
+    });
+    const xGuide = nearestGuide([bounds.left, bounds.left + bounds.width / 2, bounds.left + bounds.width], xCandidates);
+    const yGuide = nearestGuide([bounds.top, bounds.top + bounds.height / 2, bounds.top + bounds.height], yCandidates);
+    if (snap && xGuide) target.set("left", (target.left || 0) + xGuide.delta);
+    if (snap && yGuide) target.set("top", (target.top || 0) + yGuide.delta);
+    if (snap && (xGuide || yGuide)) { target.setCoords(); bounds = boundsFor(target); }
+    smartGuides = [xGuide && { axis: "x", value: xGuide.value }, yGuide && { axis: "y", value: yGuide.value }].filter(Boolean);
+    transformMeasurement = {
+      left: bounds.left,
+      top: bounds.top,
+      width: Math.round(bounds.width),
+      height: Math.round(bounds.height)
+    };
+    canvas.requestRenderAll();
+  }
+
+  function clearSmartGuides() {
+    smartGuides = [];
+    transformMeasurement = null;
+    smartGuideContext.clearRect(0, 0, W, H);
+  }
+
+  canvas.on("object:moving", (event) => updateSmartGuides(event, true));
+  canvas.on("mouse:up", clearSmartGuides);
+  canvas.on("object:modified", clearSmartGuides);
+  canvas.on("selection:cleared", clearSmartGuides);
+  window.addEventListener("pointerup", clearSmartGuides);
+  function renderSmartGuides() {
+    const context = smartGuideContext;
+    context.clearRect(0, 0, W, H);
+    if (!smartGuides.length && !transformMeasurement) return;
+    context.save();
+    context.strokeStyle = "#0d99ff";
+    context.lineWidth = 2;
+    context.setLineDash([7, 5]);
+    smartGuides.forEach((guide) => {
+      context.beginPath();
+      if (guide.axis === "x") { context.moveTo(guide.value, 0); context.lineTo(guide.value, H); }
+      else { context.moveTo(0, guide.value); context.lineTo(W, guide.value); }
+      context.stroke();
+    });
+    if (transformMeasurement) {
+      const label = transformMeasurement.angle === undefined
+        ? `${transformMeasurement.width} × ${transformMeasurement.height}`
+        : `${transformMeasurement.angle}°`;
+      context.setLineDash([]);
+      context.font = "600 15px Arial";
+      const width = context.measureText(label).width + 18;
+      const x = Math.max(4, Math.min(W - width - 4, transformMeasurement.left));
+      const y = Math.max(24, transformMeasurement.top - 12);
+      context.fillStyle = "#0d99ff";
+      context.fillRect(x, y - 20, width, 25);
+      context.fillStyle = "#fff";
+      context.fillText(label, x + 9, y - 3);
+    }
+    context.restore();
+  }
+
+  canvas.on("after:render", renderSmartGuides);
+
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !shareModal.hidden) closeShare();
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && !event.target.matches("input,textarea")) {
       event.preventDefault();
       byId("copyObject").click();
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && internalCopyPending && !event.target.matches("input,textarea,[contenteditable=true]") && !active()?.isEditing) {
+      event.preventDefault();
+      internalCopyPending = false;
+      pasteObject();
     }
     if ((event.ctrlKey || event.metaKey) && ["b", "u", "i"].includes(event.key.toLowerCase()) && active()?.isEditing) {
       event.preventDefault();
@@ -863,23 +970,27 @@
 
   document.addEventListener("paste", (event) => {
     const target = event.target;
-    if (target?.matches?.("input,textarea,[contenteditable=true]") || active()?.isEditing) return;
     const imageItem = [...(event.clipboardData?.items || [])].find((item) => item.kind === "file" && item.type.startsWith("image/"));
     if (imageItem) {
       event.preventDefault();
+      active()?.exitEditing?.();
       insertClipboardImage(imageItem.getAsFile());
       return;
     }
     const htmlImage = imageSourceFromHtml(event.clipboardData?.getData("text/html") || "");
     if (htmlImage) {
       event.preventDefault();
+      active()?.exitEditing?.();
       insertClipboardImageSource(htmlImage);
       return;
     }
+    if (target?.matches?.("input,textarea,[contenteditable=true]") || active()?.isEditing) return;
     const value = event.clipboardData?.getData("text/plain") || "";
     event.preventDefault();
     if (builderClipboard && value === builderClipboardText) pasteObject();
     else if (!insertClipboardText(value) && builderClipboard) pasteObject();
     else if (!value) toast("Clipboard does not contain text or an image.");
   });
+
+  window.addEventListener("blur", () => { internalCopyPending = false; });
 })();
