@@ -13,8 +13,9 @@
   let controlsTimer;
   let penEnabled = false;
   let drawing = false;
-  let zoomIndex = 0;
-  const zoomLevels = [1, 1.25, 1.5, 2];
+  let zoomScale = 1;
+  let zoomSelecting = false;
+  let zoomSelectionStart = null;
 
   function textObject(item) {
     return new fabric.Textbox(item.text || "", {
@@ -223,6 +224,7 @@
   }
 
   function togglePen() {
+    if (!penEnabled && zoomSelecting) cancelZoomSelection();
     penEnabled = !penEnabled;
     const ink = byId("previewInkCanvas");
     const button = byId("previewPen");
@@ -238,15 +240,97 @@
     if (ink) ink.getContext("2d").clearRect(0, 0, ink.width, ink.height);
   }
 
-  function cycleZoom() {
-    zoomIndex = (zoomIndex + 1) % zoomLevels.length;
-    const scale = zoomLevels[zoomIndex];
+  function setZoom(scale, focus = null) {
+    const normalized = Math.max(.5, Math.min(4, Number(scale) || 1));
     const frame = byId("previewFrame");
-    frame.style.transformOrigin = "center center";
-    frame.style.transform = `scale(${scale})`;
-    byId("previewZoom").textContent = `${Math.round(scale * 100)}%`;
-    byId("previewZoom").setAttribute("aria-label", `Zoom preview, currently ${Math.round(scale * 100)} percent`);
+    zoomScale = normalized;
+    if (focus) {
+      frame.style.transformOrigin = "0 0";
+      frame.style.transform = `translate(${frame.clientWidth / 2 - focus.x * normalized}px, ${frame.clientHeight / 2 - focus.y * normalized}px) scale(${normalized})`;
+      byId("previewZoom").value = "custom";
+    } else {
+      frame.style.transformOrigin = "center center";
+      frame.style.transform = normalized === 1 ? "none" : `scale(${normalized})`;
+      const exactOption = [...byId("previewZoom").options].find((option) => Number(option.value) === normalized);
+      byId("previewZoom").value = exactOption ? String(normalized) : "custom";
+    }
+    byId("previewZoom").setAttribute("aria-label", `Zoom level, currently ${Math.round(normalized * 100)} percent`);
     revealControls();
+  }
+
+  function stepZoom(delta) {
+    setZoom(Math.round((zoomScale + delta) * 4) / 4);
+  }
+
+  function cancelZoomSelection() {
+    zoomSelecting = false;
+    zoomSelectionStart = null;
+    byId("previewZoomLayer")?.classList.remove("is-selecting");
+    byId("previewZoomSelect")?.classList.remove("is-active");
+    byId("previewZoomSelect")?.setAttribute("aria-pressed", "false");
+    const selection = byId("previewZoomSelection");
+    if (selection) selection.hidden = true;
+  }
+
+  function toggleZoomSelection() {
+    if (zoomSelecting) return cancelZoomSelection();
+    if (penEnabled) togglePen();
+    setZoom(1);
+    zoomSelecting = true;
+    byId("previewZoomLayer").classList.add("is-selecting");
+    byId("previewZoomSelect").classList.add("is-active");
+    byId("previewZoomSelect").setAttribute("aria-pressed", "true");
+    revealControls();
+  }
+
+  function bindZoomSelection() {
+    const layer = byId("previewZoomLayer");
+    const selection = byId("previewZoomSelection");
+    const point = (event) => {
+      const bounds = layer.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(bounds.width, event.clientX - bounds.left)),
+        y: Math.max(0, Math.min(bounds.height, event.clientY - bounds.top))
+      };
+    };
+    const drawSelection = (current) => {
+      const left = Math.min(zoomSelectionStart.x, current.x);
+      const top = Math.min(zoomSelectionStart.y, current.y);
+      selection.style.left = `${left}px`;
+      selection.style.top = `${top}px`;
+      selection.style.width = `${Math.abs(current.x - zoomSelectionStart.x)}px`;
+      selection.style.height = `${Math.abs(current.y - zoomSelectionStart.y)}px`;
+    };
+    layer.addEventListener("pointerdown", (event) => {
+      if (!zoomSelecting) return;
+      zoomSelectionStart = point(event);
+      selection.hidden = false;
+      drawSelection(zoomSelectionStart);
+      layer.setPointerCapture(event.pointerId);
+    });
+    layer.addEventListener("pointermove", (event) => {
+      if (!zoomSelectionStart) return;
+      drawSelection(point(event));
+    });
+    layer.addEventListener("pointerup", (event) => {
+      if (!zoomSelectionStart) return;
+      const end = point(event);
+      const width = Math.abs(end.x - zoomSelectionStart.x);
+      const height = Math.abs(end.y - zoomSelectionStart.y);
+      const center = { x: (end.x + zoomSelectionStart.x) / 2, y: (end.y + zoomSelectionStart.y) / 2 };
+      const scale = Math.min(layer.clientWidth / Math.max(width, 1), layer.clientHeight / Math.max(height, 1), 4);
+      cancelZoomSelection();
+      if (width >= 20 && height >= 20) setZoom(scale, center);
+    });
+    layer.addEventListener("pointercancel", cancelZoomSelection);
+  }
+
+  function highlighterColor(hex) {
+    const value = String(hex || "#ffdc2d").replace("#", "");
+    const normalized = value.length === 3 ? value.split("").map((part) => part + part).join("") : value;
+    const number = Number.parseInt(normalized, 16);
+    if (!Number.isFinite(number)) return "rgba(255,220,45,.72)";
+    return `rgba(${number >> 16},${(number >> 8) & 255},${number & 255},.72)`;
   }
 
   function bindInkCanvas() {
@@ -254,11 +338,11 @@
     const context = ink.getContext("2d");
     context.lineCap = "round";
     context.lineJoin = "round";
-    context.lineWidth = 18;
-    context.strokeStyle = "rgba(255, 220, 45, .72)";
     ink.addEventListener("pointerdown", (event) => {
       if (!penEnabled) return;
       drawing = true;
+      context.lineWidth = Number(byId("previewPenSize").value) || 18;
+      context.strokeStyle = highlighterColor(byId("previewPenColor").value);
       ink.setPointerCapture(event.pointerId);
       const point = inkPoint(event);
       context.beginPath();
@@ -304,7 +388,13 @@
     byId("previewNext").addEventListener("click", () => go(1));
     byId("previewPen").addEventListener("click", togglePen);
     byId("previewClearInk").addEventListener("click", clearInk);
-    byId("previewZoom").addEventListener("click", cycleZoom);
+    byId("previewZoomOut").addEventListener("click", () => stepZoom(-.25));
+    byId("previewZoomIn").addEventListener("click", () => stepZoom(.25));
+    byId("previewZoomReset").addEventListener("click", () => setZoom(1));
+    byId("previewZoomSelect").addEventListener("click", toggleZoomSelection);
+    byId("previewZoom").addEventListener("change", (event) => {
+      if (event.target.value !== "custom") setZoom(event.target.value);
+    });
     byId("previewAudio").addEventListener("click", toggleAudio);
     byId("previewExit").addEventListener("click", exitPreview);
     ["pointermove", "pointerdown", "touchstart"].forEach((name) => document.addEventListener(name, revealControls, { passive: true }));
@@ -312,6 +402,7 @@
     syncAudioControl();
     syncNavigationControls();
     bindInkCanvas();
+    bindZoomSelection();
     renderSlide();
   }
 

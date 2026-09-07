@@ -625,9 +625,15 @@
       fontSize: options.fontSize || 48,
       fontFamily: options.fontFamily || "Arial",
       fontWeight: options.fontWeight || "normal",
+      fontStyle: options.fontStyle || "normal",
       fill: options.fill || "#171717",
       textAlign: options.textAlign || "center",
-      backgroundColor: options.backgroundColor || ""
+      backgroundColor: options.backgroundColor || "",
+      stroke: options.stroke || null,
+      strokeWidth: Number(options.strokeWidth) || 0,
+      paintFirst: "stroke",
+      shadow: options.shadow || null,
+      wordArt: options.wordArt === true
     });
     canvas.add(object);
     canvas.setActiveObject(object);
@@ -817,7 +823,8 @@
       case "format-painter": if (!object) toast("Select a source element first."); else { const style = { fill: object.fill, fontFamily: object.fontFamily, fontSize: object.fontSize, fontWeight: object.fontWeight, fontStyle: object.fontStyle, stroke: object.stroke, strokeWidth: object.strokeWidth }; toast("Format copied. Select another element."); canvas.once("selection:created", (selection) => { selection.selected?.[0]?.set(style); canvas.requestRenderAll(); schedule(); }); } break;
       case "insert-text": break;
       case "insert-shape": insertShape(button.dataset.shape || "rectangle"); break;
-      case "word-art": addText("WORD ART", { fontSize: 74, fontWeight: "bold", fill: "#f5c842", backgroundColor: "#101010" }); break;
+      case "word-art": addText("WORD ART", { fontSize: 74, fontFamily: "Impact", fontWeight: "bold", fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: wordArtPresets.gold.shadow, wordArt: true }); syncWordArtControls("gold"); break;
+      case "word-art-reset": applyWordArtFormat({ fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: null }, "custom"); break;
       case "shapes": { const kind = (window.prompt("Shape: rectangle or circle", "rectangle") || "rectangle").toLowerCase(); insertShape(kind === "circle" ? "circle" : "rectangle"); break; }
       case "icon": addSymbol("★"); break;
       case "sticker": addSymbol("☺", 170); break;
@@ -856,6 +863,24 @@
     }
   });
 
+  byId("wordArtStyle")?.addEventListener("change", (event) => {
+    const preset = wordArtPresets[event.target.value];
+    if (preset) applyWordArtFormat(preset, event.target.value);
+  });
+  byId("wordArtFill")?.addEventListener("input", (event) => applyWordArtFormat({ fill: event.target.value }));
+  byId("wordArtOutline")?.addEventListener("input", (event) => applyWordArtFormat({ stroke: event.target.value }));
+  byId("wordArtOutlineWidth")?.addEventListener("input", (event) => {
+    byId("wordArtOutlineValue").textContent = `${event.target.value} px`;
+    applyWordArtFormat({ strokeWidth: Number(event.target.value) });
+  });
+  byId("wordArtShadow")?.addEventListener("change", (event) => {
+    applyWordArtFormat({ shadow: event.target.checked ? { color: "rgba(0,0,0,.35)", blur: 8, offsetX: 5, offsetY: 5 } : null });
+  });
+  canvas.on("selection:created", () => syncWordArtControls());
+  canvas.on("selection:updated", () => syncWordArtControls());
+  canvas.on("selection:cleared", () => syncWordArtControls());
+  syncWordArtControls();
+
   const SMART_GUIDE_THRESHOLD = 7;
   let smartGuides = [];
   let transformMeasurement = null;
@@ -869,6 +894,44 @@
 
   function boundsFor(object) {
     return object.getBoundingRect(true, true);
+  }
+
+  const wordArtPresets = {
+    gold: { fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: { color: "rgba(0,0,0,.35)", blur: 8, offsetX: 5, offsetY: 5 } },
+    ocean: { fill: "#53d8fb", stroke: "#075985", strokeWidth: 3, shadow: { color: "rgba(7,89,133,.35)", blur: 10, offsetX: 4, offsetY: 5 } },
+    outline: { fill: "#ffffff", stroke: "#111827", strokeWidth: 5, shadow: null },
+    neon: { fill: "#f0abfc", stroke: "#86198f", strokeWidth: 2, shadow: { color: "#d946ef", blur: 18, offsetX: 0, offsetY: 0 } }
+  };
+
+  function isTextObject(object) {
+    return object && ["textbox", "text", "i-text"].includes(object.type);
+  }
+
+  function applyWordArtFormat(changes, preset = "custom") {
+    const object = active();
+    if (!isTextObject(object)) return toast("Select WordArt or text to format it.");
+    object.set({ ...changes, wordArt: true, paintFirst: "stroke" });
+    object.dirty = true;
+    object.initDimensions?.();
+    object.setCoords();
+    canvas.requestRenderAll();
+    syncWordArtControls(preset);
+    schedule();
+  }
+
+  function syncWordArtControls(preset = "custom") {
+    const object = active();
+    const enabled = isTextObject(object);
+    const controls = ["wordArtStyle", "wordArtFill", "wordArtOutline", "wordArtOutlineWidth", "wordArtShadow"]
+      .map(byId).filter(Boolean);
+    controls.forEach((control) => { control.disabled = !enabled; });
+    if (!enabled) return;
+    byId("wordArtStyle").value = preset;
+    byId("wordArtFill").value = safeColor(object.fill, "#f5c842").slice(0, 7);
+    byId("wordArtOutline").value = safeColor(object.stroke, "#8a5b00").slice(0, 7);
+    byId("wordArtOutlineWidth").value = Math.max(0, Math.min(12, Number(object.strokeWidth) || 0));
+    byId("wordArtOutlineValue").textContent = `${byId("wordArtOutlineWidth").value} px`;
+    byId("wordArtShadow").checked = Boolean(object.shadow);
   }
 
   function nearestGuide(points, candidates) {

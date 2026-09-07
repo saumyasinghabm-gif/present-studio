@@ -970,6 +970,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 2px;
 }
 
+.builder-page .wordart-tools { min-width: 252px; }
+.builder-page .wordart-style-select { width: 86px; }
+.builder-page .wordart-color,
+.builder-page .wordart-width,
+.builder-page .wordart-shadow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #555;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.builder-page .wordart-color { gap: 2px; }
+.builder-page .wordart-color .builder-color-input { width: 26px; }
+.builder-page .wordart-width input { width: 74px; accent-color: #d39e00; }
+.builder-page .wordart-width output { min-width: 26px; color: #222; }
+.builder-page .wordart-shadow input { margin: 0; accent-color: #d39e00; }
+.builder-page .wordart-format-group :disabled { opacity: .45; cursor: not-allowed; }
+
 /* Smaller Home clipboard stack */
 .builder-page .builder-clipboard-group > .tool-stack {
   grid-template-columns: repeat(2, minmax(58px, 1fr));
