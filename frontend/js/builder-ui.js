@@ -42,7 +42,9 @@
     return `<span class="slide-thumbnail-object" style="${style}background:${safeColor(object.fill, "#f5c842")};border:1px solid ${safeColor(object.stroke, "transparent")};"></span>`;
   }
 
-  let draggedSlideIndex = null;
+  let slidePointerDrag = null;
+  let suppressSlideClick = false;
+  let slideAutoScrollFrame = 0;
 
   function moveSlideTo(fromIndex, toIndex) {
     if (!presentation || fromIndex === toIndex || fromIndex < 0 || fromIndex >= presentation.slides.length) return;
@@ -63,6 +65,53 @@
     all("#slideList .slide-item").forEach((item) => item.classList.remove("is-drop-before", "is-drop-after"));
   }
 
+  function updateSlideDropPosition(clientY) {
+    if (!slidePointerDrag?.active) return;
+    const items = all("#slideList .slide-item");
+    let insertionIndex = items.length;
+    for (let index = 0; index < items.length; index += 1) {
+      const bounds = items[index].getBoundingClientRect();
+      if (clientY < bounds.top + bounds.height / 2) { insertionIndex = index; break; }
+    }
+    slidePointerDrag.insertionIndex = insertionIndex;
+    clearSlideDropIndicators();
+    if (!items.length) return;
+    if (insertionIndex >= items.length) items.at(-1).classList.add("is-drop-after");
+    else items[insertionIndex].classList.add("is-drop-before");
+  }
+
+  function autoScrollSlideList() {
+    if (!slidePointerDrag?.active) { slideAutoScrollFrame = 0; return; }
+    const pane = byId("slideList").closest(".slides-pane");
+    const bounds = pane.getBoundingClientRect();
+    const edge = 48;
+    let delta = 0;
+    if (slidePointerDrag.clientY < bounds.top + edge) delta = -Math.ceil((bounds.top + edge - slidePointerDrag.clientY) / 4);
+    if (slidePointerDrag.clientY > bounds.bottom - edge) delta = Math.ceil((slidePointerDrag.clientY - (bounds.bottom - edge)) / 4);
+    if (delta) {
+      pane.scrollTop += Math.max(-18, Math.min(18, delta));
+      updateSlideDropPosition(slidePointerDrag.clientY);
+    }
+    slideAutoScrollFrame = window.requestAnimationFrame(autoScrollSlideList);
+  }
+
+  function finishSlidePointerDrag(cancelled = false) {
+    if (!slidePointerDrag) return;
+    const drag = slidePointerDrag;
+    slidePointerDrag = null;
+    if (slideAutoScrollFrame) window.cancelAnimationFrame(slideAutoScrollFrame);
+    slideAutoScrollFrame = 0;
+    drag.item.classList.remove("is-dragging");
+    document.body.classList.remove("is-reordering-slides");
+    clearSlideDropIndicators();
+    if (!drag.active || cancelled) return;
+    suppressSlideClick = true;
+    window.setTimeout(() => { suppressSlideClick = false; }, 0);
+    let finalIndex = drag.insertionIndex;
+    if (drag.sourceIndex < finalIndex) finalIndex -= 1;
+    moveSlideTo(drag.sourceIndex, finalIndex);
+  }
+
   renderList = function renderBuilderSlideList() {
     if (!presentation) return;
     byId("slideList").innerHTML = presentation.slides.map((slide, index) => {
@@ -71,11 +120,14 @@
       const legacyObjects = fabricObjects.length ? [] : (data.elements || []);
       const objects = fabricObjects.map((object) => thumbnailObjectMarkup(object)).join("") + legacyObjects.map((object) => thumbnailObjectMarkup(object, true)).join("");
       const audioBadge = data.audio?.src ? '<span class="slide-thumbnail-audio" title="Slide has music"><i class="bi bi-music-note-beamed"></i></span>' : "";
-      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" draggable="true" tabindex="0" role="button" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}. Drag to reorder."><span class="slide-drag-handle" title="Drag to reorder" aria-hidden="true"><i class="bi bi-grip-horizontal"></i></span><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
+      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}. Drag to reorder."><span class="slide-drag-handle" title="Drag to reorder" aria-hidden="true"><i class="bi bi-grip-horizontal"></i></span><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
     }).join("");
     all("#slideList .slide-item").forEach((item) => {
       const open = () => { capture(); currentSlideIndex = Number(item.dataset.index); render(); };
-      item.addEventListener("click", (event) => { if (!event.target.closest(".slide-actions-inline, .slide-drag-handle")) open(); });
+      item.addEventListener("click", (event) => {
+        if (suppressSlideClick) { event.preventDefault(); event.stopPropagation(); return; }
+        if (!event.target.closest(".slide-actions-inline, .slide-drag-handle")) open();
+      });
       item.addEventListener("keydown", (event) => {
         const index = Number(item.dataset.index);
         if (event.altKey && ["ArrowUp", "ArrowDown"].includes(event.key)) {
@@ -85,39 +137,29 @@
         }
         if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); }
       });
-      item.addEventListener("dragstart", (event) => {
-        if (event.target.closest(".slide-actions-inline")) { event.preventDefault(); return; }
-        draggedSlideIndex = Number(item.dataset.index);
-        item.classList.add("is-dragging");
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", String(draggedSlideIndex));
+      item.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || event.target.closest(".slide-actions-inline")) return;
+        if (event.pointerType !== "mouse" && !event.target.closest(".slide-drag-handle")) return;
+        slidePointerDrag = { item, pointerId: event.pointerId, sourceIndex: Number(item.dataset.index), startX: event.clientX, startY: event.clientY, clientY: event.clientY, insertionIndex: Number(item.dataset.index), active: false };
+        item.setPointerCapture(event.pointerId);
       });
-      item.addEventListener("dragover", (event) => {
-        if (draggedSlideIndex === null) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        clearSlideDropIndicators();
-        const after = event.clientY > item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
-        item.classList.add(after ? "is-drop-after" : "is-drop-before");
+      item.addEventListener("pointermove", (event) => {
+        if (!slidePointerDrag || slidePointerDrag.pointerId !== event.pointerId) return;
+        slidePointerDrag.clientY = event.clientY;
+        const distance = Math.hypot(event.clientX - slidePointerDrag.startX, event.clientY - slidePointerDrag.startY);
+        if (!slidePointerDrag.active && distance >= 7) {
+          slidePointerDrag.active = true;
+          item.classList.add("is-dragging");
+          document.body.classList.add("is-reordering-slides");
+          slideAutoScrollFrame = window.requestAnimationFrame(autoScrollSlideList);
+        }
+        if (slidePointerDrag.active) {
+          event.preventDefault();
+          updateSlideDropPosition(event.clientY);
+        }
       });
-      item.addEventListener("drop", (event) => {
-        if (draggedSlideIndex === null) return;
-        event.preventDefault();
-        const targetIndex = Number(item.dataset.index);
-        const bounds = item.getBoundingClientRect();
-        const after = event.clientY > bounds.top + bounds.height / 2;
-        let insertionIndex = targetIndex + (after ? 1 : 0);
-        if (draggedSlideIndex < insertionIndex) insertionIndex -= 1;
-        const fromIndex = draggedSlideIndex;
-        draggedSlideIndex = null;
-        clearSlideDropIndicators();
-        moveSlideTo(fromIndex, insertionIndex);
-      });
-      item.addEventListener("dragend", () => {
-        draggedSlideIndex = null;
-        item.classList.remove("is-dragging");
-        clearSlideDropIndicators();
-      });
+      item.addEventListener("pointerup", (event) => { if (slidePointerDrag?.pointerId === event.pointerId) finishSlidePointerDrag(); });
+      item.addEventListener("pointercancel", (event) => { if (slidePointerDrag?.pointerId === event.pointerId) finishSlidePointerDrag(true); });
     });
     all("[data-slide-duplicate]").forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation(); capture(); currentSlideIndex = Number(button.dataset.slideDuplicate); duplicateSlide();
