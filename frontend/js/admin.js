@@ -2,6 +2,7 @@ const api = window.PresentStudioApi;
 const usersTable = document.querySelector("#usersTable");
 const searchInput = document.querySelector("#userSearch");
 const refreshButton = document.querySelector("#refreshUsers");
+const builderButton = document.querySelector("#builderNav");
 const toast = document.querySelector("#toast");
 
 let adminUsers = [];
@@ -202,6 +203,21 @@ async function initialize() {
 
 searchInput.addEventListener("input", () => renderUsers(filteredUsers()));
 refreshButton.addEventListener("click", loadUsers);
+builderButton.addEventListener("click", async () => {
+  builderButton.disabled = true;
+  try {
+    const { presentations } = await api.listPresentations();
+    if (presentations.length) {
+      window.location.href = `/builder.html?id=${encodeURIComponent(presentations[0].id)}`;
+      return;
+    }
+    const { presentation } = await api.createPresentation("Untitled presentation");
+    window.location.href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
+  } catch (error) {
+    builderButton.disabled = false;
+    showToast(error.message);
+  }
+});
 document.querySelector("#profileButton").addEventListener("click", async () => {
   if (!window.confirm("Sign out of SnapKey Studio?")) return;
   try { await api.logout(); } catch (error) { /* Continue to login even if logout fails. */ }

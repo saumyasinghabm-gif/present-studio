@@ -517,6 +517,143 @@
     return true;
   }
 
+  function fitPastedTextToSlide(object, padding = 36) {
+    if (!object || !["textbox", "text", "i-text"].includes(object.type)) return object;
+    object.initDimensions?.();
+    object.setCoords();
+    let bounds = object.getBoundingRect(true, true);
+    const availableWidth = W - padding * 2;
+    const availableHeight = H - padding * 2;
+    const fitScale = Math.min(1, availableWidth / Math.max(1, bounds.width), availableHeight / Math.max(1, bounds.height));
+    if (fitScale < 1) {
+      object.set({
+        scaleX: (Number(object.scaleX) || 1) * fitScale,
+        scaleY: (Number(object.scaleY) || 1) * fitScale
+      });
+      object.setCoords();
+      bounds = object.getBoundingRect(true, true);
+    }
+    let left = Number(object.left) || 0;
+    let top = Number(object.top) || 0;
+    if (bounds.left < padding) left += padding - bounds.left;
+    if (bounds.top < padding) top += padding - bounds.top;
+    if (bounds.left + bounds.width > W - padding) left -= bounds.left + bounds.width - (W - padding);
+    if (bounds.top + bounds.height > H - padding) top -= bounds.top + bounds.height - (H - padding);
+    object.set({ left, top });
+    object.setCoords();
+    return object;
+  }
+
+  function resizeTextboxHeight(_eventData, transform, x, y) {
+    const object = transform.target;
+    const localPoint = fabric.controlsUtils.getLocalPoint(
+      transform,
+      transform.originX,
+      transform.originY,
+      x,
+      y
+    );
+    const scaleY = Math.max(0.001, Math.abs(Number(object.scaleY) || 1));
+    const strokePadding = (Number(object.strokeWidth) || 0) / (object.strokeUniform ? scaleY : 1);
+    const nextHeight = Math.abs(localPoint.y / scaleY) - strokePadding;
+    const contentHeight = Number(object.calcTextHeight?.()) || Number(object.height) || 24;
+    const minimumHeight = Math.max(24, contentHeight);
+    if (!Number.isFinite(nextHeight) || nextHeight < minimumHeight || Math.abs(nextHeight - object.height) < 0.5) {
+      return false;
+    }
+    object.set({ height: nextHeight });
+    return true;
+  }
+
+  const anchoredTextboxHeightResize = fabric.controlsUtils.wrapWithFixedAnchor(resizeTextboxHeight);
+
+  function textboxHeightControl(source) {
+    return new fabric.Control({
+      x: source.x,
+      y: source.y,
+      offsetX: source.offsetX,
+      offsetY: source.offsetY,
+      cursorStyle: source.cursorStyle,
+      cursorStyleHandler: source.cursorStyleHandler,
+      render: source.render,
+      actionName: "changeHeight",
+      actionHandler: anchoredTextboxHeightResize
+    });
+  }
+
+  function configureTextboxHeightHandles(object) {
+    if (object.type !== "textbox") {
+      object.setControlsVisibility?.({ mt: false, mb: false });
+      return;
+    }
+    if (!object.__hasHeightOnlyControls) {
+      object.controls = {
+        ...object.controls,
+        mt: textboxHeightControl(object.controls.mt),
+        mb: textboxHeightControl(object.controls.mb)
+      };
+      Object.defineProperty(object, "__hasHeightOnlyControls", { value: true, configurable: true });
+    }
+    object.setControlsVisibility?.({ mt: true, mb: true });
+  }
+
+  function configureTextResize(object, repairDistortion = false) {
+    if (!object || !["textbox", "text", "i-text"].includes(object.type)) return false;
+    object.set({ lockScalingFlip: true });
+    configureTextboxHeightHandles(object);
+    const scaleX = Math.abs(Number(object.scaleX) || 1);
+    const scaleY = Math.abs(Number(object.scaleY) || 1);
+    const isDistorted = Math.max(scaleX, scaleY) / Math.max(0.001, Math.min(scaleX, scaleY)) > 1.08;
+    if (!repairDistortion || !isDistorted) return false;
+
+    object.set({
+      width: Math.max(80, Math.min(W - 72, (Number(object.width) || 760) * scaleX)),
+      fontSize: Math.max(24, Number(object.fontSize) || 36),
+      scaleX: 1,
+      scaleY: 1
+    });
+    object.initDimensions?.();
+    fitPastedTextToSlide(object);
+    object.setCoords();
+    return true;
+  }
+
+  canvas.on("object:added", (event) => {
+    const object = event.target;
+    const repaired = configureTextResize(object, true);
+    if (repaired) {
+      canvas.requestRenderAll();
+      window.setTimeout(() => schedule(), 0);
+    }
+  });
+  canvas.on("selection:created", (event) => (event.selected || []).forEach((object) => configureTextResize(object)));
+  canvas.on("selection:updated", (event) => (event.selected || []).forEach((object) => configureTextResize(object)));
+
+  function clipboardTextStyle(html) {
+    if (!html) return {};
+    try {
+      const documentNode = new DOMParser().parseFromString(html, "text/html");
+      const node = documentNode.body.querySelector("h1,h2,h3,h4,h5,h6,p,li,div,span") || documentNode.body.firstElementChild;
+      if (!node) return {};
+      const style = node.style;
+      const sizeValue = String(style.fontSize || "").trim().toLowerCase();
+      const parsedSize = Number.parseFloat(sizeValue);
+      const fontSize = Number.isFinite(parsedSize) ? (sizeValue.endsWith("pt") ? parsedSize * 96 / 72 : parsedSize) : undefined;
+      const fontFamily = String(style.fontFamily || "").split(",")[0].replace(/["']/g, "").trim();
+      return {
+        ...(fontFamily ? { fontFamily } : {}),
+        ...(fontSize ? { fontSize: Math.max(24, Math.min(240, fontSize)) } : {}),
+        ...(style.fontWeight ? { fontWeight: style.fontWeight } : {}),
+        ...(style.fontStyle ? { fontStyle: style.fontStyle } : {}),
+        ...(safeColor(style.color, "") ? { fill: style.color } : {}),
+        ...(style.textAlign ? { textAlign: style.textAlign } : {}),
+        ...(safeColor(style.backgroundColor, "") ? { backgroundColor: style.backgroundColor } : {})
+      };
+    } catch {
+      return {};
+    }
+  }
+
   function pasteObject() {
     if (!builderClipboard) { toast("Copy an element first."); return; }
     builderClipboard.clone((clone) => {
@@ -530,6 +667,8 @@
         clone.setCoords();
         canvas.setActiveObject(clone);
       } else {
+        configureTextResize(clone, true);
+        fitPastedTextToSlide(clone);
         canvas.add(clone);
         canvas.setActiveObject(clone);
       }
@@ -541,9 +680,11 @@
     });
   }
 
-  function insertClipboardText(value) {
+  function insertClipboardText(value, style = {}) {
     if (!value || !value.trim()) return false;
-    addText(value, { left: 220, top: 180, width: 840, fontSize: 36, textAlign: "left" });
+    const object = addText(value, { left: 220, top: 120, width: 840, fontSize: 36, textAlign: "left", ...style });
+    fitPastedTextToSlide(object);
+    canvas.requestRenderAll();
     toast("Text pasted as a new text box.");
     return true;
   }
@@ -580,6 +721,12 @@
         for (const item of items) {
           const imageType = item.types.find((type) => type.startsWith("image/"));
           if (imageType) return insertClipboardImage(await item.getType(imageType));
+          if (item.types.includes("text/plain")) {
+            const value = await (await item.getType("text/plain")).text();
+            const html = item.types.includes("text/html") ? await (await item.getType("text/html")).text() : "";
+            if (builderClipboard && value === builderClipboardText) return pasteObject();
+            if (insertClipboardText(value, clipboardTextStyle(html))) return;
+          }
         }
       }
       const value = await navigator.clipboard?.readText();
@@ -638,11 +785,13 @@
   function updateZoom(next) {
     zoom = Math.max(50, Math.min(150, next));
     byId("zoomValue").textContent = `${zoom}%`;
-    byId("slideCanvas").style.width = `${zoom}%`;
-    byId("slideCanvas").style.maxWidth = zoom > 100 ? "none" : "1200px";
+    byId("canvasStage").style.setProperty("--canvas-zoom", String(zoom / 100));
+    byId("zoomOut").disabled = zoom <= 50;
+    byId("zoomIn").disabled = zoom >= 150;
   }
   byId("zoomOut").addEventListener("click", () => updateZoom(zoom - 10));
   byId("zoomIn").addEventListener("click", () => updateZoom(zoom + 10));
+  byId("fitToWindow").addEventListener("click", () => updateZoom(100));
 
   function openShare() { shareModal.hidden = false; }
   function closeShare() { shareModal.hidden = true; }
@@ -739,6 +888,7 @@
       shadow: options.shadow || null,
       wordArt: options.wordArt === true
     });
+    configureTextResize(object);
     canvas.add(object);
     canvas.setActiveObject(object);
     canvas.requestRenderAll();
@@ -1151,11 +1301,21 @@
       insertClipboardImageSource(htmlImage);
       return;
     }
-    if (target?.matches?.("input,textarea,[contenteditable=true]") || active()?.isEditing) return;
+    if (target?.matches?.("input,textarea,[contenteditable=true]")) return;
+    if (active()?.isEditing) {
+      const editingObject = active();
+      window.setTimeout(() => {
+        fitPastedTextToSlide(editingObject);
+        canvas.requestRenderAll();
+        schedule();
+      }, 0);
+      return;
+    }
     const value = event.clipboardData?.getData("text/plain") || "";
+    const html = event.clipboardData?.getData("text/html") || "";
     event.preventDefault();
     if (builderClipboard && value === builderClipboardText) pasteObject();
-    else if (!insertClipboardText(value) && builderClipboard) pasteObject();
+    else if (!insertClipboardText(value, clipboardTextStyle(html)) && builderClipboard) pasteObject();
     else if (!value) toast("Clipboard does not contain text or an image.");
   });
 
