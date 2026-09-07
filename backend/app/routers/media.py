@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 import cloudinary
 import cloudinary.uploader
@@ -44,11 +45,20 @@ async def upload_media(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, MediaAssetOut]:
-    configure_cloudinary()
     content = await file.read()
     if len(content) > 100 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Maximum upload size is 100 MB")
 
+    quota_user = db.query(User).filter(User.id == user.id).with_for_update().one()
+    storage_used = db.query(func.coalesce(func.sum(MediaAsset.size), 0)).filter(MediaAsset.owner_id == user.id).scalar() or 0
+    if quota_user.storage_limit_bytes is not None and int(storage_used) + len(content) > quota_user.storage_limit_bytes:
+        remaining = max(quota_user.storage_limit_bytes - int(storage_used), 0)
+        raise HTTPException(
+            status_code=413,
+            detail=f"Media storage limit reached. {remaining} bytes remaining; this upload requires {len(content)} bytes.",
+        )
+
+    configure_cloudinary()
     settings = get_settings()
     content_type = file.content_type or ""
     if not content_type.startswith(("image/", "video/", "audio/")):

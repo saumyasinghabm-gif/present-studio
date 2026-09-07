@@ -28,6 +28,10 @@
     listPresentations: () => request("/api/presentations"), getPresentation: (id, token = "") => request(`/api/presentations/${encodeURIComponent(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`),
     createPresentation: (title) => request("/api/presentations", { method: "POST", body: JSON.stringify({ title }) }), savePresentation: (deck) => request(`/api/presentations/${encodeURIComponent(deck.id)}`, { method: "PUT", body: JSON.stringify(deck) }), deletePresentation: (id) => request(`/api/presentations/${encodeURIComponent(id)}`, { method: "DELETE" }),
     createShareLink: (id, permission = "viewer") => request(`/api/presentations/${encodeURIComponent(id)}/share`, { method: "POST", body: JSON.stringify({ permission }) }), getLiveSession: (id) => request(`/api/presentations/${encodeURIComponent(id)}/live`), setLiveSlide: (id, slideId, token = "") => request(`/api/presentations/${encodeURIComponent(id)}/live/slide${token ? `?token=${encodeURIComponent(token)}` : ""}`, { method: "POST", body: JSON.stringify({ slideId }) }), endLiveSession: (id) => request(`/api/presentations/${encodeURIComponent(id)}/live/end`, { method: "POST" }),
-    listMedia: () => request("/api/media"), uploadMedia: (file) => { const form = new FormData(); form.append("file", file); return request("/api/media/upload", { method: "POST", body: form }); }
+    listMedia: () => request("/api/media"), uploadMedia: (file) => { const form = new FormData(); form.append("file", file); return request("/api/media/upload", { method: "POST", body: form }); },
+    listAdminUsers: () => request("/api/admin/users"),
+    updatePresentationLimit: (userId, presentationLimit) => request(`/api/admin/users/${encodeURIComponent(userId)}/presentation-limit`, { method: "PATCH", body: JSON.stringify({ presentationLimit }) }),
+    updateStorageLimit: (userId, storageLimitBytes) => request(`/api/admin/users/${encodeURIComponent(userId)}/storage-limit`, { method: "PATCH", body: JSON.stringify({ storageLimitBytes }) }),
+    revokeUser: (userId) => request(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" })
   };
 })();

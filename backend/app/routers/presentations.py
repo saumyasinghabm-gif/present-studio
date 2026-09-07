@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
@@ -39,6 +40,14 @@ def create_presentation(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> PresentationPayload:
+    quota_user = db.query(User).filter(User.id == user.id).with_for_update().one()
+    presentation_count = db.query(func.count(Presentation.id)).filter(Presentation.owner_id == user.id).scalar() or 0
+    if presentation_count >= quota_user.presentation_limit:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Presentation limit reached ({presentation_count}/{quota_user.presentation_limit}). Contact an administrator to increase your limit.",
+        )
+
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
     title = payload.title.strip() or "Untitled presentation"
     presentation = Presentation(id=f"pres_{now}", title=title, owner_id=user.id)

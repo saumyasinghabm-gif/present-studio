@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -12,6 +12,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(32), default="owner")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    presentation_limit: Mapped[int] = mapped_column(Integer, default=10, server_default="10")
+    storage_limit_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     presentations: Mapped[list["Presentation"]] = relationship(back_populates="owner")

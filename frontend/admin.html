@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SnapKey Studio administration dashboard.">
+  <title>SnapKey Studio — Admin</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/builder.css?v=20260905-logo-fix">
+  <link rel="stylesheet" href="/css/admin.css?v=20260907-storage-controls">
+</head>
+<body class="admin-page">
+  <header class="app-header admin-header">
+    <div class="header-left">
+      <a class="brand" href="/dashboard.html" aria-label="SnapKey dashboard">
+        <img src="/assets/snapkey.png" alt="SnapKey" class="app-logo">
+        <span>SNAPKEY STUDIO</span>
+      </a>
+      <span class="header-divider" aria-hidden="true"></span>
+      <nav class="admin-navigation" aria-label="Primary navigation">
+        <a class="admin-nav-link" href="/dashboard.html">Dashboard</a>
+        <a class="admin-nav-link is-active" href="/admin.html" aria-current="page">Admin</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <span class="admin-role-badge"><i class="bi bi-shield-check"></i> Administrator</span>
+      <button class="account-button" id="profileButton" type="button" aria-label="Sign out"><span id="profileInitials">AD</span><i class="bi bi-chevron-down"></i></button>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <section class="admin-intro">
+      <div>
+        <p class="admin-eyebrow">WORKSPACE CONTROL</p>
+        <h1>User administration</h1>
+        <p>Monitor usage and assign presentation and media-storage limits for each account.</p>
+      </div>
+      <button class="admin-refresh" id="refreshUsers" type="button"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </section>
+
+    <section class="admin-stats" aria-label="Administration statistics">
+      <article><span class="admin-stat-icon"><i class="bi bi-people"></i></span><div><p>Registered users</p><strong id="totalUsers">—</strong><small id="activeUsers">Loading…</small></div></article>
+      <article><span class="admin-stat-icon"><i class="bi bi-easel2"></i></span><div><p>Presentations</p><strong id="totalPresentations">—</strong><small>Across all users</small></div></article>
+      <article><span class="admin-stat-icon"><i class="bi bi-device-ssd"></i></span><div><p>Media storage</p><strong id="totalStorage">—</strong><small>Across all users</small></div></article>
+      <article><span class="admin-stat-icon"><i class="bi bi-exclamation-triangle"></i></span><div><p>Storage exceeded</p><strong id="overageUsers">—</strong><small>Accounts above admin limit</small></div></article>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="usersHeading">
+      <div class="admin-panel-heading">
+        <div><p class="admin-eyebrow">ACCOUNT USAGE</p><h2 id="usersHeading">Registered users</h2></div>
+        <label class="admin-search"><i class="bi bi-search" aria-hidden="true"></i><input id="userSearch" type="search" placeholder="Search name or email" aria-label="Search users"></label>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>User</th><th>Role</th><th>Presentation usage</th><th>Media storage</th><th>Creation limit</th><th>Actions</th></tr></thead>
+          <tbody id="usersTable"><tr><td colspan="6" class="admin-table-status">Loading users…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="admin-note"><i class="bi bi-info-circle"></i> Media storage is unlimited until an administrator assigns a per-user limit.</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/js/api.js?v=20260907-admin-api"></script>
+  <script src="/js/admin.js?v=20260907-storage-controls"></script>
+</body>
+</html>

@@ -161,6 +161,8 @@ if (session) {
   const hour = new Date().getHours();
   document.querySelector("#dashboardGreeting").textContent = `${hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}, ${firstName}.`;
   document.querySelector("#profileInitials").textContent = String(session.name || "PS").split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
+  const adminNav = document.querySelector("#adminNav");
+  if (adminNav && session.role === "admin") adminNav.hidden = false;
 }
 document.querySelector("#dashboardDate").textContent = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(new Date()).toUpperCase();
 

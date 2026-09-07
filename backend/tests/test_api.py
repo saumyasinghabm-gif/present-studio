@@ -1,7 +1,10 @@
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+from app.database import SessionLocal
 from app.main import fastapi_app
+from app.models import Presentation, User
+from app.security import hash_password
 
 
 def test_health():
@@ -141,3 +144,197 @@ def test_owner_can_delete_presentation():
     assert deleted.json() == {"ok": True, "presentationId": created["id"]}
     assert missing.status_code == 404
     emit.assert_awaited_once_with("presentation_deleted", {"presentationId": created["id"]}, room=created["id"])
+
+
+def test_admin_dashboard_is_role_protected_and_reports_usage():
+    admin_email = f"admin-{uuid4().hex}@example.com"
+    owner_email = f"quota-owner-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        db = SessionLocal()
+        try:
+            db.add(
+                User(
+                    id=f"usr_{uuid4().hex}",
+                    name="Test Administrator",
+                    email=admin_email,
+                    password_hash=hash_password("securepass123"),
+                    role="admin",
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        owner_signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Quota Owner", "email": owner_email, "password": "securepass123"},
+        )
+        owner_headers = {"Authorization": f"Bearer {owner_signup.json()['accessToken']}"}
+        forbidden = client.get("/api/admin/users", headers=owner_headers)
+        protected_page = client.get("/admin.html", headers=owner_headers)
+
+        admin_login = client.post("/api/auth/login", json={"email": admin_email, "password": "securepass123"})
+        admin_headers = {"Authorization": f"Bearer {admin_login.json()['accessToken']}"}
+        users = client.get("/api/admin/users", headers=admin_headers)
+
+    assert forbidden.status_code == 403
+    assert protected_page.status_code == 403
+    assert users.status_code == 200
+    owner_usage = next(item for item in users.json()["users"] if item["email"] == owner_email)
+    assert owner_usage["presentationUsed"] == 0
+    assert owner_usage["presentationRemaining"] == owner_usage["presentationLimit"]
+    assert owner_usage["storageLimitBytes"] is None
+    assert owner_usage["storageRemainingBytes"] is None
+    assert owner_usage["storageStatus"] == "unlimited"
+
+
+def test_admin_limit_prevents_additional_presentations():
+    admin_email = f"limit-admin-{uuid4().hex}@example.com"
+    owner_email = f"limited-owner-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        db = SessionLocal()
+        try:
+            db.add(
+                User(
+                    id=f"usr_{uuid4().hex}",
+                    name="Limit Administrator",
+                    email=admin_email,
+                    password_hash=hash_password("securepass123"),
+                    role="admin",
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        owner_signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Limited Owner", "email": owner_email, "password": "securepass123"},
+        )
+        owner = owner_signup.json()["user"]
+        owner_headers = {"Authorization": f"Bearer {owner_signup.json()['accessToken']}"}
+        admin_login = client.post("/api/auth/login", json={"email": admin_email, "password": "securepass123"})
+        admin_headers = {"Authorization": f"Bearer {admin_login.json()['accessToken']}"}
+
+        updated = client.patch(
+            f"/api/admin/users/{owner['id']}/presentation-limit",
+            json={"presentationLimit": 1},
+            headers=admin_headers,
+        )
+        first = client.post("/api/presentations", json={"title": "Allowed"}, headers=owner_headers)
+        blocked = client.post("/api/presentations", json={"title": "Blocked"}, headers=owner_headers)
+
+    assert updated.status_code == 200
+    assert updated.json()["user"]["presentationLimit"] == 1
+    assert first.status_code == 200
+    assert blocked.status_code == 409
+    assert "Presentation limit reached (1/1)" in blocked.json()["detail"]
+
+
+def test_admin_storage_limit_blocks_uploads_and_can_be_unlimited():
+    admin_email = f"storage-admin-{uuid4().hex}@example.com"
+    owner_email = f"storage-owner-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        db = SessionLocal()
+        try:
+            db.add(
+                User(
+                    id=f"usr_{uuid4().hex}",
+                    name="Storage Administrator",
+                    email=admin_email,
+                    password_hash=hash_password("securepass123"),
+                    role="admin",
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        owner_signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Storage Owner", "email": owner_email, "password": "securepass123"},
+        )
+        owner = owner_signup.json()["user"]
+        owner_headers = {"Authorization": f"Bearer {owner_signup.json()['accessToken']}"}
+        admin_login = client.post("/api/auth/login", json={"email": admin_email, "password": "securepass123"})
+        admin_headers = {"Authorization": f"Bearer {admin_login.json()['accessToken']}"}
+
+        limited = client.patch(
+            f"/api/admin/users/{owner['id']}/storage-limit",
+            json={"storageLimitBytes": 1},
+            headers=admin_headers,
+        )
+        blocked = client.post(
+            "/api/media/upload",
+            headers=owner_headers,
+            files={"file": ("blocked.png", b"xx", "image/png")},
+        )
+        unlimited = client.patch(
+            f"/api/admin/users/{owner['id']}/storage-limit",
+            json={"storageLimitBytes": None},
+            headers=admin_headers,
+        )
+
+    assert limited.status_code == 200
+    assert limited.json()["user"]["storageLimitBytes"] == 1
+    assert blocked.status_code == 413
+    assert "Media storage limit reached" in blocked.json()["detail"]
+    assert unlimited.status_code == 200
+    assert unlimited.json()["user"]["storageLimitBytes"] is None
+
+
+def test_admin_can_revoke_user_and_owned_presentations_but_not_self():
+    admin_email = f"revoke-admin-{uuid4().hex}@example.com"
+    owner_email = f"revoked-owner-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        db = SessionLocal()
+        try:
+            administrator = User(
+                id=f"usr_{uuid4().hex}",
+                name="Revoke Administrator",
+                email=admin_email,
+                password_hash=hash_password("securepass123"),
+                role="admin",
+            )
+            db.add(administrator)
+            db.commit()
+            admin_id = administrator.id
+        finally:
+            db.close()
+
+        owner_signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Revoked Owner", "email": owner_email, "password": "securepass123"},
+        )
+        owner = owner_signup.json()["user"]
+        owner_headers = {"Authorization": f"Bearer {owner_signup.json()['accessToken']}"}
+        created = client.post(
+            "/api/presentations", json={"title": "Removed with owner"}, headers=owner_headers
+        ).json()["presentation"]
+        client.post(
+            f"/api/presentations/{created['id']}/share",
+            json={"permission": "viewer"},
+            headers=owner_headers,
+        )
+
+        admin_login = client.post("/api/auth/login", json={"email": admin_email, "password": "securepass123"})
+        admin_headers = {"Authorization": f"Bearer {admin_login.json()['accessToken']}"}
+        self_revoke = client.delete(f"/api/admin/users/{admin_id}", headers=admin_headers)
+        revoked = client.delete(f"/api/admin/users/{owner['id']}", headers=admin_headers)
+        rejected_login = client.post(
+            "/api/auth/login", json={"email": owner_email, "password": "securepass123"}
+        )
+
+        db = SessionLocal()
+        try:
+            user_exists = db.get(User, owner["id"])
+            presentation_exists = db.get(Presentation, created["id"])
+        finally:
+            db.close()
+
+    assert self_revoke.status_code == 409
+    assert revoked.status_code == 200
+    assert revoked.json() == {"ok": True, "userId": owner["id"]}
+    assert rejected_login.status_code == 401
+    assert user_exists is None
+    assert presentation_exists is None

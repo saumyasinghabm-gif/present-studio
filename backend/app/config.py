@@ -22,6 +22,8 @@ class Settings(BaseModel):
     cloudinary_api_key: str | None = os.getenv("CLOUDINARY_API_KEY")
     cloudinary_api_secret: str | None = os.getenv("CLOUDINARY_API_SECRET")
     cloudinary_folder: str = os.getenv("CLOUDINARY_FOLDER", "present-studio")
+    admin_email: str | None = os.getenv("ADMIN_EMAIL")
+    admin_password: str | None = os.getenv("ADMIN_PASSWORD")
 
 
 @lru_cache

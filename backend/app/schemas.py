@@ -1,5 +1,5 @@
 from typing import Any, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 SharePermission = Literal["viewer", "presenter"]
@@ -21,6 +21,15 @@ class UserOut(BaseModel):
     name: str
     email: str
     role: str
+    presentationLimit: int
+
+
+class PresentationLimitUpdate(BaseModel):
+    presentationLimit: int = Field(ge=0, le=100000)
+
+
+class StorageLimitUpdate(BaseModel):
+    storageLimitBytes: int | None = Field(default=None, ge=0, le=1024 * 1024 * 1024 * 1024)
 
 
 class AuthOut(BaseModel):

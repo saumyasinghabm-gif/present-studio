@@ -51,6 +51,12 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+def admin_user(user: User = Depends(current_user)) -> User:
+    if user.role.lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access required")
+    return user
+
+
 def user_from_token(db: Session, token: str) -> User | None:
     if not token:
         return None

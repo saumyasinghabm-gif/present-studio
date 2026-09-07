@@ -11,7 +11,13 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def serialize_user(user: User) -> UserOut:
-    return UserOut(id=user.id, name=user.name, email=user.email, role=user.role)
+    return UserOut(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        presentationLimit=user.presentation_limit,
+    )
 
 
 @router.post("/signup")
