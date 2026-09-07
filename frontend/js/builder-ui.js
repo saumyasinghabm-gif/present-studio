@@ -15,6 +15,7 @@
   let builderClipboardText = "";
   let zoom = 100;
   let builderUploadRequestId = 0;
+  let shapeTextEditSession = null;
 
   function safeColor(value, fallback = "#171717") {
     return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(value || "")) ? value : fallback;
@@ -485,19 +486,160 @@
   });
 
   function insertShape(type) {
-    const common = { id: `shape_${Date.now()}`, left: 510, top: 270, fill: "#f5c842", stroke: "#101010", strokeWidth: 2 };
+    const id = `shape_${Date.now()}`;
+    const common = { id: `${id}_geometry`, left: 0, top: 0, originX: "center", originY: "center", fill: "#f5c842", stroke: "#101010", strokeWidth: 2 };
     const shapes = {
-      circle: () => new fabric.Circle({ ...common, left: 540, top: 250, radius: 100 }),
-      triangle: () => new fabric.Triangle({ ...common, left: 530, top: 255, width: 220, height: 190 }),
+      circle: () => new fabric.Circle({ ...common, radius: 100 }),
+      triangle: () => new fabric.Triangle({ ...common, width: 220, height: 190 }),
       line: () => new fabric.Line([0, 0, 260, 0], { ...common, top: 360, fill: null, strokeWidth: 6 }),
-      arrow: () => new fabric.Path("M 0 35 L 180 35 L 180 0 L 260 60 L 180 120 L 180 85 L 0 85 Z", { ...common, top: 300 })
+      arrow: () => new fabric.Path("M 0 35 L 180 35 L 180 0 L 260 60 L 180 120 L 180 85 L 0 85 Z", { ...common })
     };
-    const object = shapes[type]?.() || new fabric.Rect({ ...common, width: 260, height: 180, rx: 4, ry: 4 });
+    const shape = shapes[type]?.() || new fabric.Rect({ ...common, width: 260, height: 180, rx: 4, ry: 4 });
+    if (type === "line") {
+      shape.set({ id, left: 510 });
+      canvas.add(shape);
+      canvas.setActiveObject(shape);
+      canvas.requestRenderAll();
+      schedule();
+      return;
+    }
+    const label = createShapeLabel(shape, "", `${id}_label`);
+    const object = new fabric.Group([shape, label], {
+      id,
+      left: type === "circle" ? 540 : type === "triangle" ? 530 : 510,
+      top: type === "circle" ? 340 : type === "triangle" ? 350 : 360
+    });
+    configureShapeTextGroup(object);
     canvas.add(object);
     canvas.setActiveObject(object);
     canvas.requestRenderAll();
     schedule();
+    toast("Shape inserted. Double-click it to add text.");
   }
+
+  const SHAPE_TYPES = new Set(["rect", "circle", "triangle", "path"]);
+
+  function isEditableShape(object) {
+    return Boolean(object && SHAPE_TYPES.has(object.type) && object.mediaType !== "video");
+  }
+
+  function shapeTextParts(group) {
+    if (group?.type !== "group") return null;
+    const objects = group.getObjects?.() || [];
+    const label = objects.find((object) => object.type === "textbox");
+    const shape = objects.find(isEditableShape);
+    return label && shape && objects.length === 2 ? { shape, label } : null;
+  }
+
+  function createShapeLabel(shape, value = "", id = `shape_label_${Date.now()}`) {
+    const shapeWidth = Number(shape.width) || Number(shape.radius) * 2 || 220;
+    return new fabric.Textbox(value, {
+      id,
+      left: 0,
+      top: 0,
+      originX: "center",
+      originY: "center",
+      width: Math.max(70, shapeWidth * 0.76),
+      fontSize: 32,
+      fontFamily: "Arial",
+      fontWeight: "normal",
+      fill: "#171717",
+      textAlign: "center",
+      lockScalingFlip: true
+    });
+  }
+
+  function configureShapeTextGroup(group) {
+    const parts = shapeTextParts(group);
+    if (!parts) return false;
+    // Fabric can otherwise reuse the empty group cache created before the
+    // label was edited, which makes saved text disappear until the next edit.
+    group.set({ lockScalingFlip: true, objectCaching: false, dirty: true });
+    parts.label.set({ objectCaching: false, dirty: true });
+    // Corner resizing keeps the shape and its text proportional. Side-only
+    // scaling would stretch the letters, so it stays disabled for this pair.
+    group.setControlsVisibility?.({ mt: false, mb: false, ml: false, mr: false });
+    return true;
+  }
+
+  function groupState(group, fallbackId) {
+    return {
+      id: group?.id || fallbackId || `shape_${Date.now()}`,
+      hyperlink: group?.hyperlink || "",
+      animation: group?.animation || "none",
+      animationDuration: group?.animationDuration || 600,
+      animationDelay: group?.animationDelay || 0
+    };
+  }
+
+  function finishShapeTextEditing(label = shapeTextEditSession?.label) {
+    const session = shapeTextEditSession;
+    if (!session || label !== session.label) return;
+    shapeTextEditSession = null;
+    loading = session.previousLoading;
+    label.exitEditing?.();
+    label.set({ selectable: true, evented: true });
+    label.initDimensions?.();
+    label.setCoords();
+    const selection = new fabric.ActiveSelection([session.shape, label], { canvas });
+    canvas.setActiveObject(selection);
+    const group = selection.toGroup();
+    group.set(session.state);
+    configureShapeTextGroup(group);
+    group.setCoords();
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    panel();
+    schedule();
+  }
+
+  function beginShapeTextEditing(target) {
+    if (shapeTextEditSession) finishShapeTextEditing();
+    let shape;
+    let label;
+    let state;
+    if (target.type === "group") {
+      const parts = shapeTextParts(target);
+      if (!parts) return false;
+      ({ shape, label } = parts);
+      state = groupState(target);
+      target.toActiveSelection();
+      canvas.discardActiveObject();
+    } else if (isEditableShape(target)) {
+      shape = target;
+      const center = shape.getCenterPoint();
+      label = createShapeLabel(shape, "", `${shape.id || `shape_${Date.now()}`}_label`);
+      label.set({
+        left: center.x,
+        top: center.y,
+        angle: shape.angle || 0,
+        width: Math.max(70, shape.getScaledWidth() * 0.76)
+      });
+      canvas.add(label);
+      state = groupState(null, shape.id);
+    } else return false;
+
+    const previousLoading = loading;
+    loading = true;
+    shapeTextEditSession = { shape, label, state, previousLoading };
+    configureTextResize(label);
+    label.once("editing:exited", () => window.setTimeout(() => finishShapeTextEditing(label), 0));
+    canvas.setActiveObject(label);
+    label.enterEditing();
+    if (label.text) label.selectAll();
+    label.hiddenTextarea?.focus();
+    canvas.requestRenderAll();
+    panel();
+    toast("Type inside the shape, then press Esc or click outside.");
+    return true;
+  }
+
+  canvas.on("mouse:dblclick", (event) => {
+    if (beginShapeTextEditing(event.target)) event.e?.preventDefault?.();
+  });
+  canvas.on("object:added", (event) => configureShapeTextGroup(event.target));
+  canvas.on("selection:created", (event) => (event.selected || []).forEach(configureShapeTextGroup));
+  canvas.on("selection:updated", (event) => (event.selected || []).forEach(configureShapeTextGroup));
 
   byId("insertRectangle")?.addEventListener("click", () => insertShape("rectangle"));
   byId("insertCircle")?.addEventListener("click", () => insertShape("circle"));
