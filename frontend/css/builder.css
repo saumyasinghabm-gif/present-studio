@@ -709,8 +709,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 13px;
   font-weight: 700;
   text-align: left;
+  cursor: grab;
 }
+.builder-page .slide-item:active { cursor: grabbing; }
+.builder-page .slide-item.is-dragging { opacity: .45; }
+.builder-page .slide-item.is-drop-before::after,
+.builder-page .slide-item.is-drop-after::after { position: absolute; z-index: 9; right: 0; left: 0; height: 4px; background: var(--yellow-strong); content: ""; pointer-events: none; }
+.builder-page .slide-item.is-drop-before::after { top: 0; }
+.builder-page .slide-item.is-drop-after::after { bottom: 0; }
 .builder-page .slide-item::before { position: absolute; z-index: 4; top: 5px; left: 7px; color: #666; font-size: 10px; content: attr(data-slide-number); }
+.builder-page .slide-drag-handle { position: absolute; z-index: 6; top: 3px; left: 24px; display: grid; place-items: center; width: 28px; height: 22px; border-radius: 3px; color: #555; background: rgba(255,255,255,.88); font-size: 15px; cursor: grab; opacity: .55; }
+.builder-page .slide-item:hover .slide-drag-handle,
+.builder-page .slide-item:focus-visible .slide-drag-handle { opacity: 1; }
 .builder-page .slide-item.active { border: 2px solid var(--yellow-strong); box-shadow: 0 0 0 1px rgba(245,200,66,.2); }
 .builder-page .slide-thumbnail-stage { position: absolute; inset: 0; overflow: hidden; background: var(--slide-thumbnail-bg, #fffefb); pointer-events: none; }
 .builder-page .slide-thumbnail-object { position: absolute; overflow: hidden; color: #111; line-height: 1.05; transform-origin: center; }

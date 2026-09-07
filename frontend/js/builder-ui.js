@@ -42,6 +42,27 @@
     return `<span class="slide-thumbnail-object" style="${style}background:${safeColor(object.fill, "#f5c842")};border:1px solid ${safeColor(object.stroke, "transparent")};"></span>`;
   }
 
+  let draggedSlideIndex = null;
+
+  function moveSlideTo(fromIndex, toIndex) {
+    if (!presentation || fromIndex === toIndex || fromIndex < 0 || fromIndex >= presentation.slides.length) return;
+    capture();
+    const activeSlideId = activeSlide().id;
+    const [movedSlide] = presentation.slides.splice(fromIndex, 1);
+    const finalIndex = Math.max(0, Math.min(presentation.slides.length, toIndex));
+    presentation.slides.splice(finalIndex, 0, movedSlide);
+    normalize();
+    currentSlideIndex = presentation.slides.findIndex((slide) => slide.id === activeSlideId);
+    schedule();
+    render();
+    window.requestAnimationFrame(() => byId("slideList").querySelector(`[data-index="${finalIndex}"]`)?.focus());
+    toast(`Slide moved to position ${finalIndex + 1}.`);
+  }
+
+  function clearSlideDropIndicators() {
+    all("#slideList .slide-item").forEach((item) => item.classList.remove("is-drop-before", "is-drop-after"));
+  }
+
   renderList = function renderBuilderSlideList() {
     if (!presentation) return;
     byId("slideList").innerHTML = presentation.slides.map((slide, index) => {
@@ -50,12 +71,53 @@
       const legacyObjects = fabricObjects.length ? [] : (data.elements || []);
       const objects = fabricObjects.map((object) => thumbnailObjectMarkup(object)).join("") + legacyObjects.map((object) => thumbnailObjectMarkup(object, true)).join("");
       const audioBadge = data.audio?.src ? '<span class="slide-thumbnail-audio" title="Slide has music"><i class="bi bi-music-note-beamed"></i></span>' : "";
-      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}"><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
+      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" draggable="true" tabindex="0" role="button" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}. Drag to reorder."><span class="slide-drag-handle" title="Drag to reorder" aria-hidden="true"><i class="bi bi-grip-horizontal"></i></span><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
     }).join("");
     all("#slideList .slide-item").forEach((item) => {
       const open = () => { capture(); currentSlideIndex = Number(item.dataset.index); render(); };
-      item.addEventListener("click", (event) => { if (!event.target.closest(".slide-actions-inline")) open(); });
-      item.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
+      item.addEventListener("click", (event) => { if (!event.target.closest(".slide-actions-inline, .slide-drag-handle")) open(); });
+      item.addEventListener("keydown", (event) => {
+        const index = Number(item.dataset.index);
+        if (event.altKey && ["ArrowUp", "ArrowDown"].includes(event.key)) {
+          event.preventDefault();
+          moveSlideTo(index, index + (event.key === "ArrowUp" ? -1 : 1));
+          return;
+        }
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); }
+      });
+      item.addEventListener("dragstart", (event) => {
+        if (event.target.closest(".slide-actions-inline")) { event.preventDefault(); return; }
+        draggedSlideIndex = Number(item.dataset.index);
+        item.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(draggedSlideIndex));
+      });
+      item.addEventListener("dragover", (event) => {
+        if (draggedSlideIndex === null) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        clearSlideDropIndicators();
+        const after = event.clientY > item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
+        item.classList.add(after ? "is-drop-after" : "is-drop-before");
+      });
+      item.addEventListener("drop", (event) => {
+        if (draggedSlideIndex === null) return;
+        event.preventDefault();
+        const targetIndex = Number(item.dataset.index);
+        const bounds = item.getBoundingClientRect();
+        const after = event.clientY > bounds.top + bounds.height / 2;
+        let insertionIndex = targetIndex + (after ? 1 : 0);
+        if (draggedSlideIndex < insertionIndex) insertionIndex -= 1;
+        const fromIndex = draggedSlideIndex;
+        draggedSlideIndex = null;
+        clearSlideDropIndicators();
+        moveSlideTo(fromIndex, insertionIndex);
+      });
+      item.addEventListener("dragend", () => {
+        draggedSlideIndex = null;
+        item.classList.remove("is-dragging");
+        clearSlideDropIndicators();
+      });
     });
     all("[data-slide-duplicate]").forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation(); capture(); currentSlideIndex = Number(button.dataset.slideDuplicate); duplicateSlide();
@@ -449,7 +511,7 @@
     if (blob.size > MAX_MEDIA_UPLOAD_BYTES) { toast(`Clipboard image exceeds ${MAX_MEDIA_UPLOAD_LABEL}.`); return false; }
     const reader = new FileReader();
     reader.addEventListener("load", () => {
-      image({ id: `image_${Date.now()}`, type: "image", src: reader.result, x: 15, y: 15, width: 70, height: 70, full_bleed: false, fit: "contain" });
+      image({ id: `image_${Date.now()}`, type: "image", src: reader.result, x: 0, y: 0, width: 100, height: 100, full_bleed: false, fitToSlide: true, fit: "contain" });
       toast("Image pasted onto the slide.");
     });
     reader.readAsDataURL(blob);
@@ -464,7 +526,7 @@
 
   function insertClipboardImageSource(src) {
     if (!src) return false;
-    image({ id: `image_${Date.now()}`, type: "image", src, x: 15, y: 15, width: 70, height: 70, full_bleed: false, fit: "contain" });
+    image({ id: `image_${Date.now()}`, type: "image", src, x: 0, y: 0, width: 100, height: 100, full_bleed: false, fitToSlide: true, fit: "contain" });
     toast("Image pasted onto the slide.");
     return true;
   }
