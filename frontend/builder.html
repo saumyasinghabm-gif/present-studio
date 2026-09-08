@@ -171,6 +171,7 @@
       <div class="modal-header"><h2 id="shareModalTitle">Share presentation</h2><button type="button" aria-label="Close dialog" id="closeShare"><i class="bi bi-x-lg"></i></button></div>
       <div class="modal-body">
         <label class="form-row">Access<select id="sharePermission"><option value="viewer">Presentation Screen</option><option value="presenter">Remote Control</option></select></label>
+        <label class="form-row" id="shareScreenCodeRow" hidden>Screen code<input id="shareScreenCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" placeholder="4 digits"></label>
         <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Generate Link</span></button>
         <p class="share-status" id="shareStatus" role="status"></p>
       </div>
@@ -203,5 +204,8 @@
   <script src="/js/editor.js?v=20260908-shape-thumbnails"></script>
   <script src="/js/builder-ribbon.js?v=20260908-ppt-shape-text"></script>
   <script src="/js/builder-ui.js?v=20260908-ppt-shape-text"></script>
+  <script src="/js/editor.js?v=20260908-visible-screen-code"></script>
+  <script src="/js/builder-ribbon.js?v=20260907-wordart-format"></script>
+  <script src="/js/builder-ui.js?v=20260907-shape-text"></script>
 </body>
 </html>

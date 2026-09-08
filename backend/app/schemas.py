@@ -74,12 +74,19 @@ class PresentationPayload(BaseModel):
 
 class ShareLinkCreate(BaseModel):
     permission: SharePermission = "viewer"
+    screenAccessCode: str | None = Field(default=None, pattern=r"^\d{4}$")
 
 
 class ShareLinkOut(BaseModel):
     url: str
     token: str
     permission: SharePermission
+    requiresScreenCode: bool = False
+
+
+class ScreenAccessRequest(BaseModel):
+    token: str
+    screenAccessCode: str = Field(pattern=r"^\d{4}$")
 
 
 class MediaAssetOut(BaseModel):

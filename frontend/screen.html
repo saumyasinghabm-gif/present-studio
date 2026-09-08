@@ -4,20 +4,33 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Screen</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260905-media-fit">
+    <link rel="stylesheet" href="/css/styles.css?v=20260908-screen-code">
   </head>
   <body class="live-output-page">
+    <section class="screen-code-gate" id="codeGate" hidden>
+      <form class="screen-code-card" id="codeForm">
+        <p>Protected screen</p>
+        <label for="screenCode">Enter screen code</label>
+        <input id="screenCode" name="screenCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" required>
+        <button type="submit">Unlock screen</button>
+        <span id="codeStatus" role="status" aria-live="polite"></span>
+      </form>
+    </section>
     <section class="screen-audio-gate" id="audioGate">
       <button type="button" id="enableScreen">Enable audio &amp; enter screen</button>
     </section>
     <main class="live-output-stage" id="outputStage">
       <div class="live-output-media" id="outputMedia"></div>
       <div class="live-output-canvas" id="outputCanvasWrap"><canvas id="outputCanvas" width="1280" height="720"></canvas></div>
+      <div class="live-annotation-layer" id="liveAnnotationLayer">
+        <canvas id="liveAnnotationCanvas" width="1280" height="720"></canvas>
+        <div id="liveAnnotationText"></div>
+      </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
-    <script src="/js/api.js?v=20260904-live-sync"></script>
-    <script src="/js/screen.js?v=20260905-media-fit"></script>
+    <script src="/js/api.js?v=20260908-screen-code"></script>
+    <script src="/js/screen.js?v=20260908-teaching-remote"></script>
   </body>
 </html>

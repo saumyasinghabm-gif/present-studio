@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260829-live-controller">
+    <link rel="stylesheet" href="/css/styles.css?v=20260908-teaching-remote">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -13,6 +13,7 @@
         <div class="live-controller-actions">
           <span class="controller-connection" id="connectionStatus"><i></i> Connecting</span>
           <button class="button button-soft" id="openScreen" type="button">Open Screen</button>
+          <button class="button button-soft" id="teachMode" type="button">Teach Live</button>
           <a class="button button-soft" id="backToEditor" href="/dashboard.html">Editor</a>
         </div>
       </header>
@@ -58,9 +59,31 @@
         <div class="controller-preview-stage" id="previewStage"><span>Waiting for a selection</span></div>
       </aside>
     </main>
+    <section class="teaching-remote" id="teachingRemote" hidden>
+      <div class="teaching-toolbar">
+        <button type="button" data-teach-tool="pen" class="is-active">Pen</button>
+        <button type="button" data-teach-tool="text">Text</button>
+        <button type="button" data-teach-tool="pan">Grab</button>
+        <label>Color <input id="teachColor" type="color" value="#ffd54a"></label>
+        <label>Size <input id="teachSize" type="range" min="2" max="26" value="7"></label>
+        <button type="button" id="teachZoomOut">-</button>
+        <span id="teachZoomValue">100%</span>
+        <button type="button" id="teachZoomIn">+</button>
+        <button type="button" id="teachResetView">Reset</button>
+        <button type="button" id="teachClear">Clear</button>
+        <button type="button" id="teachClose">Close</button>
+      </div>
+      <div class="teaching-stage-wrap" id="teachingStageWrap">
+        <div class="teaching-stage" id="teachingStage">
+          <div class="teaching-backdrop" id="teachingBackdrop"><span>Choose a slide or media item to teach over</span></div>
+          <canvas id="teachingCanvas" width="1280" height="720"></canvas>
+          <div class="teaching-text-layer" id="teachingTextLayer"></div>
+        </div>
+      </div>
+    </section>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
-    <script src="/js/api.js?v=20260904-live-sync"></script>
-    <script src="/js/controller.js?v=20260904-live-screen-link"></script>
+    <script src="/js/api.js?v=20260908-screen-code"></script>
+    <script src="/js/controller.js?v=20260908-teaching-remote"></script>
   </body>
 </html>

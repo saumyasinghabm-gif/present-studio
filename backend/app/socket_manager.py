@@ -105,6 +105,27 @@ async def media_control(sid, data):
 
 
 @sio.event
+async def annotation_event(sid, data):
+    presentation_id = data.get("presentationId")
+    auth_token = data.get("authToken") or ""
+    share_token = data.get("shareToken") or ""
+    event_type = data.get("type")
+    payload = data.get("payload") or {}
+    if not presentation_id or event_type not in {"draw", "text", "clear", "viewport"}:
+        return
+    with SessionLocal() as db:
+        presentation = db.get(Presentation, presentation_id)
+        if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
+            await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+            return
+    await sio.emit(
+        "presentation_annotation",
+        {"presentationId": presentation_id, "type": event_type, "payload": payload},
+        room=presentation_id,
+    )
+
+
+@sio.event
 async def end_session(sid, data):
     presentation_id = data.get("presentationId")
     auth_token = data.get("authToken") or ""

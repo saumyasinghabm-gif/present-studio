@@ -1545,7 +1545,9 @@
   syncWordArtControls();
 
   const SMART_GUIDE_THRESHOLD = 7;
+  const SMART_DISTANCE_LIMIT = 130;
   let smartGuides = [];
+  let smartDistances = [];
   let transformMeasurement = null;
   const smartGuideCanvas = document.createElement("canvas");
   smartGuideCanvas.width = W;
@@ -1606,13 +1608,42 @@
     return best;
   }
 
+  function objectGaps(bounds, other) {
+    const verticalOverlap = bounds.top < other.top + other.height && bounds.top + bounds.height > other.top;
+    const horizontalOverlap = bounds.left < other.left + other.width && bounds.left + bounds.width > other.left;
+    const overlapMidpoint = (startA, endA, startB, endB) => (Math.max(startA, startB) + Math.min(endA, endB)) / 2;
+    const gaps = [];
+    if (verticalOverlap) {
+      const cross = overlapMidpoint(bounds.top, bounds.top + bounds.height, other.top, other.top + other.height);
+      if (other.left + other.width <= bounds.left) gaps.push({ axis: "x", from: other.left + other.width, to: bounds.left, cross });
+      if (bounds.left + bounds.width <= other.left) gaps.push({ axis: "x", from: bounds.left + bounds.width, to: other.left, cross });
+    }
+    if (horizontalOverlap) {
+      const cross = overlapMidpoint(bounds.left, bounds.left + bounds.width, other.left, other.left + other.width);
+      if (other.top + other.height <= bounds.top) gaps.push({ axis: "y", from: other.top + other.height, to: bounds.top, cross });
+      if (bounds.top + bounds.height <= other.top) gaps.push({ axis: "y", from: bounds.top + bounds.height, to: other.top, cross });
+    }
+    return gaps.map((gap) => ({ ...gap, size: Math.round(Math.abs(gap.to - gap.from)) })).filter((gap) => gap.size > 0 && gap.size <= SMART_DISTANCE_LIMIT);
+  }
+
+  function nearestObjectDistances(bounds, objects) {
+    const best = { x: null, y: null };
+    objects.forEach((object) => {
+      objectGaps(bounds, boundsFor(object)).forEach((gap) => {
+        if (!best[gap.axis] || gap.size < best[gap.axis].size) best[gap.axis] = gap;
+      });
+    });
+    return [best.x, best.y].filter(Boolean);
+  }
+
   function updateSmartGuides(event, snap = true) {
     const target = event.target;
     if (!target) return;
     let bounds = boundsFor(target);
     const xCandidates = [0, W / 2, W];
     const yCandidates = [0, H / 2, H];
-    canvas.getObjects().filter((object) => object !== target).forEach((object) => {
+    const referenceObjects = canvas.getObjects().filter((object) => object !== target && object !== smartGuideCanvas);
+    referenceObjects.forEach((object) => {
       const other = boundsFor(object);
       xCandidates.push(other.left, other.left + other.width / 2, other.left + other.width);
       yCandidates.push(other.top, other.top + other.height / 2, other.top + other.height);
@@ -1623,6 +1654,7 @@
     if (snap && yGuide) target.set("top", (target.top || 0) + yGuide.delta);
     if (snap && (xGuide || yGuide)) { target.setCoords(); bounds = boundsFor(target); }
     smartGuides = [xGuide && { axis: "x", value: xGuide.value }, yGuide && { axis: "y", value: yGuide.value }].filter(Boolean);
+    smartDistances = nearestObjectDistances(bounds, referenceObjects);
     transformMeasurement = {
       left: bounds.left,
       top: bounds.top,
@@ -1634,6 +1666,7 @@
 
   function clearSmartGuides() {
     smartGuides = [];
+    smartDistances = [];
     transformMeasurement = null;
     smartGuideContext.clearRect(0, 0, W, H);
   }
@@ -1646,7 +1679,7 @@
   function renderSmartGuides() {
     const context = smartGuideContext;
     context.clearRect(0, 0, W, H);
-    if (!smartGuides.length && !transformMeasurement) return;
+    if (!smartGuides.length && !smartDistances.length && !transformMeasurement) return;
     context.save();
     context.strokeStyle = "#0d99ff";
     context.lineWidth = 2;
@@ -1656,6 +1689,29 @@
       if (guide.axis === "x") { context.moveTo(guide.value, 0); context.lineTo(guide.value, H); }
       else { context.moveTo(0, guide.value); context.lineTo(W, guide.value); }
       context.stroke();
+    });
+    context.setLineDash([]);
+    smartDistances.forEach((gap) => {
+      context.beginPath();
+      context.strokeStyle = "rgba(13,153,255,.82)";
+      context.lineWidth = 1.5;
+      if (gap.axis === "x") {
+        context.moveTo(gap.from, gap.cross);
+        context.lineTo(gap.to, gap.cross);
+      } else {
+        context.moveTo(gap.cross, gap.from);
+        context.lineTo(gap.cross, gap.to);
+      }
+      context.stroke();
+      const label = `${gap.size}px`;
+      context.font = "600 12px Arial";
+      const width = context.measureText(label).width + 10;
+      const x = gap.axis === "x" ? (gap.from + gap.to) / 2 - width / 2 : gap.cross + 8;
+      const y = gap.axis === "x" ? gap.cross - 7 : (gap.from + gap.to) / 2 + 5;
+      context.fillStyle = "rgba(13,153,255,.92)";
+      context.fillRect(Math.max(4, Math.min(W - width - 4, x)), y - 15, width, 19);
+      context.fillStyle = "#fff";
+      context.fillText(label, Math.max(9, Math.min(W - width + 1, x + 5)), y - 1);
     });
     if (transformMeasurement) {
       const label = transformMeasurement.angle === undefined
