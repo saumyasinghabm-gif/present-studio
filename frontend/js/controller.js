@@ -10,6 +10,10 @@
   let targets = [];
   let loopTimer;
   let activeTargetId = "";
+  let previewCanvas;
+  let previewRenderVersion = 0;
+  let slideThumbnailCanvases = [];
+  let slideThumbnailRenderVersion = 0;
   let teachTool = "pen";
   let teachZoom = 1;
   let teachPan = { x: 0, y: 0 };
@@ -21,6 +25,117 @@
   function credentials() { return { presentationId, authToken, shareToken }; }
   function setConnectionStatus(label) { $("#connectionStatus").innerHTML = `<i></i> ${label}`; }
   function teachPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
+
+  function slideById(id) { return presentation?.slides?.find(slide => slide.id === id); }
+
+  function stopPreviewMedia() {
+    $("#controllerPreviewMedia").querySelectorAll("video,audio").forEach(media => media.pause?.());
+    $("#controllerPreviewMedia").replaceChildren();
+  }
+
+  function showPreviewPlaceholder(message = "", background = "#000") {
+    previewRenderVersion += 1;
+    stopPreviewMedia();
+    previewCanvas?.clear();
+    const canvasElement = $("#controllerPreviewCanvas");
+    const placeholder = $("#controllerPreviewPlaceholder");
+    canvasElement.hidden = true;
+    $("#previewStage").style.background = background;
+    placeholder.textContent = message;
+    placeholder.hidden = !message;
+  }
+
+  function legacyPreviewText(item) {
+    return new fabric.Textbox(item.text || "", {
+      left: (item.x || 0) * 12.8,
+      top: (item.y || 0) * 7.2,
+      width: (item.width || 40) * 12.8,
+      fontSize: item.fontSize || 42,
+      fontWeight: item.fontWeight || "500",
+      fontStyle: item.fontStyle || "normal",
+      fontFamily: item.fontFamily || "Arial",
+      fill: item.color || "#171717",
+      textAlign: item.textAlign || "left",
+      selectable: false,
+      evented: false
+    });
+  }
+
+  function addPositionedPreviewMedia(item, fabricCoordinates = false) {
+    if (!item?.src) return;
+    const node = document.createElement(item.type === "video" || item.mediaType === "video" ? "video" : "img");
+    node.src = item.src;
+    const left = fabricCoordinates ? ((item.left || 0) / 1280) * 100 : Number(item.x || 0);
+    const top = fabricCoordinates ? ((item.top || 0) / 720) * 100 : Number(item.y || 0);
+    const width = fabricCoordinates ? (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100 : Number(item.width || 100);
+    const height = fabricCoordinates ? (((item.height || 0) * (item.scaleY || 1)) / 720) * 100 : Number(item.height || 100);
+    Object.assign(node.style, {
+      left: `${item.full_bleed ? 0 : left}%`,
+      top: `${item.full_bleed ? 0 : top}%`,
+      width: `${item.full_bleed ? 100 : width}%`,
+      height: `${item.full_bleed ? 100 : height}%`,
+      objectFit: item.fit || (item.full_bleed ? "fill" : "contain")
+    });
+    if (node.tagName === "VIDEO") {
+      Object.assign(node, { autoplay: true, muted: true, loop: item.loop !== false, playsInline: true });
+      node.play().catch(() => {});
+    }
+    $("#controllerPreviewMedia").append(node);
+  }
+
+  function renderSlidePreview(slide) {
+    if (!slide || !previewCanvas) return showPreviewPlaceholder("Slide unavailable");
+    const version = ++previewRenderVersion;
+    const data = slide.canvas || {};
+    stopPreviewMedia();
+    $("#controllerPreviewPlaceholder").hidden = true;
+    $("#controllerPreviewCanvas").hidden = false;
+    $("#previewStage").style.background = data.background || "#f8f4ea";
+    previewCanvas.clear();
+    previewCanvas.backgroundColor = data.background || "#f8f4ea";
+
+    const finish = () => {
+      if (version !== previewRenderVersion) return;
+      previewCanvas.getObjects().forEach(object => { object.selectable = false; object.evented = false; });
+      previewCanvas.backgroundColor = data.background || previewCanvas.backgroundColor || "#f8f4ea";
+      previewCanvas.renderAll();
+    };
+
+    if (data.fabric) {
+      const scene = JSON.parse(JSON.stringify(data.fabric));
+      const videos = (scene.objects || []).filter(object => object.mediaType === "video" && object.src);
+      scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
+      previewCanvas.loadFromJSON(scene, finish);
+      videos.forEach(video => addPositionedPreviewMedia(video, true));
+    } else {
+      const elements = data.elements || [];
+      elements.filter(item => item.type === "text").forEach(item => previewCanvas.add(legacyPreviewText(item)));
+      elements.filter(item => ["image", "video"].includes(item.type)).forEach(item => addPositionedPreviewMedia(item));
+      finish();
+    }
+  }
+
+  function renderTargetPreview(target) {
+    if (!target) return showPreviewPlaceholder("Waiting for a selection");
+    $("#previewTitle").textContent = target.title;
+    if (target.kind === "slide") return renderSlidePreview(slideById(target.slideId));
+    showPreviewPlaceholder("");
+    const mediaLayer = $("#controllerPreviewMedia");
+    if (target.kind === "audio") {
+      const audio = document.createElement("audio");
+      audio.src = target.src;
+      audio.controls = true;
+      mediaLayer.append(audio);
+      return;
+    }
+    if (!target.src) return showPreviewPlaceholder(target.title);
+    const node = document.createElement(target.kind === "video" ? "video" : "img");
+    node.src = target.src;
+    node.className = "controller-preview-direct";
+    if (target.kind === "video") Object.assign(node, { autoplay: true, muted: true, loop: true, playsInline: true });
+    mediaLayer.append(node);
+    node.play?.().catch(() => {});
+  }
 
   function collectTargets() {
     const result = [];
@@ -47,8 +162,48 @@
   }
 
   function cardMarkup(target) {
-    const visual = target.kind === "audio" ? '<span class="controller-slide-number">♫</span>' : target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted preload="metadata"></video><span class="controller-play-mark">▶</span>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span class="controller-slide-number">${escapeHtml(target.title.slice(0, 2))}</span>`;
+    const visual = target.kind === "slide"
+      ? `<canvas width="320" height="180" data-slide-thumbnail="${escapeHtml(target.slideId)}" aria-label="Preview of ${escapeHtml(target.title)}"></canvas>`
+      : target.kind === "audio"
+        ? '<span class="controller-slide-number">♫</span>'
+        : target.src
+          ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted preload="metadata"></video><span class="controller-play-mark">▶</span>` : `<img src="${escapeHtml(target.src)}" alt="">`)
+          : `<span class="controller-slide-number">${escapeHtml(target.title.slice(0, 2))}</span>`;
     return `<button class="controller-target-card" type="button" data-target-id="${escapeHtml(target.id)}"><span class="controller-target-thumb">${visual}</span><span><strong>${escapeHtml(target.title)}</strong><small>${target.kind}${target.audioSrc ? " · linked audio" : ""}</small></span></button>`;
+  }
+
+  function renderSlideTargetPreviews() {
+    const version = ++slideThumbnailRenderVersion;
+    slideThumbnailCanvases.forEach(item => item.dispose());
+    slideThumbnailCanvases = [];
+    document.querySelectorAll("[data-slide-thumbnail]").forEach(canvasElement => {
+      const slide = slideById(canvasElement.dataset.slideThumbnail);
+      if (!slide) return;
+      const data = slide.canvas || {};
+      const thumbnail = new fabric.StaticCanvas(canvasElement, {
+        width: 320,
+        height: 180,
+        selection: false,
+        renderOnAddRemove: false
+      });
+      slideThumbnailCanvases.push(thumbnail);
+      const finish = () => {
+        if (version !== slideThumbnailRenderVersion || !slideThumbnailCanvases.includes(thumbnail)) return;
+        thumbnail.getObjects().forEach(object => { object.selectable = false; object.evented = false; });
+        thumbnail.backgroundColor = data.background || "#f8f4ea";
+        thumbnail.setViewportTransform([0.25, 0, 0, 0.25, 0, 0]);
+        thumbnail.renderAll();
+      };
+      thumbnail.backgroundColor = data.background || "#f8f4ea";
+      if (data.fabric) {
+        const scene = JSON.parse(JSON.stringify(data.fabric));
+        scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
+        thumbnail.loadFromJSON(scene, finish);
+      } else {
+        (data.elements || []).filter(item => item.type === "text").forEach(item => thumbnail.add(legacyPreviewText(item)));
+        finish();
+      }
+    });
   }
 
   function renderTargets(kind, containerSelector, countSelector) {
@@ -75,6 +230,7 @@
     renderTargets("audio", "#audioTargets", "#audioTargetCount");
     renderLoopList("image", "#imageLoopList");
     renderLoopList("video", "#videoLoopList");
+    renderSlideTargetPreviews();
     bindTargetCards();
     if (activeTargetId) document.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.classList.add("active");
   }
@@ -96,8 +252,7 @@
     persistSlide(target);
     document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
     renderTeachingBackdrop(target);
-    $("#previewTitle").textContent = target.title;
-    $("#previewStage").innerHTML = target.kind === "audio" ? `<audio src="${escapeHtml(target.src)}" controls autoplay></audio>` : target.src ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted autoplay loop></video>` : `<img src="${escapeHtml(target.src)}" alt="">`) : `<span>${escapeHtml(target.title)}</span>`;
+    renderTargetPreview(target);
   }
 
   function selectedLoopTargets(kind, selector) {
@@ -244,18 +399,27 @@
   }
 
   try {
-    const result = await api.getPresentation(presentationId, shareToken);
+    if (!window.fabric) throw new Error("The slide preview library could not be loaded.");
+    const [result, live] = await Promise.all([
+      api.getPresentation(presentationId, shareToken),
+      api.getLiveSession(presentationId).catch(() => ({ activeSlideId: "" }))
+    ]);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
+    previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
+    const initialSlide = slideById(live.activeSlideId) || presentation.slides[0];
+    if (initialSlide) activeTargetId = `slide:${initialSlide.id}`;
     renderControllerTargets();
+    const initialTarget = targets.find(target => target.id === activeTargetId);
+    if (initialTarget) { renderTargetPreview(initialTarget); renderTeachingBackdrop(initialTarget); }
     bindTeachingMode();
     $("#startImageLoop").onclick = () => startLoop("image", "#imageLoopList");
     $("#startVideoLoop").onclick = () => startLoop("video", "#videoLoopList");
     $("#stopLoop").onclick = stopLoop;
     $("#pauseMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "toggle" });
     $("#replayMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "replay" });
-    $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; $("#previewStage").innerHTML = "<span>Black screen</span>"; };
+    $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; showPreviewPlaceholder("Black screen"); };
     $("#openScreen").onclick = async () => {
       if (shareToken) {
         window.open(secureAppUrl(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`), "_blank", "noopener");
@@ -287,24 +451,25 @@
       activeTargetId = target.id;
       document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
       renderTeachingBackdrop(target);
-      $("#previewTitle").textContent = target.title;
-      $("#previewStage").innerHTML = target.src ? `<img src="${escapeHtml(target.src)}" alt="">` : `<span>${escapeHtml(target.title)}</span>`;
+      renderTargetPreview(target);
     });
     socket?.on("presentation_updated", event => {
       if (event.presentationId !== presentationId || !event.presentation) return;
       presentation = event.presentation;
       if (event.activeSlideId) activeTargetId = `slide:${event.activeSlideId}`;
       renderControllerTargets();
+      const currentTarget = targets.find(target => target.id === activeTargetId) || targets.find(target => target.kind === "slide");
+      if (currentTarget) { renderTargetPreview(currentTarget); renderTeachingBackdrop(currentTarget); }
     });
     socket?.on("presentation_deleted", event => {
       if (event.presentationId !== presentationId) return;
       stopLoop();
       $("#controllerTitle").textContent = "Presentation deleted";
-      $("#previewStage").textContent = "This presentation is no longer available.";
+      showPreviewPlaceholder("This presentation is no longer available.");
       document.querySelectorAll("button").forEach(button => { if (button.id !== "backToEditor") button.disabled = true; });
     });
   } catch (error) {
     $("#controllerTitle").textContent = "Controller unavailable";
-    $("#previewStage").textContent = error.message;
+    showPreviewPlaceholder(error.message);
   }
 })();

@@ -16,19 +16,7 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 def public_share_base_url(request: Request) -> str:
-    """Return an HTTPS public origin while keeping loopback development usable."""
-    configured = get_settings().public_base_url.strip().rstrip("/")
-    configured_url = urlsplit(configured if "://" in configured else f"https://{configured}")
-
-    if configured_url.hostname and configured_url.hostname.lower() not in LOCAL_HOSTS:
-        scheme = "https"
-        hostname = configured_url.hostname
-        port = configured_url.port
-        netloc = f"[{hostname}]" if ":" in hostname else hostname
-        if port and port not in {80, 443}:
-            netloc = f"{netloc}:{port}"
-        return urlunsplit((scheme, netloc, configured_url.path.rstrip("/"), "", ""))
-
+    """Return the public origin of the backend that stored the share token."""
     forwarded_host = request.headers.get("x-forwarded-host", "").split(",", 1)[0].strip()
     external_url = urlsplit(f"https://{forwarded_host}") if forwarded_host else request.url
     request_hostname = (external_url.hostname or "").lower()
@@ -40,7 +28,23 @@ def public_share_base_url(request: Request) -> str:
             netloc = f"{netloc}:{port}"
         return f"https://{netloc}"
 
-    return configured or str(request.base_url).rstrip("/")
+    # A locally-created presentation and token exist only in the local database.
+    # Pointing that token at PUBLIC_BASE_URL would cross database instances and
+    # make an otherwise valid link fail with "Presentation not found".
+    if request_hostname in LOCAL_HOSTS:
+        return str(request.base_url).rstrip("/")
+
+    configured = get_settings().public_base_url.strip().rstrip("/")
+    configured_url = urlsplit(configured if "://" in configured else f"https://{configured}")
+    if configured_url.hostname:
+        hostname = configured_url.hostname
+        port = configured_url.port
+        netloc = f"[{hostname}]" if ":" in hostname else hostname
+        if port and port not in {80, 443}:
+            netloc = f"{netloc}:{port}"
+        scheme = configured_url.scheme if hostname.lower() in LOCAL_HOSTS else "https"
+        return urlunsplit((scheme, netloc, configured_url.path.rstrip("/"), "", ""))
+    return str(request.base_url).rstrip("/")
 
 
 def active_share_link(db: Session, presentation_id: str, token: str) -> ShareLink | None:

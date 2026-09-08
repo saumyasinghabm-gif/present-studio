@@ -29,6 +29,7 @@ fastapi_app.add_middleware(
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
     repair_local_sqlite_schema()
+    repair_share_link_schema()
     db = SessionLocal()
     try:
         seed_demo_data(db)
@@ -52,6 +53,11 @@ def repair_local_sqlite_schema() -> None:
             connection.execute(text("ALTER TABLE users ADD COLUMN presentation_limit INTEGER DEFAULT 10 NOT NULL"))
         if "storage_limit_bytes" not in columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN storage_limit_bytes BIGINT"))
+
+
+def repair_share_link_schema() -> None:
+    """Repair pre-migration SQLite and PostgreSQL databases on startup."""
+    inspector = inspect(engine)
     if "share_links" not in inspector.get_table_names():
         return
     share_columns = {column["name"] for column in inspector.get_columns("share_links")}

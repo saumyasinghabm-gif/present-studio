@@ -1551,7 +1551,8 @@
       case "format-painter": if (!object) toast("Select a source element first."); else { const style = { fill: object.fill, fontFamily: object.fontFamily, fontSize: object.fontSize, fontWeight: object.fontWeight, fontStyle: object.fontStyle, stroke: object.stroke, strokeWidth: object.strokeWidth }; toast("Format copied. Select another element."); canvas.once("selection:created", (selection) => { selection.selected?.[0]?.set(style); canvas.requestRenderAll(); schedule(); }); } break;
       case "insert-text": break;
       case "insert-shape": insertShape(button.dataset.shape || "rectangle"); break;
-      case "word-art": addText("WORD ART", { fontSize: 74, fontFamily: "Impact", fontWeight: "bold", fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: wordArtPresets.gold.shadow, wordArt: true }); syncWordArtControls("gold"); break;
+      case "word-art-gallery": toggleWordArtGallery(button); break;
+      case "word-art": addWordArtFromPreset("gold"); break;
       case "word-art-reset": applyWordArtFormat({ fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: null }, "custom"); break;
       case "shapes": { const kind = (window.prompt("Shape: rectangle or circle", "rectangle") || "rectangle").toLowerCase(); insertShape(kind === "circle" ? "circle" : "rectangle"); break; }
       case "icon": addSymbol("★"); break;
@@ -1592,7 +1593,7 @@
   });
 
   byId("wordArtStyle")?.addEventListener("change", (event) => {
-    const preset = wordArtPresets[event.target.value];
+    const preset = resolveWordArtPreset(event.target.value);
     if (preset) applyWordArtFormat(preset, event.target.value);
   });
   byId("wordArtFill")?.addEventListener("input", (event) => applyWordArtFormat({ fill: event.target.value }));
@@ -1626,12 +1627,78 @@
     return object.getBoundingRect(true, true);
   }
 
+  const wordArtGradient = (colors) => () => new fabric.Gradient({
+    type: "linear",
+    coords: { x1: 0, y1: 0, x2: 900, y2: 0 },
+    colorStops: colors.map((color, index) => ({ offset: index / (colors.length - 1), color }))
+  });
   const wordArtPresets = {
-    gold: { fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: { color: "rgba(0,0,0,.35)", blur: 8, offsetX: 5, offsetY: 5 } },
-    ocean: { fill: "#53d8fb", stroke: "#075985", strokeWidth: 3, shadow: { color: "rgba(7,89,133,.35)", blur: 10, offsetX: 4, offsetY: 5 } },
-    outline: { fill: "#ffffff", stroke: "#111827", strokeWidth: 5, shadow: null },
-    neon: { fill: "#f0abfc", stroke: "#86198f", strokeWidth: 2, shadow: { color: "#d946ef", blur: 18, offsetX: 0, offsetY: 0 } }
+    neon: { fontFamily: "Impact", fontWeight: "bold", fill: "#f4b7ff", stroke: "#9715a4", strokeWidth: 2, shadow: { color: "#e946ff", blur: 22, offsetX: 0, offsetY: 0 } },
+    threeD: { fontFamily: "Impact", fontWeight: "bold", fill: "#ff7043", stroke: "#4a140c", strokeWidth: 2, shadow: { color: "#6f2115", blur: 0, offsetX: 10, offsetY: 10 } },
+    retro: { fontFamily: "Georgia", fontWeight: "bold", fontStyle: "italic", fill: "#f45d48", stroke: "#542c72", strokeWidth: 2, skewX: -8, shadow: { color: "#51b8ae", blur: 0, offsetX: 6, offsetY: 6 } },
+    gradient: { fontFamily: "Impact", fontWeight: "bold", fill: wordArtGradient(["#7557ff", "#fb4e91", "#ffb32c"]), stroke: null, strokeWidth: 0, shadow: { color: "rgba(50,25,90,.24)", blur: 8, offsetX: 3, offsetY: 5 } },
+    outline: { fontFamily: "Impact", fontWeight: "bold", fill: "#ffffff", stroke: "#111827", strokeWidth: 5, shadow: null },
+    gold: { fontFamily: "Georgia", fontWeight: "bold", fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: { color: "rgba(90,55,0,.42)", blur: 9, offsetX: 5, offsetY: 6 } },
+    comic: { fontFamily: "Impact", fontWeight: "bold", fill: "#ffe338", stroke: "#151515", strokeWidth: 4, skewX: -3, shadow: { color: "#ef3d55", blur: 0, offsetX: 7, offsetY: 7 } },
+    glow: { fontFamily: "Arial", fontWeight: "bold", fill: "#ffffff", stroke: "#35c9ff", strokeWidth: 1, shadow: { color: "#18bdf1", blur: 25, offsetX: 0, offsetY: 0 } },
+    ocean: { fontFamily: "Trebuchet MS", fontWeight: "bold", fill: "#53d8fb", stroke: "#075985", strokeWidth: 3, shadow: { color: "rgba(7,89,133,.38)", blur: 10, offsetX: 4, offsetY: 5 } },
+    chrome: { fontFamily: "Impact", fontWeight: "bold", fill: wordArtGradient(["#ffffff", "#7c8796", "#f6f8fb", "#586270", "#ffffff"]), stroke: "#16191d", strokeWidth: 2, shadow: { color: "rgba(0,0,0,.42)", blur: 8, offsetX: 4, offsetY: 6 } }
   };
+
+  function resolveWordArtPreset(name) {
+    const preset = wordArtPresets[name];
+    if (!preset) return null;
+    return { ...preset, fill: typeof preset.fill === "function" ? preset.fill() : preset.fill };
+  }
+
+  function closeWordArtGallery() {
+    const gallery = byId("wordArtGallery");
+    const trigger = byId("wordArtGalleryButton");
+    if (gallery) gallery.hidden = true;
+    trigger?.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleWordArtGallery(trigger = byId("wordArtGalleryButton")) {
+    const gallery = byId("wordArtGallery");
+    if (!gallery || !trigger) return;
+    if (!gallery.hidden) { closeWordArtGallery(); return; }
+    const bounds = trigger.getBoundingClientRect();
+    gallery.hidden = false;
+    gallery.style.top = `${Math.min(window.innerHeight - gallery.offsetHeight - 12, bounds.bottom + 8)}px`;
+    gallery.style.left = `${Math.max(14, Math.min(window.innerWidth - gallery.offsetWidth - 14, bounds.left))}px`;
+    trigger.setAttribute("aria-expanded", "true");
+    gallery.querySelector("[data-word-art-preset]")?.focus();
+  }
+
+  function addWordArtFromPreset(name) {
+    const preset = resolveWordArtPreset(name) || resolveWordArtPreset("gold");
+    const object = addText("YOUR TEXT", { left: 190, top: 250, width: 900, fontSize: 78, textAlign: "center", wordArt: true, ...preset });
+    object.set({ ...preset, wordArt: true, wordArtPreset: name, paintFirst: "stroke", lockScalingFlip: true });
+    object.dirty = true;
+    object.initDimensions?.();
+    object.setCoords();
+    canvas.requestRenderAll();
+    syncWordArtControls(name);
+    closeWordArtGallery();
+    schedule();
+    window.setTimeout(() => {
+      canvas.setActiveObject(object);
+      object.enterEditing?.();
+      object.selectAll?.();
+      object.hiddenTextarea?.focus();
+      canvas.requestRenderAll();
+    }, 0);
+  }
+
+  byId("wordArtGallery")?.querySelectorAll("[data-word-art-preset]").forEach((button) => {
+    button.addEventListener("click", () => addWordArtFromPreset(button.dataset.wordArtPreset));
+  });
+  byId("closeWordArtGallery")?.addEventListener("click", closeWordArtGallery);
+  document.addEventListener("pointerdown", (event) => {
+    const gallery = byId("wordArtGallery");
+    if (!gallery?.hidden && !gallery.contains(event.target) && !byId("wordArtGalleryButton")?.contains(event.target)) closeWordArtGallery();
+  });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeWordArtGallery(); });
 
   function isTextObject(object) {
     return object && ["textbox", "text", "i-text"].includes(object.type);
@@ -1640,7 +1707,7 @@
   function applyWordArtFormat(changes, preset = "custom") {
     const object = active();
     if (!isTextObject(object)) return toast("Select WordArt or text to format it.");
-    object.set({ ...changes, wordArt: true, paintFirst: "stroke" });
+    object.set({ ...changes, wordArt: true, wordArtPreset: preset, paintFirst: "stroke" });
     object.dirty = true;
     object.initDimensions?.();
     object.setCoords();
@@ -1649,14 +1716,14 @@
     schedule();
   }
 
-  function syncWordArtControls(preset = "custom") {
+  function syncWordArtControls(preset = null) {
     const object = active();
     const enabled = isTextObject(object);
     const controls = ["wordArtStyle", "wordArtFill", "wordArtOutline", "wordArtOutlineWidth", "wordArtShadow"]
       .map(byId).filter(Boolean);
     controls.forEach((control) => { control.disabled = !enabled; });
     if (!enabled) return;
-    byId("wordArtStyle").value = preset;
+    byId("wordArtStyle").value = preset || object.wordArtPreset || "custom";
     byId("wordArtFill").value = safeColor(object.fill, "#f5c842").slice(0, 7);
     byId("wordArtOutline").value = safeColor(object.stroke, "#8a5b00").slice(0, 7);
     byId("wordArtOutlineWidth").value = Math.max(0, Math.min(12, Number(object.strokeWidth) || 0));

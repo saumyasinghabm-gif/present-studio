@@ -22,7 +22,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://present_studio:present_studio_password@postgres:5432/present_studio}
       JWT_SECRET: ${JWT_SECRET:-change-this-in-production}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://127.0.0.1:8000}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://studio.snapkey.in}
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-ylhzrgso}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
