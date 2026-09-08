@@ -29,6 +29,17 @@ def verify_screen_access_code(share: ShareLink, code: str | None) -> bool:
     return bool(code and verify_password(code, share.screen_access_code_hash))
 
 
+def screen_code_share(db: Session, presentation_id: str, share: ShareLink | None = None) -> ShareLink | None:
+    if share and share.screen_access_code_hash:
+        return share
+    return db.query(ShareLink).filter(
+        ShareLink.presentation_id == presentation_id,
+        ShareLink.permission == "presenter",
+        ShareLink.screen_access_code_hash.isnot(None),
+        ShareLink.is_active == True,  # noqa: E712
+    ).order_by(ShareLink.created_at.desc()).first()
+
+
 def serialize_presentation(presentation: Presentation) -> PresentationOut:
     slides = sorted(presentation.slides, key=lambda item: item.order)
     return PresentationOut(
@@ -98,7 +109,8 @@ def get_presentation(
         share = active_share_link(db, presentation.id, token)
         if not share:
             raise HTTPException(status_code=403, detail="Share link is not valid")
-        if request.query_params.get("screen") == "1" and not verify_screen_access_code(share, request.query_params.get("screenCode")):
+        required_code_share = screen_code_share(db, presentation.id, share)
+        if request.query_params.get("screen") == "1" and required_code_share and not verify_screen_access_code(required_code_share, request.query_params.get("screenCode")):
             raise HTTPException(status_code=403, detail="Enter the 4-digit screen access code")
         permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
         return PresentationPayload(presentation=serialize_presentation(presentation), permission=permission)
@@ -174,7 +186,7 @@ def create_share_link(
         url=f"{base}/{page}?id={presentation_id}&token={share.token}",
         token=share.token,
         permission=share.permission,
-        requiresScreenCode=bool(share.screen_access_code_hash),
+        requiresScreenCode=bool(share.screen_access_code_hash or screen_code_share(db, presentation.id)),
     )
 
 
@@ -193,7 +205,7 @@ def screen_access_requirements(
     share = active_share_link(db, presentation_id, token)
     if not share:
         raise HTTPException(status_code=403, detail="Share link is not valid")
-    return {"requiresCode": bool(share.screen_access_code_hash)}
+    return {"requiresCode": bool(screen_code_share(db, presentation_id, share))}
 
 
 @router.post("/{presentation_id}/screen-access")
@@ -208,7 +220,8 @@ def verify_screen_access(
     share = active_share_link(db, presentation_id, payload.token)
     if not share:
         raise HTTPException(status_code=403, detail="Share link is not valid")
-    if not verify_screen_access_code(share, payload.screenAccessCode):
+    required_code_share = screen_code_share(db, presentation_id, share)
+    if required_code_share and not verify_screen_access_code(required_code_share, payload.screenAccessCode):
         raise HTTPException(status_code=403, detail="Screen access code is incorrect")
     return {"ok": True}
 

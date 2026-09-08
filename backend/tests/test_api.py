@@ -102,29 +102,50 @@ def test_presenter_share_link_requires_screen_code():
 
 
 def test_screen_code_is_required_and_verified_for_protected_screen():
+    email = f"screen-code-owner-{uuid4().hex}@example.com"
     with TestClient(fastapi_app) as client:
-        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
-        token = login.json()["accessToken"]
+        signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Screen Code Owner", "email": email, "password": "securepass123"},
+        )
+        token = signup.json()["accessToken"]
         headers = {"Authorization": f"Bearer {token}"}
+        created = client.post(
+            "/api/presentations",
+            json={"title": "Protected screen deck"},
+            headers=headers,
+        )
+        presentation_id = created.json()["presentation"]["id"]
         link = client.post(
-            "/api/presentations/pres_demo/share",
+            f"/api/presentations/{presentation_id}/share",
             json={"permission": "presenter", "screenAccessCode": "1357"},
             headers=headers,
         )
         share_token = link.json()["token"]
 
-        requirements = client.get(f"/api/presentations/pres_demo/screen-access?token={share_token}")
-        locked = client.get(f"/api/presentations/pres_demo?screen=1&token={share_token}")
+        requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={share_token}")
+        locked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}")
         wrong = client.post(
-            "/api/presentations/pres_demo/screen-access",
+            f"/api/presentations/{presentation_id}/screen-access",
             json={"token": share_token, "screenAccessCode": "2468"},
         )
         right = client.post(
-            "/api/presentations/pres_demo/screen-access",
+            f"/api/presentations/{presentation_id}/screen-access",
             json={"token": share_token, "screenAccessCode": "1357"},
         )
-        unlocked = client.get(f"/api/presentations/pres_demo?screen=1&token={share_token}&screenCode=1357")
+        unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}&screenCode=1357")
+        viewer_link = client.post(
+            f"/api/presentations/{presentation_id}/share",
+            json={"permission": "viewer"},
+            headers=headers,
+        )
+        viewer_token = viewer_link.json()["token"]
+        viewer_requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={viewer_token}")
+        viewer_locked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}")
+        viewer_unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}&screenCode=1357")
 
+    assert signup.status_code == 200
+    assert created.status_code == 200
     assert link.status_code == 200
     assert requirements.status_code == 200
     assert requirements.json() == {"requiresCode": True}
@@ -134,21 +155,34 @@ def test_screen_code_is_required_and_verified_for_protected_screen():
     assert right.json() == {"ok": True}
     assert unlocked.status_code == 200
     assert unlocked.json()["permission"] == "presenter"
+    assert viewer_link.status_code == 200
+    assert viewer_link.json()["requiresScreenCode"] is True
+    assert viewer_requirements.json() == {"requiresCode": True}
+    assert viewer_locked.status_code == 403
+    assert viewer_unlocked.status_code == 200
+    assert viewer_unlocked.json()["permission"] == "viewer"
 
 
 def test_viewer_screen_link_does_not_require_code():
     with TestClient(fastapi_app) as client:
         login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
         token = login.json()["accessToken"]
+        created = client.post(
+            "/api/presentations",
+            json={"title": f"Open viewer deck {uuid4().hex}"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        presentation_id = created.json()["presentation"]["id"]
         link = client.post(
-            "/api/presentations/pres_demo/share",
+            f"/api/presentations/{presentation_id}/share",
             json={"permission": "viewer"},
             headers={"Authorization": f"Bearer {token}"},
         )
         share_token = link.json()["token"]
-        requirements = client.get(f"/api/presentations/pres_demo/screen-access?token={share_token}")
-        screen = client.get(f"/api/presentations/pres_demo?screen=1&token={share_token}")
+        requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={share_token}")
+        screen = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}")
 
+    assert created.status_code == 200
     assert link.status_code == 200
     assert link.json()["requiresScreenCode"] is False
     assert requirements.json() == {"requiresCode": False}
