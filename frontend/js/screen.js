@@ -12,6 +12,9 @@
   const codeForm = document.getElementById("codeForm");
   const codeInput = document.getElementById("screenCode");
   const codeStatus = document.getElementById("codeStatus");
+  const annotationLayer = document.getElementById("liveAnnotationLayer");
+  const annotationCanvas = document.getElementById("liveAnnotationCanvas");
+  const annotationText = document.getElementById("liveAnnotationText");
   let presentation;
   let canvas;
   let audioUnlocked = false;
@@ -138,6 +141,58 @@
     if (action === "replay") { media.currentTime = 0; media.play().catch(() => {}); }
   }
 
+  function drawAnnotationPath(points = [], color = "#ffd54a", size = 7) {
+    if (!annotationCanvas || points.length < 2) return;
+    const context = annotationCanvas.getContext("2d");
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = Number(size) || 7;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    points.forEach((point, index) => {
+      const x = Number(point.x) * annotationCanvas.width;
+      const y = Number(point.y) * annotationCanvas.height;
+      if (index) context.lineTo(x, y);
+      else context.moveTo(x, y);
+    });
+    context.stroke();
+    context.restore();
+  }
+
+  function addAnnotationText(payload) {
+    if (!annotationText || !payload?.text) return;
+    const label = document.createElement("span");
+    label.textContent = String(payload.text).slice(0, 180);
+    label.style.left = `${Math.max(0, Math.min(1, Number(payload.point?.x) || 0)) * 100}%`;
+    label.style.top = `${Math.max(0, Math.min(1, Number(payload.point?.y) || 0)) * 100}%`;
+    label.style.setProperty("--annotation-color", payload.color || "#ffd54a");
+    label.style.setProperty("--annotation-size", `${Math.max(18, (Number(payload.size) || 7) * 3.8)}px`);
+    annotationText.append(label);
+  }
+
+  function clearAnnotations() {
+    annotationCanvas?.getContext("2d").clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+    annotationText?.replaceChildren();
+  }
+
+  function applyLiveViewport(payload = {}) {
+    const zoom = Math.max(0.5, Math.min(3, Number(payload.zoom) || 1));
+    const x = Math.max(-1200, Math.min(1200, Number(payload.x) || 0));
+    const y = Math.max(-900, Math.min(900, Number(payload.y) || 0));
+    stage.style.setProperty("--live-zoom", String(zoom));
+    stage.style.setProperty("--live-pan-x", `${x}px`);
+    stage.style.setProperty("--live-pan-y", `${y}px`);
+  }
+
+  function handleAnnotation(event) {
+    if (event.presentationId !== presentationId) return;
+    if (event.type === "draw") drawAnnotationPath(event.payload?.points, event.payload?.color, event.payload?.size);
+    if (event.type === "text") addAnnotationText(event.payload);
+    if (event.type === "clear") clearAnnotations();
+    if (event.type === "viewport") applyLiveViewport(event.payload);
+  }
+
   audioGate.hidden = true;
 
   document.getElementById("enableScreen").addEventListener("click", async () => {
@@ -165,6 +220,7 @@
     socket?.on("presentation_updated", handlePresentationUpdate);
     socket?.on("presentation_deleted", event => { if (event.presentationId === presentationId) control("stop"); });
     socket?.on("presentation_media_control", event => { if (event.presentationId === presentationId) control(event.action); });
+    socket?.on("presentation_annotation", handleAnnotation);
     socket?.on("session_ended", event => { if (!event?.presentationId || event.presentationId === presentationId) control("stop"); });
     setInterval(async () => {
       try {
