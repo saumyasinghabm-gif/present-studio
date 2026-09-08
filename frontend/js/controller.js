@@ -17,6 +17,7 @@
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
+  function secureAppUrl(path) { const url = new URL(path, location.origin); if (!["localhost", "127.0.0.1", "::1"].includes(url.hostname)) url.protocol = "https:"; return url.href; }
   function credentials() { return { presentationId, authToken, shareToken }; }
   function setConnectionStatus(label) { $("#connectionStatus").innerHTML = `<i></i> ${label}`; }
   function teachPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
@@ -257,11 +258,17 @@
     $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; $("#previewStage").innerHTML = "<span>Black screen</span>"; };
     $("#openScreen").onclick = async () => {
       if (shareToken) {
-        window.open(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`, "_blank", "noopener");
+        window.open(secureAppUrl(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`), "_blank", "noopener");
+        return;
+      }
+      const screenCode = window.prompt("Choose a 4-digit code for the presentation screen.", "");
+      if (screenCode === null) return;
+      if (!/^\d{4}$/.test(screenCode.trim())) {
+        toast("Enter exactly four digits for the screen code.");
         return;
       }
       try {
-        const link = await api.createShareLink(presentation.id, "viewer");
+        const link = await api.createShareLink(presentation.id, "viewer", screenCode.trim());
         window.open(link.url, "_blank", "noopener");
       } catch (error) {
         toast(error.message || "Could not open the presentation screen.");

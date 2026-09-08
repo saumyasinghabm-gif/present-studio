@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from urllib.parse import urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -11,6 +12,35 @@ from ..socket_manager import sio
 
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def public_share_base_url(request: Request) -> str:
+    """Return an HTTPS public origin while keeping loopback development usable."""
+    configured = get_settings().public_base_url.strip().rstrip("/")
+    configured_url = urlsplit(configured if "://" in configured else f"https://{configured}")
+
+    if configured_url.hostname and configured_url.hostname.lower() not in LOCAL_HOSTS:
+        scheme = "https"
+        hostname = configured_url.hostname
+        port = configured_url.port
+        netloc = f"[{hostname}]" if ":" in hostname else hostname
+        if port and port not in {80, 443}:
+            netloc = f"{netloc}:{port}"
+        return urlunsplit((scheme, netloc, configured_url.path.rstrip("/"), "", ""))
+
+    forwarded_host = request.headers.get("x-forwarded-host", "").split(",", 1)[0].strip()
+    external_url = urlsplit(f"https://{forwarded_host}") if forwarded_host else request.url
+    request_hostname = (external_url.hostname or "").lower()
+    if request_hostname and request_hostname not in LOCAL_HOSTS:
+        hostname = external_url.hostname or request_hostname
+        port = external_url.port
+        netloc = f"[{hostname}]" if ":" in hostname else hostname
+        if port and port not in {80, 443}:
+            netloc = f"{netloc}:{port}"
+        return f"https://{netloc}"
+
+    return configured or str(request.base_url).rstrip("/")
 
 
 def active_share_link(db: Session, presentation_id: str, token: str) -> ShareLink | None:
@@ -30,14 +60,10 @@ def verify_screen_access_code(share: ShareLink, code: str | None) -> bool:
 
 
 def screen_code_share(db: Session, presentation_id: str, share: ShareLink | None = None) -> ShareLink | None:
-    if share and share.screen_access_code_hash:
-        return share
-    return db.query(ShareLink).filter(
-        ShareLink.presentation_id == presentation_id,
-        ShareLink.permission == "presenter",
-        ShareLink.screen_access_code_hash.isnot(None),
-        ShareLink.is_active == True,  # noqa: E712
-    ).order_by(ShareLink.created_at.desc()).first()
+    # Every screen token must carry its own code. Depending on the most recent
+    # presenter token made access depend on link creation order and left the
+    # first viewer link unprotected.
+    return share if share and share.screen_access_code_hash else None
 
 
 def serialize_presentation(presentation: Presentation) -> PresentationOut:
@@ -109,9 +135,12 @@ def get_presentation(
         share = active_share_link(db, presentation.id, token)
         if not share:
             raise HTTPException(status_code=403, detail="Share link is not valid")
-        required_code_share = screen_code_share(db, presentation.id, share)
-        if request.query_params.get("screen") == "1" and required_code_share and not verify_screen_access_code(required_code_share, request.query_params.get("screenCode")):
-            raise HTTPException(status_code=403, detail="Enter the 4-digit screen access code")
+        if request.query_params.get("screen") == "1":
+            required_code_share = screen_code_share(db, presentation.id, share)
+            if not required_code_share:
+                raise HTTPException(status_code=403, detail="This unprotected screen link is no longer valid. Generate a new protected link")
+            if not verify_screen_access_code(required_code_share, request.query_params.get("screenCode")):
+                raise HTTPException(status_code=403, detail="Enter the 4-digit screen access code")
         permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
         return PresentationPayload(presentation=serialize_presentation(presentation), permission=permission)
 
@@ -161,6 +190,7 @@ async def save_presentation(
 @router.post("/{presentation_id}/share")
 def create_share_link(
     presentation_id: str,
+    request: Request,
     payload: ShareLinkCreate = ShareLinkCreate(),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -168,25 +198,25 @@ def create_share_link(
     presentation = db.get(Presentation, presentation_id)
     if not presentation or not can_edit_presentation(db, presentation, user):
         raise HTTPException(status_code=404, detail="Presentation not found")
-    if payload.permission == "presenter" and not payload.screenAccessCode:
-        raise HTTPException(status_code=422, detail="Remote Control links require a 4-digit screen access code")
+    if not payload.screenAccessCode:
+        raise HTTPException(status_code=422, detail="Shared presentation links require a 4-digit screen access code")
 
     share = ShareLink(
         id=new_id("share"),
         presentation_id=presentation.id,
         token=new_id("token"),
         permission=payload.permission,
-        screen_access_code_hash=hash_password(payload.screenAccessCode) if payload.permission == "presenter" and payload.screenAccessCode else None,
+        screen_access_code_hash=hash_password(payload.screenAccessCode),
     )
     db.add(share)
     db.commit()
-    base = get_settings().public_base_url.rstrip("/")
+    base = public_share_base_url(request)
     page = "controller.html" if share.permission == "presenter" else "screen.html"
     return ShareLinkOut(
         url=f"{base}/{page}?id={presentation_id}&token={share.token}",
         token=share.token,
         permission=share.permission,
-        requiresScreenCode=bool(share.screen_access_code_hash or screen_code_share(db, presentation.id)),
+        requiresScreenCode=True,
     )
 
 
@@ -205,7 +235,9 @@ def screen_access_requirements(
     share = active_share_link(db, presentation_id, token)
     if not share:
         raise HTTPException(status_code=403, detail="Share link is not valid")
-    return {"requiresCode": bool(screen_code_share(db, presentation_id, share))}
+    if not share.screen_access_code_hash:
+        raise HTTPException(status_code=403, detail="This unprotected screen link is no longer valid. Generate a new protected link")
+    return {"requiresCode": True}
 
 
 @router.post("/{presentation_id}/screen-access")
@@ -221,7 +253,9 @@ def verify_screen_access(
     if not share:
         raise HTTPException(status_code=403, detail="Share link is not valid")
     required_code_share = screen_code_share(db, presentation_id, share)
-    if required_code_share and not verify_screen_access_code(required_code_share, payload.screenAccessCode):
+    if not required_code_share:
+        raise HTTPException(status_code=403, detail="This unprotected screen link is no longer valid. Generate a new protected link")
+    if not verify_screen_access_code(required_code_share, payload.screenAccessCode):
         raise HTTPException(status_code=403, detail="Screen access code is incorrect")
     return {"ok": True}
 

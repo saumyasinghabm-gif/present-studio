@@ -571,6 +571,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .form-row label { font-weight: 650; }
 .form-row input, .form-row select, .form-row textarea { width: 100%; min-height: 40px; border: 1px solid #c8c8c4; border-radius: 4px; padding: 8px 10px; }
 .form-row textarea { min-height: 95px; resize: vertical; }
+.share-help { margin: -2px 0 14px; color: #666; font-size: .78rem; line-height: 1.45; }
 .share-link-row { display: flex; gap: 8px; }
 .share-link-row input { flex: 1; }
 .share-link-row button { min-width: 92px; border-radius: 4px; color: #fff; background: #111; }

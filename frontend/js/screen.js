@@ -264,10 +264,14 @@
       audioGate.hidden = false;
       await loadScreen();
     }
-  } catch {
+  } catch (error) {
     mediaLayer.replaceChildren();
     canvasWrap.hidden = true;
-    codeGate.hidden = true;
+    codeGate.hidden = false;
     audioGate.hidden = true;
+    codeInput.hidden = true;
+    codeForm.querySelector("button").hidden = true;
+    codeForm.querySelector("label").textContent = "Screen unavailable";
+    codeStatus.textContent = error?.message || "This screen link is invalid or has expired.";
   }
 })();

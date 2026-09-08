@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260908-ppt-shape-text">
+  <link rel="stylesheet" href="/css/builder.css?v=20260908-protected-screen-flow">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -170,9 +170,10 @@
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
       <div class="modal-header"><h2 id="shareModalTitle">Share presentation</h2><button type="button" aria-label="Close dialog" id="closeShare"><i class="bi bi-x-lg"></i></button></div>
       <div class="modal-body">
-        <label class="form-row">Access<select id="sharePermission"><option value="viewer">Presentation Screen</option><option value="presenter">Remote Control</option></select></label>
-        <label class="form-row" id="shareScreenCodeRow" hidden>Screen code<input id="shareScreenCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" placeholder="4 digits"></label>
-        <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Generate Link</span></button>
+        <label class="form-row">Link type<strong>Remote Control</strong><input id="sharePermission" type="hidden" value="presenter"></label>
+        <label class="form-row" id="shareScreenCodeRow">Screen code<input id="shareScreenCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" placeholder="4 digits" required></label>
+        <p class="share-help">Generate the remote link first. The presenter opens the presentation screen from the remote, and the screen stays locked until this code is entered.</p>
+        <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Generate Remote Link</span></button>
         <p class="share-status" id="shareStatus" role="status"></p>
       </div>
       <div class="modal-actions"><button type="button" id="copyLink">Copy Link</button><button type="button" id="openShareLink" disabled><span>Open Link</span></button></div>
@@ -198,14 +199,11 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
-  <script src="/js/fabric-patch.js?v=20260829-baseline"></script>
+  <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260908-shape-thumbnails"></script>
+  <script src="/js/editor.js?v=20260908-protected-screen-flow"></script>
   <script src="/js/builder-ribbon.js?v=20260908-ppt-shape-text"></script>
-  <script src="/js/builder-ui.js?v=20260908-ppt-shape-text"></script>
-  <script src="/js/editor.js?v=20260908-visible-screen-code"></script>
-  <script src="/js/builder-ribbon.js?v=20260907-wordart-format"></script>
-  <script src="/js/builder-ui.js?v=20260907-shape-text"></script>
+  <script src="/js/builder-ui.js?v=20260908-paragraph-align"></script>
 </body>
 </html>

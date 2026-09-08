@@ -145,4 +145,56 @@
   if (fabricRef.StaticCanvas && fabricRef.StaticCanvas.prototype) {
     patchLoadFromJSON(fabricRef.StaticCanvas.prototype);
   }
+
+  // Fabric 5 stores one textAlign value for an entire Textbox. PowerPoint-style
+  // editing needs alignment to belong to a paragraph, while every visual line
+  // created by wrapping must inherit its source paragraph's alignment.
+  function alignmentForVisualLine(textbox, visualLineIndex) {
+    if (!Array.isArray(textbox.paragraphAlignments)) return null;
+    var styleMap = textbox._styleMap || textbox.__styleMap;
+    var mapEntry = styleMap && styleMap[visualLineIndex];
+    var paragraphIndex = mapEntry && Number.isFinite(mapEntry.line) ? mapEntry.line : visualLineIndex;
+    var alignment = textbox.paragraphAlignments[paragraphIndex];
+    return ["left", "center", "right", "justify"].indexOf(alignment) >= 0 ? alignment : null;
+  }
+
+  function withVisualLineAlignment(textbox, visualLineIndex, callback) {
+    var alignment = alignmentForVisualLine(textbox, visualLineIndex);
+    if (!alignment || alignment === textbox.textAlign) return callback();
+    var originalAlignment = textbox.textAlign;
+    textbox.textAlign = alignment;
+    try {
+      return callback();
+    } finally {
+      textbox.textAlign = originalAlignment;
+    }
+  }
+
+  function patchParagraphAlignment(proto) {
+    if (!proto) return;
+    var originalOffset = proto._getLineLeftOffset;
+    if (originalOffset && !originalOffset.__patchedForParagraphAlignment) {
+      proto._getLineLeftOffset = function patchedLineLeftOffset(lineIndex) {
+        return withVisualLineAlignment(this, lineIndex, function getOriginalOffset() {
+          return originalOffset.call(this, lineIndex);
+        }.bind(this));
+      };
+      proto._getLineLeftOffset.__patchedForParagraphAlignment = true;
+    }
+
+    var originalRenderLine = proto._renderTextLine;
+    if (originalRenderLine && !originalRenderLine.__patchedForParagraphAlignment) {
+      proto._renderTextLine = function patchedRenderTextLine(method, ctx, line, left, top, lineIndex) {
+        var args = arguments;
+        return withVisualLineAlignment(this, lineIndex, function renderOriginalLine() {
+          return originalRenderLine.apply(this, args);
+        }.bind(this));
+      };
+      proto._renderTextLine.__patchedForParagraphAlignment = true;
+    }
+  }
+
+  if (fabricRef.Textbox && fabricRef.Textbox.prototype) {
+    patchParagraphAlignment(fabricRef.Textbox.prototype);
+  }
 })();

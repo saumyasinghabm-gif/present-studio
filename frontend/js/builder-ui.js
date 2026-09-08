@@ -1192,6 +1192,16 @@
     return shapeTextParts(object) ? object : null;
   }
 
+  function paragraphIndexAt(textObject, position) {
+    return String(textObject?.text || "").slice(0, Math.max(0, Number(position) || 0)).split("\n").length - 1;
+  }
+
+  function paragraphAlignmentAt(textObject, position) {
+    const paragraphIndex = paragraphIndexAt(textObject, position);
+    const alignment = textObject?.paragraphAlignments?.[paragraphIndex];
+    return ["left", "center", "right", "justify"].includes(alignment) ? alignment : (textObject?.textAlign || "left");
+  }
+
   function syncTextControls() {
     const textObject = selectedText();
     const editorPanel = byId("editorPanel");
@@ -1206,6 +1216,13 @@
     const weight = selectedTextStyle(textObject, "fontWeight");
     byId("boldButton").classList.toggle("active", String(weight) === "bold" || Number(weight) >= 700);
     byId("italicButton").classList.toggle("active", selectedTextStyle(textObject, "fontStyle") === "italic");
+    const alignment = paragraphAlignmentAt(textObject, textObject.isEditing ? textObject.selectionStart : 0);
+    const alignmentActions = { "align-left": "left", "align-center": "center", "align-right": "right", justify: "justify" };
+    Object.entries(alignmentActions).forEach(([actionName, value]) => {
+      const button = document.querySelector(`[data-builder-action="${actionName}"]`);
+      button?.classList.toggle("is-active", alignment === value);
+      button?.setAttribute("aria-pressed", alignment === value ? "true" : "false");
+    });
     const spacing = Number(textObject.lineHeight) || 1.16;
     const spacingOption = [1, 1.15, 1.5, 2].reduce((closest, value) => Math.abs(value - spacing) < Math.abs(closest - spacing) ? value : closest, 1.15);
     byId("lineSpacing").value = String(spacingOption);
@@ -1249,6 +1266,45 @@
     const start = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
     const nextBreak = value.indexOf("\n", selectionEnd);
     return { start, end: nextBreak < 0 ? value.length : nextBreak };
+  }
+
+  let pendingParagraphSelection = null;
+
+  function selectedParagraphIndexes(textObject) {
+    const value = String(textObject.text || "");
+    const saved = pendingParagraphSelection?.textObject === textObject ? pendingParagraphSelection : null;
+    if (!textObject.isEditing && !saved) return value.split("\n").map((_, index) => index);
+    const selectionStart = Math.max(0, Number(saved?.start ?? textObject.selectionStart) || 0);
+    const selectionEnd = Math.max(selectionStart, Number(saved?.end ?? textObject.selectionEnd) || selectionStart);
+    const first = paragraphIndexAt(textObject, selectionStart);
+    const lastPosition = selectionEnd > selectionStart ? selectionEnd - 1 : selectionStart;
+    const last = paragraphIndexAt(textObject, lastPosition);
+    return Array.from({ length: last - first + 1 }, (_, index) => first + index);
+  }
+
+  function applyParagraphAlignment(alignment) {
+    const textObject = selectedText() || pendingParagraphSelection?.textObject;
+    if (!textObject) { toast("Select text first."); return; }
+    const paragraphs = String(textObject.text || "").split("\n");
+    const indexes = selectedParagraphIndexes(textObject);
+    if (indexes.length === paragraphs.length) {
+      textObject.set({ textAlign: alignment, paragraphAlignments: [] });
+    } else {
+      const paragraphAlignments = Array.isArray(textObject.paragraphAlignments) ? textObject.paragraphAlignments.slice(0, paragraphs.length) : [];
+      indexes.forEach((index) => { paragraphAlignments[index] = alignment; });
+      textObject.set("paragraphAlignments", paragraphAlignments);
+    }
+    pendingParagraphSelection = null;
+    textObject.set({ dirty: true });
+    textObject.initDimensions?.();
+    const container = selectedTextContainer();
+    const parts = shapeTextParts(container);
+    if (parts) { fitShapeLabel(parts.shape, textObject); container.set({ dirty: true }); container.setCoords(); }
+    else if (shapeTextEditSession?.label === textObject) fitShapeLabel(shapeTextEditSession.shape, textObject);
+    textObject.setCoords();
+    canvas.requestRenderAll();
+    syncTextControls();
+    schedule();
   }
 
   function transformSelectedParagraphs(transformer) {
@@ -1441,6 +1497,15 @@
     }, delay);
   }
 
+  document.querySelector(".ribbon").addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("[data-builder-action]");
+    if (!button || !["align-left", "align-center", "align-right", "justify"].includes(button.dataset.builderAction)) return;
+    const textObject = selectedText();
+    if (textObject?.isEditing) {
+      pendingParagraphSelection = { textObject, start: textObject.selectionStart, end: textObject.selectionEnd };
+    }
+  });
+
   document.querySelector(".ribbon").addEventListener("click", (event) => {
     const button = event.target.closest("[data-builder-action]");
     if (!button) return;
@@ -1468,10 +1533,10 @@
       case "highlight": format({ textBackgroundColor: selectedTextStyle(textObject, "textBackgroundColor") ? "" : "#fff0a8" }); break;
       case "font-size-decrease": { const size = Number(selectedTextStyle(textObject, "fontSize") || textObject?.fontSize || 42); format({ fontSize: Math.max(8, size - 2) }); break; }
       case "font-size-increase": { const size = Number(selectedTextStyle(textObject, "fontSize") || textObject?.fontSize || 42); format({ fontSize: Math.min(240, size + 2) }); break; }
-      case "align-left": format({ textAlign: "left" }); break;
-      case "align-center": format({ textAlign: "center" }); break;
-      case "align-right": format({ textAlign: "right" }); break;
-      case "justify": format({ textAlign: "justify" }); break;
+      case "align-left": applyParagraphAlignment("left"); break;
+      case "align-center": applyParagraphAlignment("center"); break;
+      case "align-right": applyParagraphAlignment("right"); break;
+      case "justify": applyParagraphAlignment("justify"); break;
       case "bullets": transformSelectedParagraphs((lines) => { const remove = lines.filter((line) => line.trim()).every((line) => /^\s*•\s+/.test(line)); return lines.map((line) => !line.trim() ? line : remove ? line.replace(/^(\s*)•\s+/, "$1") : line.replace(/^(\s*)(?:•\s+|\d+\.\s+)?/, "$1• ")); }); break;
       case "numbering": transformSelectedParagraphs((lines) => { let number = 0; return lines.map((line) => { if (!line.trim()) return line; number += 1; return line.replace(/^(\s*)(?:•\s+|\d+\.\s+)?/, `$1${number}. `); }); }); break;
       case "indent-less": transformSelectedParagraphs((lines) => lines.map((line) => line.replace(/^(?:\t| {1,4})/, ""))); break;

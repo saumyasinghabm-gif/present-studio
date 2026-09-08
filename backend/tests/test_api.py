@@ -52,9 +52,14 @@ def test_share_link_permissions_are_returned_to_frontend():
         token = login.json()["accessToken"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        viewer_link = client.post("/api/presentations/pres_demo/share", json={"permission": "viewer"}, headers=headers)
+        viewer_link = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "viewer", "screenAccessCode": "8642"},
+            headers=headers,
+        )
         assert viewer_link.status_code == 200
         assert viewer_link.json()["permission"] == "viewer"
+        assert viewer_link.json()["url"].startswith("https://")
         assert "/screen.html?" in viewer_link.json()["url"]
 
         viewer_payload = client.get(f"/api/presentations/pres_demo?token={viewer_link.json()['token']}")
@@ -69,6 +74,7 @@ def test_share_link_permissions_are_returned_to_frontend():
         assert presenter_link.status_code == 200
         assert presenter_link.json()["permission"] == "presenter"
         assert presenter_link.json()["requiresScreenCode"] is True
+        assert presenter_link.json()["url"].startswith("https://")
         assert "/controller.html?" in presenter_link.json()["url"]
 
         presenter_payload = client.get(f"/api/presentations/pres_demo?token={presenter_link.json()['token']}")
@@ -136,13 +142,14 @@ def test_screen_code_is_required_and_verified_for_protected_screen():
         unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}&screenCode=1357")
         viewer_link = client.post(
             f"/api/presentations/{presentation_id}/share",
-            json={"permission": "viewer"},
+            json={"permission": "viewer", "screenAccessCode": "8642"},
             headers=headers,
         )
         viewer_token = viewer_link.json()["token"]
         viewer_requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={viewer_token}")
         viewer_locked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}")
-        viewer_unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}&screenCode=1357")
+        viewer_wrong = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}&screenCode=1357")
+        viewer_unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}&screenCode=8642")
 
     assert signup.status_code == 200
     assert created.status_code == 200
@@ -159,11 +166,12 @@ def test_screen_code_is_required_and_verified_for_protected_screen():
     assert viewer_link.json()["requiresScreenCode"] is True
     assert viewer_requirements.json() == {"requiresCode": True}
     assert viewer_locked.status_code == 403
+    assert viewer_wrong.status_code == 403
     assert viewer_unlocked.status_code == 200
     assert viewer_unlocked.json()["permission"] == "viewer"
 
 
-def test_viewer_screen_link_does_not_require_code():
+def test_viewer_screen_link_requires_its_own_code():
     with TestClient(fastapi_app) as client:
         login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
         token = login.json()["accessToken"]
@@ -173,20 +181,28 @@ def test_viewer_screen_link_does_not_require_code():
             headers={"Authorization": f"Bearer {token}"},
         )
         presentation_id = created.json()["presentation"]["id"]
-        link = client.post(
+        unprotected = client.post(
             f"/api/presentations/{presentation_id}/share",
             json={"permission": "viewer"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        link = client.post(
+            f"/api/presentations/{presentation_id}/share",
+            json={"permission": "viewer", "screenAccessCode": "9753"},
             headers={"Authorization": f"Bearer {token}"},
         )
         share_token = link.json()["token"]
         requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={share_token}")
         screen = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}")
+        unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}&screenCode=9753")
 
     assert created.status_code == 200
+    assert unprotected.status_code == 422
     assert link.status_code == 200
-    assert link.json()["requiresScreenCode"] is False
-    assert requirements.json() == {"requiresCode": False}
-    assert screen.status_code == 200
+    assert link.json()["requiresScreenCode"] is True
+    assert requirements.json() == {"requiresCode": True}
+    assert screen.status_code == 403
+    assert unlocked.status_code == 200
 
 
 def test_saving_presentation_emits_live_update():
@@ -234,7 +250,7 @@ def test_owner_can_delete_presentation():
         signup = client.post("/api/auth/signup", json={"name": "Delete Owner", "email": email, "password": "securepass123"})
         headers = {"Authorization": f"Bearer {signup.json()['accessToken']}"}
         created = client.post("/api/presentations", json={"title": "Delete me"}, headers=headers).json()["presentation"]
-        client.post(f"/api/presentations/{created['id']}/share", json={"permission": "viewer"}, headers=headers)
+        client.post(f"/api/presentations/{created['id']}/share", json={"permission": "viewer", "screenAccessCode": "2468"}, headers=headers)
         other_login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
         other_headers = {"Authorization": f"Bearer {other_login.json()['accessToken']}"}
         forbidden = client.delete(f"/api/presentations/{created['id']}", headers=other_headers)
@@ -418,7 +434,7 @@ def test_admin_can_revoke_user_and_owned_presentations_but_not_self():
         ).json()["presentation"]
         client.post(
             f"/api/presentations/{created['id']}/share",
-            json={"permission": "viewer"},
+            json={"permission": "viewer", "screenAccessCode": "2468"},
             headers=owner_headers,
         )
 
