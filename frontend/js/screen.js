@@ -7,6 +7,11 @@
   const mediaLayer = document.getElementById("outputMedia");
   const canvasWrap = document.getElementById("outputCanvasWrap");
   const stage = document.getElementById("outputStage");
+  const audioGate = document.getElementById("audioGate");
+  const codeGate = document.getElementById("codeGate");
+  const codeForm = document.getElementById("codeForm");
+  const codeInput = document.getElementById("screenCode");
+  const codeStatus = document.getElementById("codeStatus");
   let presentation;
   let canvas;
   let audioUnlocked = false;
@@ -133,17 +138,23 @@
     if (action === "replay") { media.currentTime = 0; media.play().catch(() => {}); }
   }
 
+  audioGate.hidden = true;
+
   document.getElementById("enableScreen").addEventListener("click", async () => {
     audioUnlocked = true;
-    document.getElementById("audioGate").hidden = true;
+    audioGate.hidden = true;
     try { await document.documentElement.requestFullscreen?.(); } catch {}
     const slide = slideById(stage.dataset.slideId);
     if (slide) renderSlide(slide);
     else if (activeMedia) { activeMedia.muted = false; activeMedia.play?.().catch(() => {}); }
   });
 
-  try {
-    const [result, live] = await Promise.all([api.getPresentation(presentationId, shareToken), api.getLiveSession(presentationId)]);
+  codeInput?.addEventListener("input", () => {
+    codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 4);
+  });
+
+  async function loadScreen(screenCode = "") {
+    const [result, live] = await Promise.all([api.getScreenPresentation(presentationId, shareToken, screenCode), api.getLiveSession(presentationId)]);
     presentation = result.presentation;
     canvas = new fabric.StaticCanvas("outputCanvas", { width: 1280, height: 720, selection: false });
     if (presentation.slides.length) renderSlide(slideById(live.activeSlideId) || presentation.slides[0]);
@@ -162,8 +173,45 @@
         if (slide && stage.dataset.slideId !== slide.id) renderSlide(slide);
       } catch {}
     }, 2000);
+  }
+
+  codeForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const code = codeInput.value.trim();
+    if (!/^\d{4}$/.test(code)) {
+      codeStatus.textContent = "Enter exactly four digits.";
+      codeInput.focus();
+      return;
+    }
+    const button = codeForm.querySelector("button");
+    button.disabled = true;
+    codeStatus.textContent = "";
+    try {
+      await api.verifyScreenAccessCode(presentationId, shareToken, code);
+      await loadScreen(code);
+      codeGate.hidden = true;
+      audioGate.hidden = false;
+    } catch (error) {
+      codeStatus.textContent = error.message || "The code was not accepted.";
+      codeInput.select();
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  try {
+    const access = await api.getScreenAccessRequirements(presentationId, shareToken);
+    if (access.requiresCode) {
+      codeGate.hidden = false;
+      codeInput.focus();
+    } else {
+      audioGate.hidden = false;
+      await loadScreen();
+    }
   } catch {
     mediaLayer.replaceChildren();
     canvasWrap.hidden = true;
+    codeGate.hidden = true;
+    audioGate.hidden = true;
   }
 })();

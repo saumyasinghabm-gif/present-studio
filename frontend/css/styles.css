@@ -926,6 +926,14 @@ button.present-back {
 .live-output-positioned-video { position: absolute; object-fit: contain; }
 .screen-audio-gate { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: #000; }
 .screen-audio-gate button { border: 1px solid rgba(255,255,255,.35); background: #ffd54a; color: #171713; padding: 18px 26px; font: 800 .82rem var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.screen-code-gate { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px; background: #000; color: #fff; }
+.screen-code-card { width: min(360px, 100%); display: grid; gap: 14px; padding: 24px; border: 1px solid rgba(255,255,255,.18); background: #121212; box-shadow: 0 24px 80px rgba(0,0,0,.45); }
+.screen-code-card p { margin: 0; color: #ffd54a; font: 800 .68rem var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.screen-code-card label { font: 800 1.35rem var(--sans); }
+.screen-code-card input { width: 100%; border: 1px solid rgba(255,255,255,.2); background: #000; color: #fff; padding: 14px 16px; font: 800 1.8rem var(--mono); letter-spacing: .35em; text-align: center; }
+.screen-code-card input:focus { outline: 3px solid rgba(255,213,74,.35); border-color: #ffd54a; }
+.screen-code-card button { border: 0; background: #ffd54a; color: #171713; padding: 14px 18px; font: 800 .75rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.screen-code-card span { min-height: 18px; color: #ff8a8a; font: 700 .72rem var(--mono); }
 .live-output-stage.output-enter { animation: output-enter 800ms cubic-bezier(.2,.75,.2,1) both; }
 @keyframes output-enter { from { opacity: 0; transform: scale(1.025); filter: blur(8px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
 @media (max-width: 760px) { .live-controller-shell { padding: 14px; } .live-controller-header { align-items: flex-start; flex-direction: column; } .controller-quick-controls, .controller-loop-grid { grid-template-columns: 1fr; } .controller-preview-panel { position: static; grid-template-columns: 1fr; } }

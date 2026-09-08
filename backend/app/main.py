@@ -52,6 +52,12 @@ def repair_local_sqlite_schema() -> None:
             connection.execute(text("ALTER TABLE users ADD COLUMN presentation_limit INTEGER DEFAULT 10 NOT NULL"))
         if "storage_limit_bytes" not in columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN storage_limit_bytes BIGINT"))
+    if "share_links" not in inspector.get_table_names():
+        return
+    share_columns = {column["name"] for column in inspector.get_columns("share_links")}
+    if "screen_access_code_hash" not in share_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE share_links ADD COLUMN screen_access_code_hash VARCHAR(255)"))
 
 
 @fastapi_app.get("/api/health")

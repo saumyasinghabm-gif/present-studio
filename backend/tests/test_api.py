@@ -61,9 +61,14 @@ def test_share_link_permissions_are_returned_to_frontend():
         assert viewer_payload.status_code == 200
         assert viewer_payload.json()["permission"] == "viewer"
 
-        presenter_link = client.post("/api/presentations/pres_demo/share", json={"permission": "presenter"}, headers=headers)
+        presenter_link = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "presenter", "screenAccessCode": "2468"},
+            headers=headers,
+        )
         assert presenter_link.status_code == 200
         assert presenter_link.json()["permission"] == "presenter"
+        assert presenter_link.json()["requiresScreenCode"] is True
         assert "/controller.html?" in presenter_link.json()["url"]
 
         presenter_payload = client.get(f"/api/presentations/pres_demo?token={presenter_link.json()['token']}")
@@ -82,6 +87,72 @@ def test_share_link_rejects_invalid_permission():
             headers={"Authorization": f"Bearer {token}"},
         )
     assert response.status_code == 422
+
+
+def test_presenter_share_link_requires_screen_code():
+    with TestClient(fastapi_app) as client:
+        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        token = login.json()["accessToken"]
+        response = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "presenter"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert response.status_code == 422
+
+
+def test_screen_code_is_required_and_verified_for_protected_screen():
+    with TestClient(fastapi_app) as client:
+        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        token = login.json()["accessToken"]
+        headers = {"Authorization": f"Bearer {token}"}
+        link = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "presenter", "screenAccessCode": "1357"},
+            headers=headers,
+        )
+        share_token = link.json()["token"]
+
+        requirements = client.get(f"/api/presentations/pres_demo/screen-access?token={share_token}")
+        locked = client.get(f"/api/presentations/pres_demo?screen=1&token={share_token}")
+        wrong = client.post(
+            "/api/presentations/pres_demo/screen-access",
+            json={"token": share_token, "screenAccessCode": "2468"},
+        )
+        right = client.post(
+            "/api/presentations/pres_demo/screen-access",
+            json={"token": share_token, "screenAccessCode": "1357"},
+        )
+        unlocked = client.get(f"/api/presentations/pres_demo?screen=1&token={share_token}&screenCode=1357")
+
+    assert link.status_code == 200
+    assert requirements.status_code == 200
+    assert requirements.json() == {"requiresCode": True}
+    assert locked.status_code == 403
+    assert wrong.status_code == 403
+    assert right.status_code == 200
+    assert right.json() == {"ok": True}
+    assert unlocked.status_code == 200
+    assert unlocked.json()["permission"] == "presenter"
+
+
+def test_viewer_screen_link_does_not_require_code():
+    with TestClient(fastapi_app) as client:
+        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        token = login.json()["accessToken"]
+        link = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "viewer"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        share_token = link.json()["token"]
+        requirements = client.get(f"/api/presentations/pres_demo/screen-access?token={share_token}")
+        screen = client.get(f"/api/presentations/pres_demo?screen=1&token={share_token}")
+
+    assert link.status_code == 200
+    assert link.json()["requiresScreenCode"] is False
+    assert requirements.json() == {"requiresCode": False}
+    assert screen.status_code == 200
 
 
 def test_saving_presentation_emits_live_update():

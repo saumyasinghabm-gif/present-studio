@@ -5,12 +5,28 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
 from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
-from ..schemas import LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ShareLinkCreate, ShareLinkOut, SlideOut
-from ..security import can_edit_presentation, can_view_presentation, current_user, new_id, optional_current_user, resolve_share_permission
+from ..schemas import LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, SlideOut
+from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, optional_current_user, resolve_share_permission, verify_password
 from ..socket_manager import sio
 
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
+
+
+def active_share_link(db: Session, presentation_id: str, token: str) -> ShareLink | None:
+    if not token:
+        return None
+    return db.query(ShareLink).filter(
+        ShareLink.token == token,
+        ShareLink.presentation_id == presentation_id,
+        ShareLink.is_active == True,  # noqa: E712
+    ).first()
+
+
+def verify_screen_access_code(share: ShareLink, code: str | None) -> bool:
+    if not share.screen_access_code_hash:
+        return True
+    return bool(code and verify_password(code, share.screen_access_code_hash))
 
 
 def serialize_presentation(presentation: Presentation) -> PresentationOut:
@@ -79,9 +95,12 @@ def get_presentation(
 
     token = request.query_params.get("token")
     if token:
-        permission = resolve_share_permission(db, presentation.id, token)
-        if not permission:
+        share = active_share_link(db, presentation.id, token)
+        if not share:
             raise HTTPException(status_code=403, detail="Share link is not valid")
+        if request.query_params.get("screen") == "1" and not verify_screen_access_code(share, request.query_params.get("screenCode")):
+            raise HTTPException(status_code=403, detail="Enter the 4-digit screen access code")
+        permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
         return PresentationPayload(presentation=serialize_presentation(presentation), permission=permission)
 
     user = optional_current_user(request, db)
@@ -137,18 +156,61 @@ def create_share_link(
     presentation = db.get(Presentation, presentation_id)
     if not presentation or not can_edit_presentation(db, presentation, user):
         raise HTTPException(status_code=404, detail="Presentation not found")
+    if payload.permission == "presenter" and not payload.screenAccessCode:
+        raise HTTPException(status_code=422, detail="Remote Control links require a 4-digit screen access code")
 
     share = ShareLink(
         id=new_id("share"),
         presentation_id=presentation.id,
         token=new_id("token"),
         permission=payload.permission,
+        screen_access_code_hash=hash_password(payload.screenAccessCode) if payload.permission == "presenter" and payload.screenAccessCode else None,
     )
     db.add(share)
     db.commit()
     base = get_settings().public_base_url.rstrip("/")
     page = "controller.html" if share.permission == "presenter" else "screen.html"
-    return ShareLinkOut(url=f"{base}/{page}?id={presentation_id}&token={share.token}", token=share.token, permission=share.permission)
+    return ShareLinkOut(
+        url=f"{base}/{page}?id={presentation_id}&token={share.token}",
+        token=share.token,
+        permission=share.permission,
+        requiresScreenCode=bool(share.screen_access_code_hash),
+    )
+
+
+@router.get("/{presentation_id}/screen-access")
+def screen_access_requirements(
+    presentation_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict[str, bool]:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+    token = request.query_params.get("token") or ""
+    if not token:
+        return {"requiresCode": False}
+    share = active_share_link(db, presentation_id, token)
+    if not share:
+        raise HTTPException(status_code=403, detail="Share link is not valid")
+    return {"requiresCode": bool(share.screen_access_code_hash)}
+
+
+@router.post("/{presentation_id}/screen-access")
+def verify_screen_access(
+    presentation_id: str,
+    payload: ScreenAccessRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, bool]:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+    share = active_share_link(db, presentation_id, payload.token)
+    if not share:
+        raise HTTPException(status_code=403, detail="Share link is not valid")
+    if not verify_screen_access_code(share, payload.screenAccessCode):
+        raise HTTPException(status_code=403, detail="Screen access code is incorrect")
+    return {"ok": True}
 
 
 @router.post("/{presentation_id}/live/end")
