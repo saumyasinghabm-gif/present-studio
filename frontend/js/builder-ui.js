@@ -45,7 +45,8 @@
     const label = groupObjects.find((item) => ["textbox", "text", "i-text"].includes(item.type));
     const shapeType = geometry.type;
     if (["rect", "circle", "triangle", "path"].includes(shapeType)) {
-      const shapeClass = shapeType === "circle" ? " is-circle" : shapeType === "triangle" ? " is-triangle" : shapeType === "path" ? " is-arrow" : " is-rect";
+      const kind = geometry.shapeKind || object.shapeKind || "";
+      const shapeClass = shapeType === "circle" ? " is-circle" : shapeType === "triangle" ? " is-triangle" : kind ? ` is-${esc(kind)}` : shapeType === "path" ? " is-arrow" : " is-rect";
       const fill = safeColor(geometry.fill, "#f5c842");
       const stroke = safeColor(geometry.stroke, "transparent");
       const opacity = Math.max(0, Math.min(1, Number(object.opacity) || 1));
@@ -503,12 +504,18 @@
 
   function insertShape(type) {
     const id = `shape_${Date.now()}`;
-    const common = { id: `${id}_geometry`, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 2 };
+    const common = { id: `${id}_geometry`, shapeKind: type, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 2 };
     const shapes = {
       circle: () => new fabric.Circle({ ...common, radius: 100 }),
       triangle: () => new fabric.Triangle({ ...common, width: 220, height: 190 }),
+      "rounded-rectangle": () => new fabric.Rect({ ...common, width: 260, height: 180, rx: 28, ry: 28 }),
       line: () => new fabric.Line([0, 0, 260, 0], { ...common, top: 360, fill: null, strokeWidth: 6 }),
-      arrow: () => new fabric.Path("M 0 35 L 180 35 L 180 0 L 260 60 L 180 120 L 180 85 L 0 85 Z", { ...common })
+      arrow: () => new fabric.Path("M 0 35 L 180 35 L 180 0 L 260 60 L 180 120 L 180 85 L 0 85 Z", { ...common }),
+      "double-arrow": () => new fabric.Path("M 0 60 L 70 0 L 70 35 L 190 35 L 190 0 L 260 60 L 190 120 L 190 85 L 70 85 L 70 120 Z", { ...common }),
+      hexagon: () => new fabric.Path("M 65 0 L 195 0 L 260 90 L 195 180 L 65 180 L 0 90 Z", { ...common }),
+      star: () => new fabric.Path("M 130 0 L 160 85 L 250 86 L 178 138 L 204 224 L 130 172 L 56 224 L 82 138 L 10 86 L 100 85 Z", { ...common }),
+      callout: () => new fabric.Path("M 18 0 L 242 0 Q 260 0 260 18 L 260 130 Q 260 148 242 148 L 120 148 L 68 198 L 82 148 L 18 148 Q 0 148 0 130 L 0 18 Q 0 0 18 0 Z", { ...common }),
+      brace: () => new fabric.Path("M 75 0 C 30 0 30 38 50 58 C 65 74 55 94 25 100 C 55 106 65 126 50 142 C 30 162 30 200 75 200", { ...common, fill: null, strokeWidth: 10, strokeLineCap: "round" })
     };
     const shape = shapes[type]?.() || new fabric.Rect({ ...common, width: 260, height: 180, rx: 4, ry: 4 });
     if (type === "line") {
@@ -531,6 +538,169 @@
     canvas.requestRenderAll();
     schedule();
     toast("Shape inserted. Start typing or double-click it to add text.");
+  }
+
+  function addGroup(objects, options = {}) {
+    const group = new fabric.Group(objects, {
+      id: options.id || `group_${Date.now()}`,
+      left: options.left ?? 340,
+      top: options.top ?? 190,
+      objectCaching: false,
+      lockScalingFlip: true,
+      ...options
+    });
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    schedule();
+    return group;
+  }
+
+  function addLabel(text, left, top, options = {}) {
+    return new fabric.Textbox(text, {
+      left,
+      top,
+      originX: "center",
+      originY: "center",
+      width: options.width || 160,
+      fontSize: options.fontSize || 28,
+      fontFamily: "Arial",
+      fill: options.fill || "#171717",
+      textAlign: "center",
+      ...options
+    });
+  }
+
+  function insertFrame(kind) {
+    const id = `frame_${Date.now()}`;
+    const base = { id: `${id}_geometry`, frameKind: kind, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 4 };
+    if (kind === "circle") {
+      canvas.add(new fabric.Circle({ ...base, id, left: 540, top: 320, radius: 125, strokeWidth: 5 }));
+      canvas.setActiveObject(canvas.getObjects().at(-1));
+    } else if (kind === "corners") {
+      const lines = [[0, 0, 80, 0], [0, 0, 0, 80], [340, 0, 260, 0], [340, 0, 340, 80], [0, 210, 80, 210], [0, 210, 0, 130], [340, 210, 260, 210], [340, 210, 340, 130]]
+        .map((points, index) => new fabric.Line(points, { id: `${id}_corner_${index}`, frameKind: kind, stroke: "#101010", strokeWidth: 8, strokeLineCap: "square" }));
+      addGroup(lines, { id, frameKind: kind, left: 470, top: 255 });
+    } else {
+      const options = {
+        rounded: { rx: 24, ry: 24 },
+        thick: { strokeWidth: 10 },
+        dashed: { strokeDashArray: [18, 12] },
+        shadow: { shadow: "0 12px 24px rgba(0,0,0,.24)" }
+      }[kind] || {};
+      canvas.add(new fabric.Rect({ ...base, ...options, id, left: 520, top: 310, width: 360, height: 220 }));
+      canvas.setActiveObject(canvas.getObjects().at(-1));
+    }
+    canvas.requestRenderAll();
+    schedule();
+    toast("Frame inserted.");
+  }
+
+  function insertFlowchart(kind) {
+    if (kind === "connector") { insertShape("arrow"); return; }
+    if (kind === "database") {
+      const id = `flow_${Date.now()}`;
+      const parts = [
+        new fabric.Rect({ id: `${id}_body`, flowchartKind: kind, left: 0, top: 25, width: 240, height: 130, fill: "transparent", stroke: "#101010", strokeWidth: 2 }),
+        new fabric.Ellipse({ id: `${id}_top`, flowchartKind: kind, left: 120, top: 25, originX: "center", originY: "center", rx: 120, ry: 28, fill: "#ffffff", stroke: "#101010", strokeWidth: 2 }),
+        new fabric.Ellipse({ id: `${id}_bottom`, flowchartKind: kind, left: 120, top: 155, originX: "center", originY: "center", rx: 120, ry: 28, fill: "transparent", stroke: "#101010", strokeWidth: 2 }),
+        addLabel("Data", 120, 90, { width: 180, fontSize: 26 })
+      ];
+      addGroup(parts, { id, flowchartKind: kind, left: 520, top: 280 });
+      toast("Flowchart shape inserted.");
+      return;
+    }
+    const id = `flow_${Date.now()}`;
+    const common = { id: `${id}_geometry`, shapeKind: kind, flowchartKind: kind, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 2 };
+    const shape = kind === "decision"
+      ? new fabric.Path("M 130 0 L 260 85 L 130 170 L 0 85 Z", common)
+      : kind === "terminator"
+        ? new fabric.Rect({ ...common, width: 280, height: 120, rx: 60, ry: 60 })
+        : kind === "document"
+          ? new fabric.Path("M 0 0 L 260 0 L 260 130 C 195 100 145 170 80 135 C 48 118 25 122 0 142 Z", common)
+          : new fabric.Rect({ ...common, width: 280, height: 130, rx: 5, ry: 5 });
+    const label = createShapeLabel(shape, kind === "decision" ? "Decision" : kind === "terminator" ? "Start / End" : kind === "document" ? "Document" : "Process", `${id}_label`);
+    const group = new fabric.Group([shape, label], { id, left: 500, top: 300 });
+    configureShapeTextGroup(group);
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    schedule();
+    toast("Flowchart shape inserted.");
+  }
+
+  function insertDiagram(kind) {
+    const id = `diagram_${Date.now()}`;
+    const accent = "#f5c842";
+    const dark = "#101010";
+    const items = [];
+    if (kind === "timeline" || kind === "roadmap") {
+      items.push(new fabric.Line([0, 80, 620, 80], { stroke: dark, strokeWidth: 5 }));
+      [0, 1, 2, 3].forEach((index) => {
+        const x = 70 + index * 160;
+        items.push(new fabric.Circle({ left: x, top: 80, originX: "center", originY: "center", radius: 22, fill: accent, stroke: dark, strokeWidth: 2 }));
+        items.push(addLabel(kind === "roadmap" ? `Phase ${index + 1}` : `Step ${index + 1}`, x, index % 2 ? 140 : 30, { width: 130, fontSize: 22 }));
+      });
+    } else if (kind === "cycle") {
+      [[190, 20], [340, 150], [190, 280], [40, 150]].forEach(([x, y], index) => {
+        items.push(new fabric.Circle({ left: x, top: y, originX: "center", originY: "center", radius: 56, fill: "transparent", stroke: dark, strokeWidth: 2 }));
+        items.push(addLabel(`Step ${index + 1}`, x, y, { width: 90, fontSize: 20 }));
+      });
+      items.push(new fabric.Path("M 250 38 C 350 60 410 115 392 204", { fill: null, stroke: accent, strokeWidth: 8, strokeLineCap: "round" }));
+      items.push(new fabric.Path("M 130 262 C 30 240 -30 185 -12 96", { fill: null, stroke: accent, strokeWidth: 8, strokeLineCap: "round" }));
+    } else if (kind === "matrix") {
+      [0, 1, 2, 3].forEach((index) => {
+        items.push(new fabric.Rect({ left: (index % 2) * 230, top: Math.floor(index / 2) * 130, width: 220, height: 120, fill: index % 2 ? "#fff8d9" : "transparent", stroke: dark, strokeWidth: 2 }));
+        items.push(addLabel(["Strengths", "Weaknesses", "Opportunities", "Threats"][index], (index % 2) * 230 + 110, Math.floor(index / 2) * 130 + 60, { width: 180, fontSize: 21 }));
+      });
+    } else if (kind === "venn") {
+      items.push(new fabric.Circle({ left: 145, top: 130, originX: "center", originY: "center", radius: 115, fill: "rgba(245,200,66,.45)", stroke: dark, strokeWidth: 2 }));
+      items.push(new fabric.Circle({ left: 285, top: 130, originX: "center", originY: "center", radius: 115, fill: "rgba(74,119,109,.38)", stroke: dark, strokeWidth: 2 }));
+      items.push(addLabel("A", 95, 130, { width: 80, fontSize: 28 }));
+      items.push(addLabel("B", 335, 130, { width: 80, fontSize: 28 }));
+    } else {
+      [0, 1, 2].forEach((index) => {
+        const y = 170 - index * 78;
+        const inset = index * 65;
+        items.push(new fabric.Path(`M ${inset} ${y} L ${390 - inset} ${y} L ${330 - inset / 2} ${y + 70} L ${60 + inset / 2} ${y + 70} Z`, { fill: index === 1 ? "#fff8d9" : "transparent", stroke: dark, strokeWidth: 2 }));
+        items.push(addLabel(`Level ${index + 1}`, 195, y + 35, { width: 160, fontSize: 20 }));
+      });
+    }
+    addGroup(items, { id, diagramKind: kind, left: kind === "timeline" || kind === "roadmap" ? 330 : 430, top: kind === "timeline" || kind === "roadmap" ? 275 : 220 });
+    toast("Diagram inserted.");
+  }
+
+  function insertChart(kind) {
+    const id = `chart_${Date.now()}`;
+    const items = [];
+    const accent = "#f5c842";
+    const dark = "#101010";
+    if (kind === "bar") {
+      [120, 210, 165, 270, 225].forEach((height, index) => items.push(new fabric.Rect({ left: index * 85, top: 300 - height, width: 50, height, fill: index === 3 ? dark : accent, stroke: dark, strokeWidth: 1 })));
+      items.push(new fabric.Line([0, 300, 430, 300], { stroke: dark, strokeWidth: 3 }));
+      items.push(addLabel("Bar chart", 215, 340, { width: 220, fontSize: 24 }));
+    } else if (kind === "line") {
+      items.push(new fabric.Line([0, 250, 450, 250], { stroke: dark, strokeWidth: 3 }));
+      items.push(new fabric.Line([0, 0, 0, 250], { stroke: dark, strokeWidth: 3 }));
+      items.push(new fabric.Polyline([{ x: 35, y: 190 }, { x: 130, y: 95 }, { x: 225, y: 145 }, { x: 320, y: 55 }, { x: 420, y: 88 }], { fill: null, stroke: accent, strokeWidth: 7 }));
+      items.push(addLabel("Line chart", 225, 295, { width: 220, fontSize: 24 }));
+    } else if (kind === "progress") {
+      items.push(new fabric.Rect({ left: 0, top: 0, width: 520, height: 54, rx: 27, ry: 27, fill: "#ecece7", stroke: dark, strokeWidth: 2 }));
+      items.push(new fabric.Rect({ left: 0, top: 0, width: 360, height: 54, rx: 27, ry: 27, fill: accent, stroke: null }));
+      items.push(addLabel("70%", 260, 27, { width: 120, fontSize: 28, fontWeight: "bold" }));
+    } else if (kind === "kpi") {
+      items.push(new fabric.Rect({ left: 0, top: 0, width: 310, height: 180, rx: 8, ry: 8, fill: "#ffffff", stroke: dark, strokeWidth: 2, shadow: "0 10px 22px rgba(0,0,0,.16)" }));
+      items.push(addLabel("$42K", 155, 70, { width: 240, fontSize: 54, fontWeight: "bold" }));
+      items.push(addLabel("Monthly revenue", 155, 130, { width: 240, fontSize: 22, fill: "#555555" }));
+    } else {
+      const outer = new fabric.Circle({ left: 130, top: 130, originX: "center", originY: "center", radius: 120, fill: kind === "donut" ? "transparent" : accent, stroke: dark, strokeWidth: 2 });
+      const wedge = new fabric.Path("M 130 130 L 130 10 A 120 120 0 0 1 238 182 Z", { fill: dark, stroke: "#ffffff", strokeWidth: 2 });
+      items.push(outer, wedge);
+      if (kind === "donut") items.push(new fabric.Circle({ left: 130, top: 130, originX: "center", originY: "center", radius: 58, fill: "#ffffff", stroke: "#ffffff", strokeWidth: 2 }));
+      items.push(addLabel(kind === "donut" ? "Donut chart" : "Pie chart", 130, 285, { width: 220, fontSize: 24 }));
+    }
+    addGroup(items, { id, chartKind: kind, left: kind === "kpi" ? 485 : 410, top: kind === "progress" ? 330 : 210 });
+    toast("Chart inserted.");
   }
 
   const SHAPE_TYPES = new Set(["rect", "circle", "triangle", "path"]);
@@ -1553,6 +1723,10 @@
       case "insert-shape": insertShape(button.dataset.shape || "rectangle"); break;
       case "word-art-gallery": toggleWordArtGallery(button); break;
       case "word-art": addWordArtFromPreset("gold"); break;
+      case "insert-frame": insertFrame(button.dataset.frame || "border"); break;
+      case "insert-flowchart": insertFlowchart(button.dataset.flowchart || "process"); break;
+      case "insert-diagram": insertDiagram(button.dataset.diagram || "timeline"); break;
+      case "insert-chart": insertChart(button.dataset.chart || "bar"); break;
       case "word-art-reset": applyWordArtFormat({ fill: "#f5c842", stroke: "#8a5b00", strokeWidth: 2, shadow: null }, "custom"); break;
       case "shapes": { const kind = (window.prompt("Shape: rectangle or circle", "rectangle") || "rectangle").toLowerCase(); insertShape(kind === "circle" ? "circle" : "rectangle"); break; }
       case "icon": addSymbol("★"); break;

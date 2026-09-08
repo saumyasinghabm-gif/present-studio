@@ -661,7 +661,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .builder-hidden-color { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .builder-page .builder-media-library { min-width: 280px; max-width: 520px; }
 .builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 2px 6px; }
-.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(3, minmax(76px, 1fr)); gap: 3px 5px; }
+.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(3, minmax(74px, 1fr)); gap: 3px 5px; }
 .builder-page .shape-format-tools { display: flex; flex-direction: column; min-width: 226px; gap: 4px; }
 .builder-page .shape-format-color,
 .builder-page .shape-format-range,
@@ -756,6 +756,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .slide-thumbnail-object.is-circle .slide-thumbnail-shape-geometry { border-radius: 50%; }
 .builder-page .slide-thumbnail-object.is-triangle .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .builder-page .slide-thumbnail-object.is-arrow .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(0 29%, 67% 29%, 67% 0, 100% 50%, 67% 100%, 67% 71%, 0 71%); }
+.builder-page .slide-thumbnail-object.is-rounded-rectangle .slide-thumbnail-shape-geometry { border-radius: 12%; }
+.builder-page .slide-thumbnail-object.is-double-arrow .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(0 50%, 24% 0, 24% 29%, 76% 29%, 76% 0, 100% 50%, 76% 100%, 76% 71%, 24% 71%, 24% 100%); }
+.builder-page .slide-thumbnail-object.is-hexagon .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.builder-page .slide-thumbnail-object.is-star .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(50% 0, 61% 38%, 100% 38%, 68% 58%, 80% 100%, 50% 74%, 20% 100%, 32% 58%, 0 38%, 39% 38%); }
+.builder-page .slide-thumbnail-object.is-callout .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(0 0, 100% 0, 100% 74%, 48% 74%, 25% 100%, 32% 74%, 0 74%); }
+.builder-page .slide-thumbnail-object.is-brace .slide-thumbnail-shape-geometry { width: 44%; background: transparent; border: 0; border-left: 3px solid var(--thumbnail-shape-stroke); border-radius: 50% 0 0 50%; }
+.builder-page .slide-thumbnail-object.is-decision .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.builder-page .slide-thumbnail-object.is-terminator .slide-thumbnail-shape-geometry { border-radius: 999px; }
+.builder-page .slide-thumbnail-object.is-document .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(0 0, 100% 0, 100% 78%, 72% 94%, 45% 82%, 22% 96%, 0 82%); }
 .builder-page .slide-thumbnail-shape-text { position: absolute; inset: 10%; z-index: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.05; white-space: pre-wrap; }
 .builder-page .slide-thumbnail-object.is-circle .slide-thumbnail-shape-text { inset: 16%; }
 .builder-page .slide-thumbnail-object.is-triangle .slide-thumbnail-shape-text { inset: 26% 24% 18%; }
