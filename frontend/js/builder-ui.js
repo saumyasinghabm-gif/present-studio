@@ -18,7 +18,7 @@
   let shapeTextEditSession = null;
 
   function safeColor(value, fallback = "#171717") {
-    return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(value || "")) ? value : fallback;
+    return /^(transparent|#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(value || "")) ? value : fallback;
   }
 
   function thumbnailObjectMarkup(object, legacy = false) {
@@ -39,6 +39,22 @@
       const fontSize = legacy ? Number(object.fontSize || 32) / 7 : Number(object.fontSize || 32) / 7;
       const font = ["Arial", "Calibri", "Inter", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Garamond", "Palatino Linotype", "Courier New", "Impact"].includes(object.fontFamily) ? object.fontFamily : "Arial";
       return `<span class="slide-thumbnail-object is-text" style="${style}font-size:${Math.max(5, fontSize)}px;font-family:${font};font-weight:${esc(object.fontWeight || "normal")};color:${safeColor(object.fill || object.color)};text-align:${esc(object.textAlign || "left")};">${esc(object.text || "")}</span>`;
+    }
+    const groupObjects = object.type === "group" && Array.isArray(object.objects) ? object.objects : [];
+    const geometry = groupObjects.find((item) => ["rect", "circle", "triangle", "path", "line"].includes(item.type)) || object;
+    const label = groupObjects.find((item) => ["textbox", "text", "i-text"].includes(item.type));
+    const shapeType = geometry.type;
+    if (["rect", "circle", "triangle", "path"].includes(shapeType)) {
+      const shapeClass = shapeType === "circle" ? " is-circle" : shapeType === "triangle" ? " is-triangle" : shapeType === "path" ? " is-arrow" : " is-rect";
+      const fill = safeColor(geometry.fill, "#f5c842");
+      const stroke = safeColor(geometry.stroke, "transparent");
+      const opacity = Math.max(0, Math.min(1, Number(object.opacity) || 1));
+      const labelFont = ["Arial", "Calibri", "Inter", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Garamond", "Palatino Linotype", "Courier New", "Impact"].includes(label?.fontFamily) ? label.fontFamily : "Arial";
+      const labelMarkup = label ? `<span class="slide-thumbnail-shape-text" style="font-size:${Math.max(4, Number(label.fontSize || 24) / 7)}px;font-family:${labelFont};font-weight:${esc(label.fontWeight || "normal")};font-style:${esc(label.fontStyle || "normal")};color:${safeColor(label.fill, "#171717")};text-align:${esc(label.textAlign || "center")};">${esc(label.text || "")}</span>` : "";
+      return `<span class="slide-thumbnail-object is-shape${shapeClass}" style="${style}opacity:${opacity};--thumbnail-shape-fill:${fill};--thumbnail-shape-stroke:${stroke};"><span class="slide-thumbnail-shape-geometry"></span>${labelMarkup}</span>`;
+    }
+    if (shapeType === "line") {
+      return `<span class="slide-thumbnail-object is-shape-line" style="${style}--thumbnail-shape-stroke:${safeColor(geometry.stroke, "#101010")};"></span>`;
     }
     return `<span class="slide-thumbnail-object" style="${style}background:${safeColor(object.fill, "#f5c842")};border:1px solid ${safeColor(object.stroke, "transparent")};"></span>`;
   }
@@ -487,7 +503,7 @@
 
   function insertShape(type) {
     const id = `shape_${Date.now()}`;
-    const common = { id: `${id}_geometry`, left: 0, top: 0, originX: "center", originY: "center", fill: "#f5c842", stroke: "#101010", strokeWidth: 2 };
+    const common = { id: `${id}_geometry`, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 2 };
     const shapes = {
       circle: () => new fabric.Circle({ ...common, radius: 100 }),
       triangle: () => new fabric.Triangle({ ...common, width: 220, height: 190 }),
@@ -514,13 +530,72 @@
     canvas.setActiveObject(object);
     canvas.requestRenderAll();
     schedule();
-    toast("Shape inserted. Double-click it to add text.");
+    toast("Shape inserted. Start typing or double-click it to add text.");
   }
 
   const SHAPE_TYPES = new Set(["rect", "circle", "triangle", "path"]);
 
   function isEditableShape(object) {
     return Boolean(object && SHAPE_TYPES.has(object.type) && object.mediaType !== "video");
+  }
+
+  function selectedShape(object = active()) {
+    if (!object) return null;
+    const parts = shapeTextParts(object);
+    if (parts) return { object, geometry: parts.shape, label: parts.label, isLine: false };
+    if (object.type === "line") return { object, geometry: object, label: null, isLine: true };
+    if (isEditableShape(object)) return { object, geometry: object, label: null, isLine: false };
+    return null;
+  }
+
+  function colorInputValue(value, fallback) {
+    const color = String(value || "").trim();
+    return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+  }
+
+  function syncShapeFormatControls() {
+    const selection = selectedShape();
+    const controls = all(".shape-format-group input");
+    controls.forEach((control) => { control.disabled = !selection; });
+    if (!selection) return;
+    const { object, geometry, isLine } = selection;
+    const fill = byId("shapeFill");
+    const noFill = byId("shapeNoFill");
+    const transparentFill = geometry.fill === "transparent" || /^rgba?\([^)]*,\s*0(?:\.0+)?\s*\)$/i.test(String(geometry.fill || ""));
+    fill.disabled = isLine;
+    fill.value = colorInputValue(geometry.fill, "#f5c842");
+    noFill.disabled = isLine;
+    noFill.checked = !isLine && transparentFill;
+    byId("shapeOutline").value = colorInputValue(geometry.stroke, "#101010");
+    const width = Math.max(0, Math.min(16, Number(geometry.strokeWidth) || 0));
+    byId("shapeOutlineWidth").value = width;
+    byId("shapeOutlineWidthValue").textContent = `${width} px`;
+    const opacity = Math.round(Math.max(.1, Math.min(1, Number(object.opacity) || 1)) * 100);
+    byId("shapeOpacity").value = opacity;
+    byId("shapeOpacityValue").textContent = `${opacity}%`;
+    byId("shapeShadow").checked = Boolean(geometry.shadow);
+  }
+
+  function applyShapeGeometry(changes) {
+    const selection = selectedShape();
+    if (!selection) { toast("Select a shape first."); return; }
+    selection.geometry.set(changes);
+    selection.geometry.setCoords();
+    selection.object.set({ dirty: true });
+    selection.object.setCoords();
+    canvas.requestRenderAll();
+    syncShapeFormatControls();
+    schedule();
+  }
+
+  function applyShapeOpacity(value) {
+    const selection = selectedShape();
+    if (!selection) { toast("Select a shape first."); return; }
+    selection.object.set({ opacity: Math.max(.1, Math.min(1, Number(value) / 100)), dirty: true });
+    selection.object.setCoords();
+    canvas.requestRenderAll();
+    syncShapeFormatControls();
+    schedule();
   }
 
   function shapeTextParts(group) {
@@ -531,9 +606,49 @@
     return label && shape && objects.length === 2 ? { shape, label } : null;
   }
 
+  function shapeTextBounds(shape) {
+    const width = Number(shape?.width) || Number(shape?.radius) * 2 || 220;
+    const height = Number(shape?.height) || Number(shape?.radius) * 2 || 160;
+    const factor = shape?.type === "circle" ? { width: .68, height: .68 }
+      : shape?.type === "triangle" ? { width: .5, height: .44 }
+        : shape?.type === "path" ? { width: .64, height: .48 }
+          : { width: .82, height: .72 };
+    return {
+      width: Math.max(48, width * factor.width),
+      height: Math.max(32, height * factor.height)
+    };
+  }
+
+  function fitShapeLabel(shape, label) {
+    if (!shape || !label) return;
+    const bounds = shapeTextBounds(shape);
+    const requestedFontSize = Math.max(8, Math.min(240, Number(label.shapeRequestedFontSize) || Number(label.fontSize) || 32));
+    label.set({
+      width: bounds.width,
+      fontSize: requestedFontSize,
+      clipPath: new fabric.Rect({
+        originX: "center",
+        originY: "center",
+        width: bounds.width,
+        height: bounds.height
+      }),
+      objectCaching: false,
+      dirty: true
+    });
+    label.initDimensions?.();
+    let attempts = 0;
+    while (Number(label.height) > bounds.height && Number(label.fontSize) > 8 && attempts < 8) {
+      const ratio = bounds.height / Math.max(1, Number(label.height));
+      label.set("fontSize", Math.max(8, Math.floor(Number(label.fontSize) * ratio)));
+      label.initDimensions?.();
+      attempts += 1;
+    }
+    label.setCoords();
+  }
+
   function createShapeLabel(shape, value = "", id = `shape_label_${Date.now()}`) {
     const shapeWidth = Number(shape.width) || Number(shape.radius) * 2 || 220;
-    return new fabric.Textbox(value, {
+    const label = new fabric.Textbox(value, {
       id,
       left: 0,
       top: 0,
@@ -541,12 +656,35 @@
       originY: "center",
       width: Math.max(70, shapeWidth * 0.76),
       fontSize: 32,
+      shapeRequestedFontSize: 32,
+      shapeText: true,
       fontFamily: "Arial",
       fontWeight: "normal",
       fill: "#171717",
       textAlign: "center",
       lockScalingFlip: true
     });
+    fitShapeLabel(shape, label);
+    return label;
+  }
+
+  function prepareShapeLabelForEditing(shape, label) {
+    const center = shape.getCenterPoint();
+    label.set({
+      left: center.x,
+      top: center.y,
+      originX: "center",
+      originY: "center",
+      angle: shape.angle || 0,
+      scaleX: Math.abs(Number(shape.scaleX) || 1),
+      scaleY: Math.abs(Number(shape.scaleY) || 1),
+      hasControls: false,
+      borderColor: "#d39e00",
+      padding: 2,
+      shapeText: true
+    });
+    fitShapeLabel(shape, label);
+    label.setCoords();
   }
 
   function configureShapeTextGroup(group) {
@@ -556,6 +694,7 @@
     // label was edited, which makes saved text disappear until the next edit.
     group.set({ lockScalingFlip: true, objectCaching: false, dirty: true });
     parts.label.set({ objectCaching: false, dirty: true });
+    fitShapeLabel(parts.shape, parts.label);
     // Corner resizing keeps the shape and its text proportional. Side-only
     // scaling would stretch the letters, so it stays disabled for this pair.
     group.setControlsVisibility?.({ mt: false, mb: false, ml: false, mr: false });
@@ -578,7 +717,8 @@
     shapeTextEditSession = null;
     loading = session.previousLoading;
     label.exitEditing?.();
-    label.set({ selectable: true, evented: true });
+    label.set({ selectable: true, evented: true, hasControls: true });
+    fitShapeLabel(session.shape, label);
     label.initDimensions?.();
     label.setCoords();
     const selection = new fabric.ActiveSelection([session.shape, label], { canvas });
@@ -590,10 +730,11 @@
     canvas.setActiveObject(group);
     canvas.requestRenderAll();
     panel();
+    syncTextControls();
     schedule();
   }
 
-  function beginShapeTextEditing(target) {
+  function beginShapeTextEditing(target, options = {}) {
     if (shapeTextEditSession) finishShapeTextEditing();
     let shape;
     let label;
@@ -605,16 +746,13 @@
       state = groupState(target);
       target.toActiveSelection();
       canvas.discardActiveObject();
+      prepareShapeLabelForEditing(shape, label);
     } else if (isEditableShape(target)) {
       shape = target;
       const center = shape.getCenterPoint();
       label = createShapeLabel(shape, "", `${shape.id || `shape_${Date.now()}`}_label`);
-      label.set({
-        left: center.x,
-        top: center.y,
-        angle: shape.angle || 0,
-        width: Math.max(70, shape.getScaledWidth() * 0.76)
-      });
+      label.set({ left: center.x, top: center.y });
+      prepareShapeLabelForEditing(shape, label);
       canvas.add(label);
       state = groupState(null, shape.id);
     } else return false;
@@ -623,10 +761,17 @@
     loading = true;
     shapeTextEditSession = { shape, label, state, previousLoading };
     configureTextResize(label);
+    label.setControlsVisibility?.({ tl: false, tr: false, bl: false, br: false, ml: false, mr: false, mt: false, mb: false, mtr: false });
     label.once("editing:exited", () => window.setTimeout(() => finishShapeTextEditing(label), 0));
     canvas.setActiveObject(label);
     label.enterEditing();
-    if (label.text) label.selectAll();
+    if (options.replaceText !== undefined) {
+      label.set("text", String(options.replaceText));
+      fitShapeLabel(shape, label);
+    }
+    const caret = String(label.text || "").length;
+    label.selectionStart = options.selectAll ? 0 : caret;
+    label.selectionEnd = caret;
     label.hiddenTextarea?.focus();
     canvas.requestRenderAll();
     panel();
@@ -640,6 +785,36 @@
   canvas.on("object:added", (event) => configureShapeTextGroup(event.target));
   canvas.on("selection:created", (event) => (event.selected || []).forEach(configureShapeTextGroup));
   canvas.on("selection:updated", (event) => (event.selected || []).forEach(configureShapeTextGroup));
+  canvas.on("text:changed", (event) => {
+    if (shapeTextEditSession?.label !== event.target) return;
+    fitShapeLabel(shapeTextEditSession.shape, event.target);
+    canvas.requestRenderAll();
+  });
+
+  byId("shapeFill")?.addEventListener("input", (event) => {
+    byId("shapeNoFill").checked = false;
+    applyShapeGeometry({ fill: event.target.value });
+  });
+  byId("shapeNoFill")?.addEventListener("change", (event) => applyShapeGeometry({
+    fill: event.target.checked ? "transparent" : byId("shapeFill").value
+  }));
+  byId("shapeOutline")?.addEventListener("input", (event) => applyShapeGeometry({ stroke: event.target.value }));
+  byId("shapeOutlineWidth")?.addEventListener("input", (event) => {
+    byId("shapeOutlineWidthValue").textContent = `${event.target.value} px`;
+    applyShapeGeometry({ strokeWidth: Number(event.target.value) });
+  });
+  byId("shapeOpacity")?.addEventListener("input", (event) => {
+    byId("shapeOpacityValue").textContent = `${event.target.value}%`;
+    applyShapeOpacity(event.target.value);
+  });
+  byId("shapeShadow")?.addEventListener("change", (event) => applyShapeGeometry({
+    shadow: event.target.checked ? new fabric.Shadow({ color: "rgba(0,0,0,.3)", blur: 12, offsetX: 7, offsetY: 7 }) : null
+  }));
+  canvas.on("selection:created", syncShapeFormatControls);
+  canvas.on("selection:updated", syncShapeFormatControls);
+  canvas.on("selection:cleared", syncShapeFormatControls);
+  canvas.on("object:modified", syncShapeFormatControls);
+  syncShapeFormatControls();
 
   byId("insertRectangle")?.addEventListener("click", () => insertShape("rectangle"));
   byId("insertCircle")?.addEventListener("click", () => insertShape("circle"));
@@ -1008,8 +1183,100 @@
 
   function selectedText() {
     const object = active();
-    return object && ["textbox", "text", "i-text"].includes(object.type) ? object : null;
+    if (object && ["textbox", "text", "i-text"].includes(object.type)) return object;
+    return shapeTextParts(object)?.label || null;
   }
+
+  function selectedTextContainer() {
+    const object = active();
+    return shapeTextParts(object) ? object : null;
+  }
+
+  function syncTextControls() {
+    const textObject = selectedText();
+    const editorPanel = byId("editorPanel");
+    if (editorPanel) editorPanel.hidden = !textObject;
+    if (!textObject) return;
+    const size = selectedTextStyle(textObject, "fontSize") || textObject.fontSize || 32;
+    const fill = selectedTextStyle(textObject, "fill") || textObject.fill || "#171717";
+    byId("selectionNote").textContent = selectedTextContainer() ? "Shape text" : textObject.id === "title" ? "Title" : textObject.id === "subtitle" ? "Subtitle" : "Text";
+    byId("fontSize").value = Math.round(size);
+    byId("fontFamily").value = textObject.fontFamily || "Arial";
+    byId("textColor").value = colorInputValue(fill, "#171717");
+    const weight = selectedTextStyle(textObject, "fontWeight");
+    byId("boldButton").classList.toggle("active", String(weight) === "bold" || Number(weight) >= 700);
+    byId("italicButton").classList.toggle("active", selectedTextStyle(textObject, "fontStyle") === "italic");
+    const spacing = Number(textObject.lineHeight) || 1.16;
+    const spacingOption = [1, 1.15, 1.5, 2].reduce((closest, value) => Math.abs(value - spacing) < Math.abs(closest - spacing) ? value : closest, 1.15);
+    byId("lineSpacing").value = String(spacingOption);
+  }
+
+  const basePanel = panel;
+  panel = function builderPanel() {
+    basePanel();
+    syncTextControls();
+  };
+
+  format = function formatBuilderText(changes) {
+    const textObject = selectedText();
+    if (!textObject) { toast("Select a text element or a shape containing text."); return; }
+    if (changes.fontSize !== undefined) textObject.set("shapeRequestedFontSize", Number(changes.fontSize));
+    if (textObject.isEditing && textObject.selectionStart !== textObject.selectionEnd) {
+      textObject.setSelectionStyles(changes, textObject.selectionStart, textObject.selectionEnd);
+    } else textObject.set(changes);
+    textObject.set({ dirty: true });
+    textObject.initDimensions?.();
+    const container = selectedTextContainer();
+    const parts = shapeTextParts(container);
+    if (parts) {
+      fitShapeLabel(parts.shape, textObject);
+      container.set({ dirty: true });
+      container.setCoords();
+    } else if (shapeTextEditSession?.label === textObject) {
+      fitShapeLabel(shapeTextEditSession.shape, textObject);
+    }
+    textObject.setCoords();
+    canvas.requestRenderAll();
+    syncTextControls();
+    schedule();
+  };
+
+  function selectedParagraphRange(textObject) {
+    const value = String(textObject.text || "");
+    if (!textObject.isEditing) return { start: 0, end: value.length };
+    const selectionStart = Math.max(0, Number(textObject.selectionStart) || 0);
+    const selectionEnd = Math.max(selectionStart, Number(textObject.selectionEnd) || selectionStart);
+    const start = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+    const nextBreak = value.indexOf("\n", selectionEnd);
+    return { start, end: nextBreak < 0 ? value.length : nextBreak };
+  }
+
+  function transformSelectedParagraphs(transformer) {
+    const textObject = selectedText();
+    if (!textObject) { toast("Select text first."); return; }
+    const value = String(textObject.text || "");
+    const range = selectedParagraphRange(textObject);
+    const transformed = transformer(value.slice(range.start, range.end).split("\n"));
+    textObject.set("text", value.slice(0, range.start) + transformed.join("\n") + value.slice(range.end));
+    textObject.initDimensions?.();
+    const container = selectedTextContainer();
+    const parts = shapeTextParts(container);
+    if (parts) { fitShapeLabel(parts.shape, textObject); container.set({ dirty: true }); }
+    else if (shapeTextEditSession?.label === textObject) fitShapeLabel(shapeTextEditSession.shape, textObject);
+    textObject.setCoords();
+    canvas.requestRenderAll();
+    syncTextControls();
+    schedule();
+  }
+
+  byId("lineSpacing")?.addEventListener("change", (event) => format({ lineHeight: Number(event.target.value) }));
+  byId("fontSize")?.addEventListener("input", (event) => format({ fontSize: Math.max(8, Math.min(240, Number(event.target.value) || 32)) }));
+  byId("textColor")?.addEventListener("input", (event) => format({ fill: event.target.value }));
+  byId("fontFamily")?.addEventListener("change", (event) => format({ fontFamily: event.target.value }));
+  canvas.on("selection:created", syncTextControls);
+  canvas.on("selection:updated", syncTextControls);
+  canvas.on("selection:cleared", syncTextControls);
+  syncTextControls();
 
   function addText(value, options = {}) {
     const object = new fabric.Textbox(value, {
@@ -1205,11 +1472,11 @@
       case "align-center": format({ textAlign: "center" }); break;
       case "align-right": format({ textAlign: "right" }); break;
       case "justify": format({ textAlign: "justify" }); break;
-      case "bullets": if (textObject) { textObject.set("text", textObject.text.split("\n").map((line) => line.startsWith("• ") ? line.slice(2) : `• ${line}`).join("\n")); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "numbering": if (textObject) { textObject.set("text", textObject.text.split("\n").map((line, index) => `${index + 1}. ${line.replace(/^\d+\.\s*/, "")}`).join("\n")); canvas.requestRenderAll(); schedule(); } else toast("Select text first."); break;
-      case "indent-less": if (textObject) format({ left: Math.max(0, textObject.left - 18) }); break;
-      case "indent-more": if (textObject) format({ left: textObject.left + 18 }); break;
-      case "line-spacing": if (textObject) format({ lineHeight: textObject.lineHeight >= 1.5 ? 1.16 : 1.5 }); break;
+      case "bullets": transformSelectedParagraphs((lines) => { const remove = lines.filter((line) => line.trim()).every((line) => /^\s*•\s+/.test(line)); return lines.map((line) => !line.trim() ? line : remove ? line.replace(/^(\s*)•\s+/, "$1") : line.replace(/^(\s*)(?:•\s+|\d+\.\s+)?/, "$1• ")); }); break;
+      case "numbering": transformSelectedParagraphs((lines) => { let number = 0; return lines.map((line) => { if (!line.trim()) return line; number += 1; return line.replace(/^(\s*)(?:•\s+|\d+\.\s+)?/, `$1${number}. `); }); }); break;
+      case "indent-less": transformSelectedParagraphs((lines) => lines.map((line) => line.replace(/^(?:\t| {1,4})/, ""))); break;
+      case "indent-more": transformSelectedParagraphs((lines) => lines.map((line) => line.trim() ? `\t${line}` : line)); break;
+      case "line-spacing": if (textObject) { const values = [1, 1.15, 1.5, 2]; const current = Number(textObject.lineHeight) || 1.15; const next = values[(values.findIndex((value) => value >= current - .01) + 1) % values.length]; format({ lineHeight: next }); } else toast("Select text first."); break;
       case "rotate": if (object) { object.rotate(((object.angle || 0) + 90) % 360); canvas.requestRenderAll(); schedule(); } else toast("Select an element first."); break;
       case "group": groupSelection(); break;
       case "align-objects": if (object) { object.set({ left: (W - object.getScaledWidth()) / 2, top: (H - object.getScaledHeight()) / 2 }); object.setCoords(); canvas.requestRenderAll(); schedule(); } else toast("Select an element first."); break;
@@ -1410,6 +1677,15 @@
   canvas.on("after:render", renderSmartGuides);
 
   document.addEventListener("keydown", (event) => {
+    const typingTarget = event.target.matches?.("input,textarea,select,[contenteditable=true]");
+    const selectedObject = active();
+    const canEditShapeText = !typingTarget && !selectedObject?.isEditing && (Boolean(shapeTextParts(selectedObject)) || isEditableShape(selectedObject));
+    const printableKey = event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+    if (canEditShapeText && (printableKey || event.key === "Enter" || event.key === "F2")) {
+      event.preventDefault();
+      beginShapeTextEditing(selectedObject, printableKey ? { replaceText: event.key } : {});
+      return;
+    }
     if (event.key === "Escape" && !shareModal.hidden) closeShare();
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && !event.target.matches("input,textarea")) {
       event.preventDefault();

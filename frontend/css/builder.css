@@ -647,6 +647,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .builder-font-group:not([hidden]) { display: flex; }
 .builder-page .builder-font-group .ribbon-group-label { left: 0; right: 0; }
 .builder-page .size-select { width: 76px; }
+.builder-page .line-spacing-select { width: 54px; min-width: 54px; padding: 2px 3px; font-size: 10px; }
 .builder-page .builder-color-input {
   width: 34px;
   height: 34px;
@@ -660,6 +661,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .builder-media-library { min-width: 280px; max-width: 520px; }
 .builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 2px 6px; }
 .builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(3, minmax(76px, 1fr)); gap: 3px 5px; }
+.builder-page .shape-format-tools { display: flex; flex-direction: column; min-width: 226px; gap: 4px; }
+.builder-page .shape-format-color,
+.builder-page .shape-format-range,
+.builder-page .shape-format-shadow,
+.builder-page .shape-format-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #555;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.builder-page .shape-format-color .builder-color-input { width: 30px; height: 26px; }
+.builder-page .shape-format-range input { width: 78px; accent-color: #d39e00; }
+.builder-page .shape-format-range output { min-width: 32px; color: #222; }
+.builder-page .shape-format-shadow input { margin: 0; accent-color: #d39e00; }
+.builder-page .shape-format-toggle input { margin: 0; accent-color: #d39e00; }
+.builder-page .shape-format-group :disabled { opacity: .45; cursor: not-allowed; }
 .builder-page .media-options-stack { align-items: flex-start; min-width: 138px; }
 .builder-page .media-limit-note { color: #666; font-size: 9px; line-height: 1.2; white-space: nowrap; }
 .builder-page .smart-guide-overlay {
@@ -731,6 +750,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .slide-thumbnail-object img,
 .builder-page .slide-thumbnail-object video { width: 100%; height: 100%; object-fit: contain; background: #111; }
 .builder-page .slide-thumbnail-object.is-video::after { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(0,0,0,.18); font-family: bootstrap-icons; font-size: 20px; content: "\f4f4"; }
+.builder-page .slide-thumbnail-object.is-shape { overflow: visible; }
+.builder-page .slide-thumbnail-shape-geometry { position: absolute; inset: 0; box-sizing: border-box; background: var(--thumbnail-shape-fill); border: 1px solid var(--thumbnail-shape-stroke); }
+.builder-page .slide-thumbnail-object.is-circle .slide-thumbnail-shape-geometry { border-radius: 50%; }
+.builder-page .slide-thumbnail-object.is-triangle .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.builder-page .slide-thumbnail-object.is-arrow .slide-thumbnail-shape-geometry { border: 0; clip-path: polygon(0 29%, 67% 29%, 67% 0, 100% 50%, 67% 100%, 67% 71%, 0 71%); }
+.builder-page .slide-thumbnail-shape-text { position: absolute; inset: 10%; z-index: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1.05; white-space: pre-wrap; }
+.builder-page .slide-thumbnail-object.is-circle .slide-thumbnail-shape-text { inset: 16%; }
+.builder-page .slide-thumbnail-object.is-triangle .slide-thumbnail-shape-text { inset: 26% 24% 18%; }
+.builder-page .slide-thumbnail-object.is-arrow .slide-thumbnail-shape-text { inset: 20% 24% 20% 8%; }
+.builder-page .slide-thumbnail-object.is-shape-line { height: 0 !important; overflow: visible; border-top: 2px solid var(--thumbnail-shape-stroke); transform-origin: left center; }
 .builder-page .slide-thumbnail-audio { position: absolute; z-index: 5; right: 6px; bottom: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #111; background: var(--yellow-strong); font-size: 11px; box-shadow: 0 2px 7px rgba(0,0,0,.2); }
 .builder-page .slide-actions-inline { position: absolute; z-index: 6; top: 5px; right: 5px; display: flex; gap: 3px; opacity: .2; transition: opacity .15s ease; }
 .builder-page .slide-item:hover .slide-actions-inline,
