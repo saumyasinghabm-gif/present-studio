@@ -16,9 +16,67 @@
   let zoom = 100;
   let builderUploadRequestId = 0;
   let shapeTextEditSession = null;
+  let componentEditSession = null;
 
   function safeColor(value, fallback = "#171717") {
     return /^(transparent|#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(value || "")) ? value : fallback;
+  }
+
+  const TEXT_TYPES = new Set(["textbox", "text", "i-text"]);
+  const VISUAL_TYPES = new Set(["shape", "frame", "flowchart", "diagram", "chart"]);
+  const CHART_THEMES = {
+    classic: { label: "Classic", primary: "#f5c842", secondary: "#101010", line: "#101010", background: "#ffffff", text: "#171717", series: ["#f5c842", "#101010", "#4a776d", "#d9822b", "#7c6fc5"] },
+    dark: { label: "Dark", primary: "#f5c842", secondary: "#ffffff", line: "#ffffff", background: "#111111", text: "#ffffff", series: ["#f5c842", "#ffffff", "#66d9c7", "#ff9f43", "#b8a6ff"] },
+    blue: { label: "Blue", primary: "#2f80ed", secondary: "#174ea6", line: "#1b3b6f", background: "#eef5ff", text: "#14213d", series: ["#2f80ed", "#56ccf2", "#174ea6", "#9bbcff", "#14213d"] },
+    gold: { label: "Gold", primary: "#d6a935", secondary: "#7a5310", line: "#3a2a12", background: "#fff8df", text: "#221a08", series: ["#d6a935", "#f2c94c", "#8d6b1f", "#b88a20", "#3a2a12"] },
+    green: { label: "Green", primary: "#2f9e6d", secondary: "#145a32", line: "#123524", background: "#eefaf3", text: "#102a1d", series: ["#2f9e6d", "#6fcf97", "#145a32", "#27ae60", "#102a1d"] },
+    purple: { label: "Purple", primary: "#7c6fc5", secondary: "#3f2f84", line: "#2b2457", background: "#f4f1ff", text: "#211b45", series: ["#7c6fc5", "#b39ddb", "#3f2f84", "#8e59d1", "#211b45"] },
+    minimal: { label: "Minimal", primary: "#6b7280", secondary: "#111827", line: "#9ca3af", background: "#ffffff", text: "#111827", series: ["#111827", "#6b7280", "#9ca3af", "#d1d5db", "#374151"] },
+    contrast: { label: "Contrast", primary: "#ffcc00", secondary: "#0057ff", line: "#000000", background: "#ffffff", text: "#000000", series: ["#ffcc00", "#0057ff", "#ff3b30", "#00a676", "#000000"] }
+  };
+  const DIAGRAM_THEMES = {
+    yellowblack: { label: "Yellow Black", primary: "#f5c842", secondary: "#101010", line: "#101010", background: "transparent", text: "#171717" },
+    blue: { label: "Blue", primary: "#2f80ed", secondary: "#174ea6", line: "#1b3b6f", background: "#eef5ff", text: "#14213d" },
+    green: { label: "Green", primary: "#2f9e6d", secondary: "#145a32", line: "#123524", background: "#eefaf3", text: "#102a1d" },
+    purple: { label: "Purple", primary: "#7c6fc5", secondary: "#3f2f84", line: "#2b2457", background: "#f4f1ff", text: "#211b45" },
+    orange: { label: "Orange", primary: "#f2994a", secondary: "#8a3b12", line: "#4a210c", background: "#fff3e7", text: "#2a170b" },
+    monochrome: { label: "Monochrome", primary: "#f3f4f6", secondary: "#111827", line: "#111827", background: "#ffffff", text: "#111827" }
+  };
+
+  function tagComponent(object, role, index = 0, extra = {}) {
+    object.set({
+      componentRole: role,
+      componentIndex: index,
+      editableComponent: true,
+      ...extra
+    });
+    return object;
+  }
+
+  function componentTypeFor(object) {
+    if (!object) return "";
+    if (object.componentType) return object.componentType;
+    if (object.chartKind) return "chart";
+    if (object.diagramKind) return "diagram";
+    if (object.flowchartKind) return "flowchart";
+    if (object.frameKind) return "frame";
+    if (object.shapeKind || object.shapeText) return "shape";
+    return "";
+  }
+
+  function visualObjects(object) {
+    return object?.type === "group" ? object.getObjects?.() || [] : [];
+  }
+
+  function inspectSelection(object = active()) {
+    if (!object) return null;
+    const type = componentTypeFor(object);
+    if (VISUAL_TYPES.has(type)) return { object, type, objects: visualObjects(object) };
+    if (object.visualParentId && object.group) {
+      const parent = object.group;
+      return { object: parent, activeChild: object, type: componentTypeFor(parent), objects: visualObjects(parent) };
+    }
+    return null;
   }
 
   function thumbnailObjectMarkup(object, legacy = false) {
@@ -519,18 +577,24 @@
     };
     const shape = shapes[type]?.() || new fabric.Rect({ ...common, width: 260, height: 180, rx: 4, ry: 4 });
     if (type === "line") {
-      shape.set({ id, left: 510 });
+      shape.set({ id, left: 510, componentType: "shape", componentRole: "line", componentIndex: 0, editableComponent: true });
       canvas.add(shape);
       canvas.setActiveObject(shape);
       canvas.requestRenderAll();
       schedule();
       return;
     }
-    const label = createShapeLabel(shape, "", `${id}_label`);
+    tagComponent(shape, "body", 0, { componentType: "shape" });
+    const label = tagComponent(createShapeLabel(shape, "", `${id}_label`), "label", 1, { componentType: "shape" });
     const object = new fabric.Group([shape, label], {
       id,
+      componentType: "shape",
+      shapeKind: type,
       left: type === "circle" ? 540 : type === "triangle" ? 530 : 510,
-      top: type === "circle" ? 340 : type === "triangle" ? 350 : 360
+      top: type === "circle" ? 340 : type === "triangle" ? 350 : 360,
+      objectCaching: false,
+      subTargetCheck: true,
+      interactive: true
     });
     configureShapeTextGroup(object);
     canvas.add(object);
@@ -541,12 +605,25 @@
   }
 
   function addGroup(objects, options = {}) {
+    const groupId = options.id || `group_${Date.now()}`;
+    const componentType = options.componentType || componentTypeFor(options) || "diagram";
+    objects.forEach((object, index) => {
+      object.set({
+        visualParentId: groupId,
+        componentType,
+        componentIndex: object.componentIndex ?? index,
+        editableComponent: object.editableComponent !== false
+      });
+    });
     const group = new fabric.Group(objects, {
-      id: options.id || `group_${Date.now()}`,
+      id: groupId,
+      componentType,
       left: options.left ?? 340,
       top: options.top ?? 190,
       objectCaching: false,
       lockScalingFlip: true,
+      subTargetCheck: true,
+      interactive: true,
       ...options
     });
     canvas.add(group);
@@ -567,20 +644,22 @@
       fontFamily: "Arial",
       fill: options.fill || "#171717",
       textAlign: "center",
+      componentRole: options.componentRole || "label",
+      editableComponent: true,
       ...options
     });
   }
 
   function insertFrame(kind) {
     const id = `frame_${Date.now()}`;
-    const base = { id: `${id}_geometry`, frameKind: kind, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 4 };
+    const base = { id: `${id}_geometry`, componentType: "frame", componentRole: "border", componentIndex: 0, frameKind: kind, left: 0, top: 0, originX: "center", originY: "center", fill: "transparent", stroke: "#101010", strokeWidth: 4 };
     if (kind === "circle") {
       canvas.add(new fabric.Circle({ ...base, id, left: 540, top: 320, radius: 125, strokeWidth: 5 }));
       canvas.setActiveObject(canvas.getObjects().at(-1));
     } else if (kind === "corners") {
       const lines = [[0, 0, 80, 0], [0, 0, 0, 80], [340, 0, 260, 0], [340, 0, 340, 80], [0, 210, 80, 210], [0, 210, 0, 130], [340, 210, 260, 210], [340, 210, 340, 130]]
-        .map((points, index) => new fabric.Line(points, { id: `${id}_corner_${index}`, frameKind: kind, stroke: "#101010", strokeWidth: 8, strokeLineCap: "square" }));
-      addGroup(lines, { id, frameKind: kind, left: 470, top: 255 });
+        .map((points, index) => tagComponent(new fabric.Line(points, { id: `${id}_corner_${index}`, frameKind: kind, stroke: "#101010", strokeWidth: 8, strokeLineCap: "square" }), "corner", index, { componentType: "frame" }));
+      addGroup(lines, { id, componentType: "frame", frameKind: kind, left: 470, top: 255 });
     } else {
       const options = {
         rounded: { rx: 24, ry: 24 },
@@ -601,12 +680,12 @@
     if (kind === "database") {
       const id = `flow_${Date.now()}`;
       const parts = [
-        new fabric.Rect({ id: `${id}_body`, flowchartKind: kind, left: 0, top: 25, width: 240, height: 130, fill: "transparent", stroke: "#101010", strokeWidth: 2 }),
-        new fabric.Ellipse({ id: `${id}_top`, flowchartKind: kind, left: 120, top: 25, originX: "center", originY: "center", rx: 120, ry: 28, fill: "#ffffff", stroke: "#101010", strokeWidth: 2 }),
-        new fabric.Ellipse({ id: `${id}_bottom`, flowchartKind: kind, left: 120, top: 155, originX: "center", originY: "center", rx: 120, ry: 28, fill: "transparent", stroke: "#101010", strokeWidth: 2 }),
-        addLabel("Data", 120, 90, { width: 180, fontSize: 26 })
+        tagComponent(new fabric.Rect({ id: `${id}_body`, flowchartKind: kind, left: 0, top: 25, width: 240, height: 130, fill: "transparent", stroke: "#101010", strokeWidth: 2 }), "body", 0, { componentType: "flowchart" }),
+        tagComponent(new fabric.Ellipse({ id: `${id}_top`, flowchartKind: kind, left: 120, top: 25, originX: "center", originY: "center", rx: 120, ry: 28, fill: "#ffffff", stroke: "#101010", strokeWidth: 2 }), "cap", 1, { componentType: "flowchart" }),
+        tagComponent(new fabric.Ellipse({ id: `${id}_bottom`, flowchartKind: kind, left: 120, top: 155, originX: "center", originY: "center", rx: 120, ry: 28, fill: "transparent", stroke: "#101010", strokeWidth: 2 }), "cap", 2, { componentType: "flowchart" }),
+        tagComponent(addLabel("Data", 120, 90, { width: 180, fontSize: 26 }), "label", 3, { componentType: "flowchart" })
       ];
-      addGroup(parts, { id, flowchartKind: kind, left: 520, top: 280 });
+      addGroup(parts, { id, componentType: "flowchart", flowchartKind: kind, left: 520, top: 280 });
       toast("Flowchart shape inserted.");
       return;
     }
@@ -619,8 +698,9 @@
         : kind === "document"
           ? new fabric.Path("M 0 0 L 260 0 L 260 130 C 195 100 145 170 80 135 C 48 118 25 122 0 142 Z", common)
           : new fabric.Rect({ ...common, width: 280, height: 130, rx: 5, ry: 5 });
-    const label = createShapeLabel(shape, kind === "decision" ? "Decision" : kind === "terminator" ? "Start / End" : kind === "document" ? "Document" : "Process", `${id}_label`);
-    const group = new fabric.Group([shape, label], { id, left: 500, top: 300 });
+    tagComponent(shape, "body", 0, { componentType: "flowchart" });
+    const label = tagComponent(createShapeLabel(shape, kind === "decision" ? "Decision" : kind === "terminator" ? "Start / End" : kind === "document" ? "Document" : "Process", `${id}_label`), "label", 1, { componentType: "flowchart" });
+    const group = new fabric.Group([shape, label], { id, componentType: "flowchart", flowchartKind: kind, left: 500, top: 300, objectCaching: false, subTargetCheck: true, interactive: true });
     configureShapeTextGroup(group);
     canvas.add(group);
     canvas.setActiveObject(group);
@@ -666,44 +746,161 @@
         items.push(addLabel(`Level ${index + 1}`, 195, y + 35, { width: 160, fontSize: 20 }));
       });
     }
-    addGroup(items, { id, diagramKind: kind, left: kind === "timeline" || kind === "roadmap" ? 330 : 430, top: kind === "timeline" || kind === "roadmap" ? 275 : 220 });
+    items.forEach((item, index) => {
+      const role = TEXT_TYPES.has(item.type) ? "label" : item.type === "line" || item.type === "polyline" ? "connector" : item.type === "path" && kind === "cycle" ? "connector" : "node";
+      tagComponent(item, role, index, { componentType: "diagram", componentName: `${kind}-${role}-${index + 1}` });
+    });
+    addGroup(items, { id, componentType: "diagram", diagramKind: kind, diagramTheme: "yellowblack", left: kind === "timeline" || kind === "roadmap" ? 330 : 430, top: kind === "timeline" || kind === "roadmap" ? 275 : 220 });
     toast("Diagram inserted.");
   }
 
-  function insertChart(kind) {
-    const id = `chart_${Date.now()}`;
-    const items = [];
-    const accent = "#f5c842";
-    const dark = "#101010";
-    if (kind === "bar") {
-      [120, 210, 165, 270, 225].forEach((height, index) => items.push(new fabric.Rect({ left: index * 85, top: 300 - height, width: 50, height, fill: index === 3 ? dark : accent, stroke: dark, strokeWidth: 1 })));
-      items.push(new fabric.Line([0, 300, 430, 300], { stroke: dark, strokeWidth: 3 }));
-      items.push(addLabel("Bar chart", 215, 340, { width: 220, fontSize: 24 }));
-    } else if (kind === "line") {
-      items.push(new fabric.Line([0, 250, 450, 250], { stroke: dark, strokeWidth: 3 }));
-      items.push(new fabric.Line([0, 0, 0, 250], { stroke: dark, strokeWidth: 3 }));
-      items.push(new fabric.Polyline([{ x: 35, y: 190 }, { x: 130, y: 95 }, { x: 225, y: 145 }, { x: 320, y: 55 }, { x: 420, y: 88 }], { fill: null, stroke: accent, strokeWidth: 7 }));
-      items.push(addLabel("Line chart", 225, 295, { width: 220, fontSize: 24 }));
-    } else if (kind === "progress") {
-      items.push(new fabric.Rect({ left: 0, top: 0, width: 520, height: 54, rx: 27, ry: 27, fill: "#ecece7", stroke: dark, strokeWidth: 2 }));
-      items.push(new fabric.Rect({ left: 0, top: 0, width: 360, height: 54, rx: 27, ry: 27, fill: accent, stroke: null }));
-      items.push(addLabel("70%", 260, 27, { width: 120, fontSize: 28, fontWeight: "bold" }));
-    } else if (kind === "kpi") {
-      items.push(new fabric.Rect({ left: 0, top: 0, width: 310, height: 180, rx: 8, ry: 8, fill: "#ffffff", stroke: dark, strokeWidth: 2, shadow: "0 10px 22px rgba(0,0,0,.16)" }));
-      items.push(addLabel("$42K", 155, 70, { width: 240, fontSize: 54, fontWeight: "bold" }));
-      items.push(addLabel("Monthly revenue", 155, 130, { width: 240, fontSize: 22, fill: "#555555" }));
-    } else {
-      const outer = new fabric.Circle({ left: 130, top: 130, originX: "center", originY: "center", radius: 120, fill: kind === "donut" ? "transparent" : accent, stroke: dark, strokeWidth: 2 });
-      const wedge = new fabric.Path("M 130 130 L 130 10 A 120 120 0 0 1 238 182 Z", { fill: dark, stroke: "#ffffff", strokeWidth: 2 });
-      items.push(outer, wedge);
-      if (kind === "donut") items.push(new fabric.Circle({ left: 130, top: 130, originX: "center", originY: "center", radius: 58, fill: "#ffffff", stroke: "#ffffff", strokeWidth: 2 }));
-      items.push(addLabel(kind === "donut" ? "Donut chart" : "Pie chart", 130, 285, { width: 220, fontSize: 24 }));
-    }
-    addGroup(items, { id, chartKind: kind, left: kind === "kpi" ? 485 : 410, top: kind === "progress" ? 330 : 210 });
-    toast("Chart inserted.");
+  function defaultChartData(kind) {
+    const rows = kind === "kpi"
+      ? [{ label: "Revenue", value: 42 }, { label: "Target", value: 55 }]
+      : kind === "progress"
+        ? [{ label: "Complete", value: 70 }, { label: "Remaining", value: 30 }]
+        : [{ label: "Q1", value: 38 }, { label: "Q2", value: 64 }, { label: "Q3", value: 52 }, { label: "Q4", value: 81 }, { label: "Next", value: 68 }];
+    return { title: kind === "kpi" ? "Monthly revenue" : `${kind.charAt(0).toUpperCase()}${kind.slice(1)} chart`, rows };
   }
 
-  const SHAPE_TYPES = new Set(["rect", "circle", "triangle", "path"]);
+  function normalizeChartData(data, kind) {
+    const fallback = defaultChartData(kind);
+    const rows = Array.isArray(data?.rows) ? data.rows : fallback.rows;
+    return {
+      title: String(data?.title || fallback.title).slice(0, 80),
+      rows: rows.map((row, index) => ({
+        label: String(row?.label || `Item ${index + 1}`).slice(0, 40),
+        value: Math.max(0, Number(row?.value) || 0)
+      })).filter((row) => row.label || row.value).slice(0, 12)
+    };
+  }
+
+  function sectorPath(cx, cy, radius, startAngle, endAngle, innerRadius = 0) {
+    const point = (angle, r) => ({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+    const start = point(startAngle, radius);
+    const end = point(endAngle, radius);
+    const large = endAngle - startAngle > Math.PI ? 1 : 0;
+    if (!innerRadius) return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${large} 1 ${end.x} ${end.y} Z`;
+    const innerEnd = point(endAngle, innerRadius);
+    const innerStart = point(startAngle, innerRadius);
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${large} 1 ${end.x} ${end.y} L ${innerEnd.x} ${innerEnd.y} A ${innerRadius} ${innerRadius} 0 ${large} 0 ${innerStart.x} ${innerStart.y} Z`;
+  }
+
+  function chartParts(kind, data, themeName = "classic") {
+    const theme = CHART_THEMES[themeName] || CHART_THEMES.classic;
+    const chartData = normalizeChartData(data, kind);
+    const rows = chartData.rows.length ? chartData.rows : defaultChartData(kind).rows;
+    const max = Math.max(1, ...rows.map((row) => row.value));
+    const items = [];
+    const labelColor = theme.text;
+    const addChartLabel = (text, left, top, options = {}) => tagComponent(addLabel(text, left, top, { fontSize: 18, fill: labelColor, ...options }), options.role || "label", items.length, { componentType: "chart" });
+
+    if (kind === "bar") {
+      items.push(tagComponent(new fabric.Rect({ left: -24, top: -30, width: 500, height: 370, rx: 8, ry: 8, fill: theme.background, stroke: theme.line, strokeWidth: 1 }), "background", 0, { componentType: "chart" }));
+      rows.slice(0, 8).forEach((row, index) => {
+        const height = Math.max(12, Math.round((row.value / max) * 230));
+        const x = 28 + index * 56;
+        items.push(tagComponent(new fabric.Rect({ left: x, top: 260 - height, width: 34, height, fill: theme.series[index % theme.series.length], stroke: theme.line, strokeWidth: 1 }), "data", index, { componentType: "chart" }));
+        items.push(addChartLabel(row.label, x + 17, 285, { width: 62, fontSize: 13 }));
+      });
+      items.push(tagComponent(new fabric.Line([12, 260, 470, 260], { stroke: theme.line, strokeWidth: 3 }), "axis", 90, { componentType: "chart" }));
+      items.push(addChartLabel(chartData.title, 225, 325, { width: 300, fontSize: 22, fontWeight: "bold", role: "title" }));
+    } else if (kind === "line") {
+      items.push(tagComponent(new fabric.Rect({ left: -24, top: -30, width: 520, height: 350, rx: 8, ry: 8, fill: theme.background, stroke: theme.line, strokeWidth: 1 }), "background", 0, { componentType: "chart" }));
+      items.push(tagComponent(new fabric.Line([0, 250, 470, 250], { stroke: theme.line, strokeWidth: 3 }), "axis", 1, { componentType: "chart" }));
+      items.push(tagComponent(new fabric.Line([0, 20, 0, 250], { stroke: theme.line, strokeWidth: 3 }), "axis", 2, { componentType: "chart" }));
+      const points = rows.slice(0, 10).map((row, index, visibleRows) => ({ x: 35 + index * (400 / Math.max(1, visibleRows.length - 1)), y: 250 - Math.round((row.value / max) * 210) }));
+      items.push(tagComponent(new fabric.Polyline(points, { fill: null, stroke: theme.primary, strokeWidth: 7, strokeLineCap: "round", strokeLineJoin: "round" }), "data", 3, { componentType: "chart" }));
+      points.forEach((point, index) => items.push(tagComponent(new fabric.Circle({ left: point.x, top: point.y, originX: "center", originY: "center", radius: 7, fill: theme.series[index % theme.series.length], stroke: theme.background, strokeWidth: 2 }), "point", index, { componentType: "chart" })));
+      items.push(addChartLabel(chartData.title, 235, 300, { width: 300, fontSize: 22, fontWeight: "bold", role: "title" }));
+    } else if (kind === "progress") {
+      const value = Math.max(0, Math.min(100, Number(rows[0]?.value) || 0));
+      items.push(tagComponent(new fabric.Rect({ left: 0, top: 0, width: 520, height: 54, rx: 27, ry: 27, fill: "#ecece7", stroke: theme.line, strokeWidth: 2 }), "background", 0, { componentType: "chart" }));
+      items.push(tagComponent(new fabric.Rect({ left: 0, top: 0, width: 520 * value / 100, height: 54, rx: 27, ry: 27, fill: theme.primary, stroke: null }), "data", 1, { componentType: "chart" }));
+      items.push(addChartLabel(`${Math.round(value)}%`, 260, 27, { width: 120, fontSize: 28, fontWeight: "bold", role: "value" }));
+      items.push(addChartLabel(chartData.title, 260, 95, { width: 320, fontSize: 22, role: "title" }));
+    } else if (kind === "kpi") {
+      const value = rows[0]?.value || 0;
+      items.push(tagComponent(new fabric.Rect({ left: 0, top: 0, width: 310, height: 180, rx: 8, ry: 8, fill: theme.background, stroke: theme.line, strokeWidth: 2, shadow: "0 10px 22px rgba(0,0,0,.16)" }), "background", 0, { componentType: "chart" }));
+      items.push(addChartLabel(`$${value}K`, 155, 70, { width: 240, fontSize: 54, fontWeight: "bold", role: "value" }));
+      items.push(addChartLabel(chartData.title, 155, 130, { width: 240, fontSize: 22, fill: theme.secondary, role: "title" }));
+    } else {
+      const total = rows.reduce((sum, row) => sum + row.value, 0) || 1;
+      let angle = -Math.PI / 2;
+      rows.slice(0, 8).forEach((row, index) => {
+        const slice = (row.value / total) * Math.PI * 2;
+        items.push(tagComponent(new fabric.Path(sectorPath(130, 130, 120, angle, angle + slice, kind === "donut" ? 58 : 0), { fill: theme.series[index % theme.series.length], stroke: theme.background, strokeWidth: 2 }), "data", index, { componentType: "chart" }));
+        angle += slice;
+      });
+      if (kind === "donut") items.push(tagComponent(new fabric.Circle({ left: 130, top: 130, originX: "center", originY: "center", radius: 58, fill: theme.background, stroke: theme.background, strokeWidth: 2 }), "hole", 90, { componentType: "chart" }));
+      rows.slice(0, 5).forEach((row, index) => {
+        const y = 50 + index * 28;
+        items.push(tagComponent(new fabric.Rect({ left: 300, top: y - 9, width: 18, height: 18, fill: theme.series[index % theme.series.length], stroke: theme.line, strokeWidth: 1 }), "legend", index, { componentType: "chart" }));
+        items.push(addChartLabel(row.label, 388, y, { width: 130, fontSize: 16 }));
+      });
+      items.push(addChartLabel(chartData.title, 130, 285, { width: 260, fontSize: 22, fontWeight: "bold", role: "title" }));
+    }
+    items.forEach((item, index) => item.set({ componentIndex: item.componentIndex ?? index }));
+    return { items, chartData };
+  }
+
+  function buildChartGroup(kind, data, options = {}) {
+    const themeName = options.visualTheme || "classic";
+    const { items, chartData } = chartParts(kind, data, themeName);
+    const id = options.id || `chart_${Date.now()}`;
+    items.forEach((item, index) => item.set({ visualParentId: id, componentType: "chart", componentIndex: item.componentIndex ?? index, editableComponent: true }));
+    return new fabric.Group(items, {
+      id,
+      componentType: "chart",
+      chartKind: kind,
+      chartData,
+      visualTheme: themeName,
+      left: options.left ?? (kind === "kpi" ? 485 : 410),
+      top: options.top ?? (kind === "progress" ? 330 : 210),
+      scaleX: options.scaleX ?? 1,
+      scaleY: options.scaleY ?? 1,
+      angle: options.angle ?? 0,
+      opacity: options.opacity ?? 1,
+      objectCaching: false,
+      lockScalingFlip: true,
+      subTargetCheck: true,
+      interactive: true
+    });
+  }
+
+  function refreshChartVisual(group, data = group?.chartData, themeName = group?.visualTheme || "classic") {
+    if (!group?.chartKind) return group;
+    const replacement = buildChartGroup(group.chartKind, data, {
+      id: group.id,
+      left: group.left,
+      top: group.top,
+      scaleX: group.scaleX,
+      scaleY: group.scaleY,
+      angle: group.angle,
+      opacity: group.opacity,
+      visualTheme: themeName
+    });
+    const zIndex = canvas.getObjects().indexOf(group);
+    canvas.remove(group);
+    canvas.add(replacement);
+    if (zIndex >= 0) replacement.moveTo(zIndex);
+    canvas.setActiveObject(replacement);
+    replacement.setCoords();
+    canvas.requestRenderAll();
+    schedule();
+    return replacement;
+  }
+
+  function insertChart(kind) {
+    const group = buildChartGroup(kind, defaultChartData(kind));
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    schedule();
+    toast("Chart inserted. Use Visual Format to edit theme or data.");
+  }
+
+  const SHAPE_TYPES = new Set(["rect", "circle", "ellipse", "triangle", "path", "polyline"]);
 
   function isEditableShape(object) {
     return Boolean(object && SHAPE_TYPES.has(object.type) && object.mediaType !== "video");
@@ -713,6 +910,12 @@
     if (!object) return null;
     const parts = shapeTextParts(object);
     if (parts) return { object, geometry: parts.shape, label: parts.label, isLine: false };
+    const visual = inspectSelection(object);
+    if (visual && ["shape", "flowchart", "frame"].includes(visual.type)) {
+      const geometry = visual.objects.find((item) => ["body", "border", "corner", "cap"].includes(item.componentRole) && (isEditableShape(item) || item.type === "line")) || visual.objects.find((item) => isEditableShape(item) || item.type === "line");
+      const label = visual.objects.find((item) => TEXT_TYPES.has(item.type));
+      if (geometry) return { object: visual.object, geometry, label, isLine: geometry.type === "line" };
+    }
     if (object.type === "line") return { object, geometry: object, label: null, isLine: true };
     if (isEditableShape(object)) return { object, geometry: object, label: null, isLine: false };
     return null;
@@ -770,10 +973,12 @@
 
   function shapeTextParts(group) {
     if (group?.type !== "group") return null;
+    if (!["shape", "flowchart"].includes(componentTypeFor(group))) return null;
     const objects = group.getObjects?.() || [];
-    const label = objects.find((object) => object.type === "textbox");
-    const shape = objects.find(isEditableShape);
-    return label && shape && objects.length === 2 ? { shape, label } : null;
+    if (objects.length !== 2) return null;
+    const label = objects.find((object) => object.componentRole === "label" && TEXT_TYPES.has(object.type)) || objects.find((object) => TEXT_TYPES.has(object.type));
+    const shape = objects.find((object) => object.componentRole === "body" && isEditableShape(object)) || objects.find(isEditableShape);
+    return label && shape ? { shape, label } : null;
   }
 
   function shapeTextBounds(shape) {
@@ -858,11 +1063,13 @@
   }
 
   function configureShapeTextGroup(group) {
+    const visualType = componentTypeFor(group);
+    if (visualType && !["shape", "flowchart"].includes(visualType)) return false;
     const parts = shapeTextParts(group);
     if (!parts) return false;
     // Fabric can otherwise reuse the empty group cache created before the
     // label was edited, which makes saved text disappear until the next edit.
-    group.set({ lockScalingFlip: true, objectCaching: false, dirty: true });
+    group.set({ lockScalingFlip: true, objectCaching: false, subTargetCheck: true, interactive: true, dirty: true });
     parts.label.set({ objectCaching: false, dirty: true });
     fitShapeLabel(parts.shape, parts.label);
     // Corner resizing keeps the shape and its text proportional. Side-only
@@ -874,6 +1081,9 @@
   function groupState(group, fallbackId) {
     return {
       id: group?.id || fallbackId || `shape_${Date.now()}`,
+      componentType: componentTypeFor(group) || componentTypeFor(group?.getObjects?.()?.[0]) || "shape",
+      shapeKind: group?.shapeKind || group?.getObjects?.()?.[0]?.shapeKind,
+      flowchartKind: group?.flowchartKind || group?.getObjects?.()?.[0]?.flowchartKind,
       hyperlink: group?.hyperlink || "",
       animation: group?.animation || "none",
       animationDuration: group?.animationDuration || 600,
@@ -949,8 +1159,86 @@
     return true;
   }
 
+  function visualState(group) {
+    return {
+      id: group.id || `visual_${Date.now()}`,
+      componentType: componentTypeFor(group),
+      shapeKind: group.shapeKind,
+      frameKind: group.frameKind,
+      flowchartKind: group.flowchartKind,
+      diagramKind: group.diagramKind,
+      chartKind: group.chartKind,
+      chartData: group.chartData,
+      visualTheme: group.visualTheme,
+      diagramTheme: group.diagramTheme,
+      hyperlink: group.hyperlink || "",
+      animation: group.animation || "none",
+      animationDuration: group.animationDuration || 600,
+      animationDelay: group.animationDelay || 0,
+      opacity: group.opacity ?? 1
+    };
+  }
+
+  function enterVisualComponentEditing(group, child = null) {
+    const visualType = componentTypeFor(group);
+    if (!group || group.type !== "group" || !VISUAL_TYPES.has(visualType)) return false;
+    if (shapeTextEditSession) finishShapeTextEditing();
+    if (componentEditSession) exitVisualComponentEditing();
+    const state = visualState(group);
+    const selection = group.toActiveSelection();
+    const objects = selection.getObjects?.() || [];
+    objects.forEach((object, index) => object.set({ visualParentId: state.id, componentType: state.componentType, componentIndex: object.componentIndex ?? index, editableComponent: true }));
+    componentEditSession = { state };
+    canvas.setActiveObject(child && objects.includes(child) ? child : selection);
+    if (child && TEXT_TYPES.has(child.type)) {
+      child.enterEditing?.();
+      child.hiddenTextarea?.focus();
+    }
+    canvas.requestRenderAll();
+    panel();
+    toast("Editing visual components. Press Esc to regroup.");
+    return true;
+  }
+
+  function exitVisualComponentEditing() {
+    if (!componentEditSession) return false;
+    const session = componentEditSession;
+    componentEditSession = null;
+    const editing = active();
+    editing?.exitEditing?.();
+    const objects = canvas.getObjects().filter((object) => object.visualParentId === session.state.id);
+    if (!objects.length) return false;
+    const selection = new fabric.ActiveSelection(objects, { canvas });
+    canvas.setActiveObject(selection);
+    const group = selection.toGroup();
+    group.set({
+      ...session.state,
+      objectCaching: false,
+      lockScalingFlip: true,
+      subTargetCheck: true,
+      interactive: true,
+      dirty: true
+    });
+    configureShapeTextGroup(group);
+    group.setCoords();
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    panel();
+    syncTextControls();
+    syncVisualFormatControls();
+    schedule();
+    return true;
+  }
+
   canvas.on("mouse:dblclick", (event) => {
-    if (beginShapeTextEditing(event.target)) event.e?.preventDefault?.();
+    const child = event.subTargets?.[0] || null;
+    const target = event.target;
+    const visual = inspectSelection(target);
+    if (visual?.object?.type === "group" && (["frame", "diagram", "chart"].includes(visual.type) || (visual.type === "flowchart" && !shapeTextParts(visual.object)))) {
+      if (enterVisualComponentEditing(visual.object, child)) event.e?.preventDefault?.();
+      return;
+    }
+    if (beginShapeTextEditing(target)) event.e?.preventDefault?.();
   });
   canvas.on("object:added", (event) => configureShapeTextGroup(event.target));
   canvas.on("selection:created", (event) => (event.selected || []).forEach(configureShapeTextGroup));
@@ -980,11 +1268,177 @@
   byId("shapeShadow")?.addEventListener("change", (event) => applyShapeGeometry({
     shadow: event.target.checked ? new fabric.Shadow({ color: "rgba(0,0,0,.3)", blur: 12, offsetX: 7, offsetY: 7 }) : null
   }));
+
+  function currentVisualSelection() {
+    const visual = inspectSelection();
+    return visual?.object?.type === "group" || visual?.object?.componentType === "frame" ? visual : null;
+  }
+
+  function themeOptions(type) {
+    const source = type === "chart" ? CHART_THEMES : DIAGRAM_THEMES;
+    return Object.entries(source).map(([value, theme]) => `<option value="${value}">${esc(theme.label)}</option>`).join("");
+  }
+
+  function visualColor(role, fallback) {
+    const visual = currentVisualSelection();
+    const object = visual?.objects?.find((item) => item.componentRole === role && (item.fill || item.stroke));
+    if (!object) return fallback;
+    return colorInputValue(object.fill || object.stroke, fallback);
+  }
+
+  function syncVisualFormatControls() {
+    const visual = currentVisualSelection();
+    const visualGroup = document.querySelector(".visual-format-group");
+    const shapeGroup = document.querySelector(".shape-format-group");
+    const showVisual = Boolean(visual && ["frame", "flowchart", "diagram", "chart"].includes(visual.type));
+    if (visualGroup) visualGroup.hidden = !showVisual;
+    if (shapeGroup) shapeGroup.hidden = Boolean(visual && ["frame", "diagram", "chart"].includes(visual.type));
+    const controls = all(".visual-format-group input, .visual-format-group select, .visual-format-group button");
+    controls.forEach((control) => { control.disabled = !showVisual; });
+    if (!showVisual) return;
+    const theme = byId("visualTheme");
+    if (theme) {
+      const desiredOptions = themeOptions(visual.type === "chart" ? "chart" : "diagram");
+      if (theme.innerHTML !== desiredOptions) theme.innerHTML = desiredOptions;
+      theme.disabled = visual.type === "frame" || visual.type === "flowchart";
+      theme.value = visual.type === "chart" ? visual.object.visualTheme || "classic" : visual.object.diagramTheme || "yellowblack";
+    }
+    byId("editVisualData").disabled = visual.type !== "chart";
+    byId("visualPrimary").value = visual.type === "chart" ? visualColor("data", "#f5c842") : visualColor("node", visualColor("body", "#f5c842"));
+    byId("visualSecondary").value = visual.type === "chart" ? visualColor("point", "#101010") : visualColor("connector", "#101010");
+    const lineSource = visual.objects.find((item) => item.stroke) || visual.object;
+    byId("visualLine").value = colorInputValue(lineSource.stroke, "#101010");
+    const lineWidth = Math.max(0, Math.min(16, Number(lineSource.strokeWidth) || 0));
+    byId("visualLineWidth").value = lineWidth;
+    byId("visualLineWidthValue").textContent = `${lineWidth} px`;
+    const dash = Array.isArray(lineSource.strokeDashArray) ? lineSource.strokeDashArray : [];
+    byId("visualLineStyle").value = dash.length ? dash[0] <= 4 ? "dotted" : "dashed" : "solid";
+    const opacity = Math.round(Math.max(.1, Math.min(1, Number(visual.object.opacity) || 1)) * 100);
+    byId("visualOpacity").value = opacity;
+    byId("visualOpacityValue").textContent = `${opacity}%`;
+    byId("visualShadow").checked = visual.objects.some((item) => Boolean(item.shadow)) || Boolean(visual.object.shadow);
+  }
+
+  function applyVisualToChildren(predicate, changes) {
+    const visual = currentVisualSelection();
+    if (!visual) { toast("Select a visual first."); return; }
+    const targets = visual.object.type === "group" ? visual.objects.filter(predicate) : [visual.object].filter(predicate);
+    targets.forEach((object) => {
+      object.set(changes);
+      object.setCoords();
+    });
+    visual.object.set({ dirty: true });
+    visual.object.setCoords();
+    canvas.requestRenderAll();
+    syncVisualFormatControls();
+    schedule();
+  }
+
+  function applyVisualTheme(themeName) {
+    const visual = currentVisualSelection();
+    if (!visual) { toast("Select a chart, diagram, flowchart, or frame first."); return; }
+    if (visual.type === "chart") {
+      refreshChartVisual(visual.object, visual.object.chartData, themeName);
+      return;
+    }
+    const theme = DIAGRAM_THEMES[themeName] || DIAGRAM_THEMES.yellowblack;
+    visual.object.set({ diagramTheme: themeName, dirty: true });
+    visual.objects.forEach((object, index) => {
+      if (TEXT_TYPES.has(object.type)) object.set({ fill: theme.text });
+      else if (object.componentRole === "connector") object.set({ stroke: theme.primary });
+      else if (object.fill !== null && object.fill !== undefined) object.set({ fill: index % 2 ? theme.background : theme.primary });
+      if (object.stroke !== undefined) object.set({ stroke: theme.line });
+    });
+    canvas.requestRenderAll();
+    syncVisualFormatControls();
+    schedule();
+  }
+
+  byId("visualTheme")?.addEventListener("change", (event) => applyVisualTheme(event.target.value));
+  byId("visualPrimary")?.addEventListener("input", (event) => applyVisualToChildren((object) => !TEXT_TYPES.has(object.type) && object.fill !== null && object.componentRole !== "background", { fill: event.target.value }));
+  byId("visualSecondary")?.addEventListener("input", (event) => applyVisualToChildren((object) => ["connector", "point", "legend", "cap"].includes(object.componentRole) && (object.fill !== undefined || object.stroke !== undefined), { fill: event.target.value, stroke: event.target.value }));
+  byId("visualLine")?.addEventListener("input", (event) => applyVisualToChildren((object) => object.stroke !== undefined, { stroke: event.target.value }));
+  byId("visualLineWidth")?.addEventListener("input", (event) => {
+    byId("visualLineWidthValue").textContent = `${event.target.value} px`;
+    applyVisualToChildren((object) => object.stroke !== undefined, { strokeWidth: Number(event.target.value) });
+  });
+  byId("visualLineStyle")?.addEventListener("change", (event) => {
+    const strokeDashArray = event.target.value === "dashed" ? [18, 12] : event.target.value === "dotted" ? [3, 9] : null;
+    applyVisualToChildren((object) => object.stroke !== undefined, { strokeDashArray, strokeLineCap: event.target.value === "dotted" ? "round" : "butt" });
+  });
+  byId("visualOpacity")?.addEventListener("input", (event) => {
+    const visual = currentVisualSelection();
+    byId("visualOpacityValue").textContent = `${event.target.value}%`;
+    if (!visual) return;
+    visual.object.set({ opacity: Math.max(.1, Math.min(1, Number(event.target.value) / 100)), dirty: true });
+    canvas.requestRenderAll();
+    schedule();
+  });
+  byId("visualShadow")?.addEventListener("change", (event) => {
+    const shadow = event.target.checked ? new fabric.Shadow({ color: "rgba(0,0,0,.26)", blur: 14, offsetX: 6, offsetY: 8 }) : null;
+    applyVisualToChildren((object) => ["background", "body", "border", "node"].includes(object.componentRole) || object.frameKind, { shadow });
+  });
+
+  let chartDataTarget = null;
+  const chartDataModal = byId("chartDataModal");
+
+  function addChartDataRow(label = "", value = "") {
+    const row = document.createElement("div");
+    row.className = "chart-data-row";
+    row.innerHTML = `<input type="text" value="${esc(label)}" aria-label="Category"><input type="number" step="1" min="0" value="${Number(value) || 0}" aria-label="Value"><button type="button" aria-label="Remove row"><i class="bi bi-x-lg"></i></button>`;
+    row.querySelector("button").addEventListener("click", () => row.remove());
+    byId("chartDataRows").append(row);
+  }
+
+  function openChartDataEditor() {
+    const visual = currentVisualSelection();
+    if (visual?.type !== "chart") { toast("Select a chart first."); return; }
+    chartDataTarget = visual.object;
+    const data = normalizeChartData(chartDataTarget.chartData, chartDataTarget.chartKind);
+    byId("chartDataTitleInput").value = data.title;
+    byId("chartDataRows").innerHTML = "";
+    data.rows.forEach((row) => addChartDataRow(row.label, row.value));
+    chartDataModal.hidden = false;
+  }
+
+  function closeChartDataEditor() {
+    chartDataModal.hidden = true;
+    chartDataTarget = null;
+  }
+
+  function applyChartDataEditor() {
+    if (!chartDataTarget) return;
+    const rows = all("#chartDataRows .chart-data-row").map((row, index) => {
+      const inputs = row.querySelectorAll("input");
+      return { label: inputs[0].value || `Item ${index + 1}`, value: Number(inputs[1].value) || 0 };
+    });
+    const data = normalizeChartData({ title: byId("chartDataTitleInput").value, rows }, chartDataTarget.chartKind);
+    refreshChartVisual(chartDataTarget, data, chartDataTarget.visualTheme || "classic");
+    closeChartDataEditor();
+  }
+
+  byId("editVisualData")?.addEventListener("click", openChartDataEditor);
+  byId("editVisualParts")?.addEventListener("click", () => {
+    const visual = currentVisualSelection();
+    if (!visual?.object || visual.object.type !== "group") { toast("Select a grouped visual first."); return; }
+    enterVisualComponentEditing(visual.object);
+  });
+  byId("addChartDataRow")?.addEventListener("click", () => addChartDataRow(`Item ${byId("chartDataRows").children.length + 1}`, 10));
+  byId("applyChartData")?.addEventListener("click", applyChartDataEditor);
+  byId("closeChartData")?.addEventListener("click", closeChartDataEditor);
+  byId("cancelChartData")?.addEventListener("click", closeChartDataEditor);
+  chartDataModal?.addEventListener("mousedown", (event) => { if (event.target === chartDataModal) closeChartDataEditor(); });
+
   canvas.on("selection:created", syncShapeFormatControls);
   canvas.on("selection:updated", syncShapeFormatControls);
   canvas.on("selection:cleared", syncShapeFormatControls);
   canvas.on("object:modified", syncShapeFormatControls);
+  canvas.on("selection:created", syncVisualFormatControls);
+  canvas.on("selection:updated", syncVisualFormatControls);
+  canvas.on("selection:cleared", syncVisualFormatControls);
+  canvas.on("object:modified", syncVisualFormatControls);
   syncShapeFormatControls();
+  syncVisualFormatControls();
 
   byId("insertRectangle")?.addEventListener("click", () => insertShape("rectangle"));
   byId("insertCircle")?.addEventListener("click", () => insertShape("circle"));
@@ -1353,13 +1807,13 @@
 
   function selectedText() {
     const object = active();
-    if (object && ["textbox", "text", "i-text"].includes(object.type)) return object;
-    return shapeTextParts(object)?.label || null;
+    if (object && TEXT_TYPES.has(object.type)) return object;
+    return ["shape", "flowchart"].includes(componentTypeFor(object)) ? shapeTextParts(object)?.label || null : null;
   }
 
   function selectedTextContainer() {
     const object = active();
-    return shapeTextParts(object) ? object : null;
+    return ["shape", "flowchart"].includes(componentTypeFor(object)) && shapeTextParts(object) ? object : null;
   }
 
   function paragraphIndexAt(textObject, position) {
@@ -2041,11 +2495,16 @@
   document.addEventListener("keydown", (event) => {
     const typingTarget = event.target.matches?.("input,textarea,select,[contenteditable=true]");
     const selectedObject = active();
-    const canEditShapeText = !typingTarget && !selectedObject?.isEditing && (Boolean(shapeTextParts(selectedObject)) || isEditableShape(selectedObject));
+    const canEditShapeText = !typingTarget && !selectedObject?.isEditing && !componentEditSession && (["shape", "flowchart", ""].includes(componentTypeFor(selectedObject)) && (Boolean(shapeTextParts(selectedObject)) || isEditableShape(selectedObject)));
     const printableKey = event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
     if (canEditShapeText && (printableKey || event.key === "Enter" || event.key === "F2")) {
       event.preventDefault();
       beginShapeTextEditing(selectedObject, printableKey ? { replaceText: event.key } : {});
+      return;
+    }
+    if (event.key === "Escape" && componentEditSession) {
+      event.preventDefault();
+      exitVisualComponentEditing();
       return;
     }
     if (event.key === "Escape" && !shareModal.hidden) closeShare();

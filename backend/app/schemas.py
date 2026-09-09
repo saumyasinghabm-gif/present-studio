@@ -82,6 +82,8 @@ class ShareLinkOut(BaseModel):
     token: str
     permission: SharePermission
     requiresScreenCode: bool = False
+    screenUrl: str | None = None
+    screenToken: str | None = None
 
 
 class ScreenAccessRequest(BaseModel):

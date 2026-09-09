@@ -10,7 +10,7 @@
   --danger: #d73535;
   --header-h: 64px;
   --tabs-h: 58px;
-  --ribbon-h: 148px;
+  --ribbon-h: 132px;
   --status-h: 58px;
   --sidebar-w: 280px;
   --slide-ratio: 1.7777778;
@@ -661,12 +661,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .builder-hidden-color { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .builder-page .builder-media-library { min-width: 280px; max-width: 520px; }
 .builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 2px 6px; }
-.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(3, minmax(74px, 1fr)); gap: 3px 5px; }
-.builder-page .shape-format-tools { display: flex; flex-direction: column; min-width: 226px; gap: 4px; }
+.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(68px, 1fr)); gap: 3px 5px; }
+.builder-page .shape-format-tools,
+.builder-page .visual-format-tools { display: flex; flex-direction: column; min-width: 226px; gap: 4px; }
 .builder-page .shape-format-color,
 .builder-page .shape-format-range,
 .builder-page .shape-format-shadow,
-.builder-page .shape-format-toggle {
+.builder-page .shape-format-toggle,
+.builder-page .visual-format-field,
+.builder-page .visual-format-color,
+.builder-page .visual-format-range,
+.builder-page .visual-format-shadow {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -674,12 +679,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 9px;
   white-space: nowrap;
 }
-.builder-page .shape-format-color .builder-color-input { width: 30px; height: 26px; }
-.builder-page .shape-format-range input { width: 78px; accent-color: #d39e00; }
-.builder-page .shape-format-range output { min-width: 32px; color: #222; }
-.builder-page .shape-format-shadow input { margin: 0; accent-color: #d39e00; }
-.builder-page .shape-format-toggle input { margin: 0; accent-color: #d39e00; }
-.builder-page .shape-format-group :disabled { opacity: .45; cursor: not-allowed; }
+.builder-page .shape-tool-grid .tool-button { justify-content: flex-start; min-height: 24px; padding: 3px 5px; }
+.builder-page .shape-format-color .builder-color-input,
+.builder-page .visual-format-color .builder-color-input { width: 30px; height: 26px; }
+.builder-page .shape-format-range input,
+.builder-page .visual-format-range input { width: 78px; accent-color: #d39e00; }
+.builder-page .shape-format-range output,
+.builder-page .visual-format-range output { min-width: 32px; color: #222; }
+.builder-page .shape-format-shadow input,
+.builder-page .shape-format-toggle input,
+.builder-page .visual-format-shadow input { margin: 0; accent-color: #d39e00; }
+.builder-page .shape-format-group :disabled,
+.builder-page .visual-format-group :disabled { opacity: .45; cursor: not-allowed; }
+.builder-page .shape-format-group[hidden],
+.builder-page .visual-format-group[hidden] { display: none; }
+.builder-page .visual-format-tools { min-width: 300px; }
+.builder-page .visual-theme-select { width: 116px; }
+.builder-page .visual-line-style-select { width: 80px; }
+.builder-page .visual-format-range input { width: 68px; }
 .builder-page .media-options-stack { align-items: flex-start; min-width: 138px; }
 .builder-page .media-limit-note { color: #666; font-size: 9px; line-height: 1.2; white-space: nowrap; }
 .builder-page .smart-guide-overlay {
@@ -796,7 +813,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .save-status.is-saving span:first-child { background: #e7a928; }
 .builder-page .save-status.is-error span:first-child { background: #c83f35; }
 .builder-page .modal-backdrop:not([hidden]) { display: grid; }
-.builder-page .share-status { min-height: 24px; word-break: break-all; color: #555; font-size: 12px; }
+.builder-page .share-results { display: grid; gap: 7px; margin-top: 10px; }
+.builder-page .share-status { min-height: 20px; margin: 0; word-break: break-all; color: #555; font-size: 12px; }
+.builder-page .share-status:empty { min-height: 0; }
 .builder-page .toast { position: fixed; z-index: 1000; right: 24px; bottom: 58px; display: none; }
 .builder-page .toast.show { display: block; }
 .builder-page .presenter-option { min-width: 90px; padding: 12px; border: 1px solid #ccc; background: #fff; }
@@ -885,7 +904,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page {
   --header-h: 58px;
   --tabs-h: 40px;
-  --ribbon-h: 108px;
+  --ribbon-h: 128px;
   --status-h: 48px;
   --sidebar-w: 248px;
 }
@@ -928,6 +947,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .ribbon {
   min-height: var(--ribbon-h);
   height: var(--ribbon-h);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .builder-page .ribbon-panel {
@@ -940,7 +961,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   box-sizing: border-box;
   gap: 5px;
   min-width: 72px;
-  padding: 7px 8px 22px;
+  padding: 7px 8px 24px;
+  overflow: visible;
 }
 
 .builder-page .ribbon-group-label {
@@ -969,8 +991,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Large ribbon tools such as Paste/New Slide */
 .builder-page .tool-button.tool-tall {
   min-width: 44px;
-  min-height: 62px;
-  height: 62px;
+  min-height: 66px;
+  height: 66px;
   padding: 4px 5px;
   font-size: 9px;
 }
@@ -1020,6 +1042,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   width: 28px;
   height: 28px;
   padding: 2px;
+}
+
+.builder-page .visual-format-tools {
+  min-width: 300px;
+}
+
+.builder-page .visual-format-tools .tool-row {
+  min-height: 28px;
 }
 
 .builder-page .wordart-tools { min-width: 252px; }
@@ -1213,7 +1243,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .builder-page {
     --sidebar-w: 226px;
     --tabs-h: 38px;
-    --ribbon-h: 104px;
+    --ribbon-h: 124px;
   }
 
   .builder-page .tab-button {
@@ -1229,4 +1259,44 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     min-width: 54px;
     width: 54px;
   }
+
+  .builder-page .shape-tool-grid {
+    grid-template-columns: repeat(2, minmax(62px, 1fr));
+  }
+}
+
+.chart-data-modal {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.chart-data-table {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.chart-data-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(80px, .8fr) 34px;
+  gap: 8px;
+  align-items: center;
+}
+
+.chart-data-row input {
+  min-width: 0;
+  height: 38px;
+  border: 1px solid #d8d1bd;
+  border-radius: 6px;
+  padding: 0 10px;
+  font: inherit;
+}
+
+.chart-data-row button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d8d1bd;
+  border-radius: 6px;
+  background: #fff;
 }

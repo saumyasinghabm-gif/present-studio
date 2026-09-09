@@ -76,6 +76,8 @@ def test_share_link_permissions_are_returned_to_frontend():
         assert presenter_link.json()["requiresScreenCode"] is True
         assert presenter_link.json()["url"].startswith("https://")
         assert "/controller.html?" in presenter_link.json()["url"]
+        assert "/screen.html?" in presenter_link.json()["screenUrl"]
+        assert presenter_link.json()["screenToken"]
 
         presenter_payload = client.get(f"/api/presentations/pres_demo?token={presenter_link.json()['token']}")
         assert presenter_payload.status_code == 200
@@ -128,6 +130,7 @@ def test_screen_code_is_required_and_verified_for_protected_screen():
             headers=headers,
         )
         share_token = link.json()["token"]
+        screen_token = link.json()["screenToken"]
 
         requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={share_token}")
         locked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}")
@@ -150,10 +153,14 @@ def test_screen_code_is_required_and_verified_for_protected_screen():
         viewer_locked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}")
         viewer_wrong = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}&screenCode=1357")
         viewer_unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={viewer_token}&screenCode=8642")
+        paired_screen_requirements = client.get(f"/api/presentations/{presentation_id}/screen-access?token={screen_token}")
+        paired_screen_locked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={screen_token}")
+        paired_screen_unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={screen_token}&screenCode=1357")
 
     assert signup.status_code == 200
     assert created.status_code == 200
     assert link.status_code == 200
+    assert link.json()["screenUrl"].endswith(f"token={screen_token}")
     assert requirements.status_code == 200
     assert requirements.json() == {"requiresCode": True}
     assert locked.status_code == 403
@@ -169,12 +176,20 @@ def test_screen_code_is_required_and_verified_for_protected_screen():
     assert viewer_wrong.status_code == 403
     assert viewer_unlocked.status_code == 200
     assert viewer_unlocked.json()["permission"] == "viewer"
+    assert paired_screen_requirements.json() == {"requiresCode": True}
+    assert paired_screen_locked.status_code == 403
+    assert paired_screen_unlocked.status_code == 200
+    assert paired_screen_unlocked.json()["permission"] == "viewer"
 
 
 def test_viewer_screen_link_requires_its_own_code():
+    email = f"viewer-link-owner-{uuid4().hex}@example.com"
     with TestClient(fastapi_app) as client:
-        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
-        token = login.json()["accessToken"]
+        signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Viewer Link Owner", "email": email, "password": "securepass123"},
+        )
+        token = signup.json()["accessToken"]
         created = client.post(
             "/api/presentations",
             json={"title": f"Open viewer deck {uuid4().hex}"},
@@ -196,6 +211,7 @@ def test_viewer_screen_link_requires_its_own_code():
         screen = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}")
         unlocked = client.get(f"/api/presentations/{presentation_id}?screen=1&token={share_token}&screenCode=9753")
 
+    assert signup.status_code == 200
     assert created.status_code == 200
     assert unprotected.status_code == 422
     assert link.status_code == 200

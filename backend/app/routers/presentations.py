@@ -213,6 +213,16 @@ def create_share_link(
         screen_access_code_hash=hash_password(payload.screenAccessCode),
     )
     db.add(share)
+    screen_share = None
+    if payload.permission == "presenter":
+        screen_share = ShareLink(
+            id=new_id("share"),
+            presentation_id=presentation.id,
+            token=new_id("token"),
+            permission="viewer",
+            screen_access_code_hash=hash_password(payload.screenAccessCode),
+        )
+        db.add(screen_share)
     db.commit()
     base = public_share_base_url(request)
     page = "controller.html" if share.permission == "presenter" else "screen.html"
@@ -221,6 +231,8 @@ def create_share_link(
         token=share.token,
         permission=share.permission,
         requiresScreenCode=True,
+        screenUrl=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}" if screen_share else None,
+        screenToken=screen_share.token if screen_share else None,
     )
 
 
