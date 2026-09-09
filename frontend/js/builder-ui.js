@@ -542,6 +542,16 @@
 
   byId("addSlideProxy")?.addEventListener("click", () => addSlide());
 
+  function createNewSlideFromRibbon(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (typeof addSlide !== "function") {
+      toast("New Slide is still loading. Try again in a moment.");
+      return;
+    }
+    addSlide();
+  }
+
   byId("insertText").addEventListener("click", () => {
     const object = new fabric.Textbox("Type your text", {
       id: `text_${Date.now()}`,
@@ -2137,7 +2147,7 @@
     const object = active();
     const textObject = selectedText();
     switch (name) {
-      case "new-slide": addSlide(); break;
+      case "new-slide": createNewSlideFromRibbon(event); break;
       case "duplicate-slide": duplicateSlide(); break;
       case "delete-slide": deleteSlide(); break;
       case "duplicate-object": action("duplicate"); break;
