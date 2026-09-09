@@ -661,7 +661,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .builder-hidden-color { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .builder-page .builder-media-library { min-width: 280px; max-width: 520px; }
 .builder-page .builder-arrange-grid { display: grid; grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 2px 6px; }
-.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(68px, 1fr)); gap: 3px 5px; }
+.builder-page .shape-tool-grid { display: grid; grid-template-columns: repeat(4, minmax(62px, 1fr)); gap: 3px 5px; }
 .builder-page .shape-format-tools,
 .builder-page .visual-format-tools { display: flex; flex-direction: column; min-width: 226px; gap: 4px; }
 .builder-page .shape-format-color,
@@ -1261,7 +1261,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .builder-page .shape-tool-grid {
-    grid-template-columns: repeat(2, minmax(62px, 1fr));
+    grid-template-columns: repeat(4, minmax(62px, 1fr));
   }
 }
 
@@ -1299,4 +1299,259 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 1px solid #d8d1bd;
   border-radius: 6px;
   background: #fff;
+}
+
+/* Polished ribbon surface. Kept entirely within the builder ribbon so the
+   header, workspace, slide rail, status bar and editor behavior stay intact. */
+.builder-page .tab-nav {
+  position: relative;
+  z-index: 16;
+  gap: 3px;
+  padding: 0 16px;
+  border-bottom: 1px solid #deddd8;
+  background: linear-gradient(180deg, #ffffff 0%, #fafaf8 100%);
+  box-shadow: 0 1px 0 rgba(16, 16, 16, .025);
+}
+
+.builder-page .tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #5f5f5a;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  transition: color .16s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.builder-page .tab-button i {
+  color: #85857f;
+  font-size: 13px;
+  transition: color .16s ease;
+}
+
+.builder-page .tab-button:hover {
+  color: #171715;
+  border-color: #e6e4dc;
+  background: #f5f4ef;
+}
+
+.builder-page .tab-button:hover i,
+.builder-page .tab-button.is-active i {
+  color: #a06e00;
+}
+
+.builder-page .tab-button.is-active {
+  color: #171715;
+  border-color: #ead590;
+  background: linear-gradient(180deg, #fffdf5 0%, #fff8d7 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 201, 40, .08), 0 1px 2px rgba(16, 16, 16, .05);
+}
+
+.builder-page .tab-button::after {
+  right: 12px;
+  bottom: -4px;
+  left: 12px;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: #eab917;
+}
+
+.builder-page .tab-button:focus-visible {
+  outline: 2px solid #101010;
+  outline-offset: 2px;
+}
+
+.builder-page .ribbon {
+  padding: 7px 8px 8px;
+  border-bottom-color: #d8d7d2;
+  background: #f4f4f1;
+  box-shadow: 0 4px 12px rgba(18, 18, 16, .045);
+  scrollbar-color: #c4c2ba transparent;
+  scrollbar-width: thin;
+}
+
+.builder-page .ribbon::-webkit-scrollbar { height: 6px; }
+.builder-page .ribbon::-webkit-scrollbar-track { background: transparent; }
+.builder-page .ribbon::-webkit-scrollbar-thumb { border-radius: 999px; background: #c4c2ba; }
+
+.builder-page .ribbon-panel {
+  gap: 7px;
+  height: 100%;
+  padding-right: 2px;
+}
+
+.builder-page .ribbon-group {
+  gap: 6px;
+  min-width: 76px;
+  height: 100%;
+  padding: 7px 9px 24px;
+  overflow: visible;
+  border: 1px solid #e1e0da;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 1px 2px rgba(16, 16, 16, .035);
+}
+
+.builder-page .ribbon-group:last-child {
+  border-right: 1px solid #e1e0da;
+}
+
+.builder-page .ribbon-group-label {
+  right: 9px;
+  bottom: 6px;
+  left: 9px;
+  overflow: hidden;
+  padding-top: 4px;
+  border-top: 1px solid #e3e1da;
+  color: #777771;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .075em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.builder-page .ribbon-group-label::before,
+.builder-page .ribbon-group-label::after {
+  content: none;
+}
+
+.builder-page .tool-button {
+  border-color: transparent;
+  border-radius: 6px;
+  color: #292927;
+  font-weight: 550;
+  transition: color .14s ease, background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+
+.builder-page .tool-button i {
+  color: #4e4e49;
+  transition: color .14s ease;
+}
+
+.builder-page .tool-button:hover {
+  border-color: #e7d17f;
+  background: #fff8db;
+  box-shadow: 0 1px 2px rgba(16, 16, 16, .05);
+}
+
+.builder-page .tool-button:hover i { color: #8c6200; }
+
+.builder-page .tool-button:focus-visible,
+.builder-page .preset-card:focus-visible,
+.builder-page .ribbon-select:focus-visible,
+.builder-page .ribbon-input:focus-visible,
+.builder-page .builder-color-input:focus-visible {
+  outline: 2px solid #c99600;
+  outline-offset: 1px;
+}
+
+.builder-page .tool-button.is-active,
+.builder-page .tool-button.active {
+  border-color: #d8aa16;
+  background: #fff3bd;
+  box-shadow: inset 0 -2px 0 #dca900;
+}
+
+.builder-page .tool-button.is-active i,
+.builder-page .tool-button.active i { color: #171715; }
+
+.builder-page .tool-button.tool-tall {
+  justify-content: center;
+  border-color: #ecebe6;
+  background: #fafaf8;
+}
+
+.builder-page .tool-button.tool-tall:hover {
+  border-color: #e0bd49;
+  background: #fff7d5;
+}
+
+.builder-page .tool-button.tool-tall i {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: #171715;
+  background: #f2c739;
+}
+
+.builder-page .tool-button.tool-small:hover {
+  border-color: #e4d28e;
+  background: #fff8df;
+}
+
+.builder-page .ribbon-select,
+.builder-page .ribbon-input {
+  border-color: #d9d8d1;
+  border-radius: 6px;
+  background-color: #fff;
+  box-shadow: inset 0 1px 1px rgba(16, 16, 16, .025);
+}
+
+.builder-page .ribbon-select:hover,
+.builder-page .ribbon-input:hover { border-color: #b9b7ae; }
+
+.builder-page .builder-color-input {
+  border: 1px solid #d9d8d1;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.builder-page .preset-card {
+  border-color: #e0dfd9;
+  border-radius: 7px;
+  color: #464641;
+  background: #fafaf8;
+  transition: color .14s ease, background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+
+.builder-page .preset-card i { color: #565650; }
+
+.builder-page .preset-card:hover {
+  border-color: #dfbd4e;
+  color: #171715;
+  background: #fff8dc;
+  box-shadow: 0 2px 5px rgba(16, 16, 16, .06);
+}
+
+.builder-page .preset-card.is-active {
+  border-color: #d3a30c;
+  color: #171715;
+  background: #fff1ae;
+  box-shadow: inset 0 -2px 0 #d3a30c;
+}
+
+.builder-page .compact-label,
+.builder-page .wordart-color,
+.builder-page .wordart-width,
+.builder-page .wordart-shadow,
+.builder-page .visual-format-field,
+.builder-page .visual-format-color,
+.builder-page .visual-format-range,
+.builder-page .visual-format-shadow,
+.builder-page .shape-format-color,
+.builder-page .shape-format-range,
+.builder-page .shape-format-shadow,
+.builder-page .shape-format-toggle {
+  color: #62625d;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .builder-page .tab-nav { padding-inline: 8px; }
+  .builder-page .tab-button { gap: 5px; padding-inline: 9px; }
+  .builder-page .tab-button i { display: none; }
+  .builder-page .ribbon { padding-inline: 6px; }
+  .builder-page .ribbon-panel { gap: 5px; }
+  .builder-page .ribbon-group { padding-inline: 7px; }
 }
