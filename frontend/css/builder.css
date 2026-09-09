@@ -903,9 +903,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
    so the freed space automatically becomes workspace space. */
 .builder-page {
   --header-h: 58px;
-  --tabs-h: 40px;
-  --ribbon-h: 128px;
-  --status-h: 48px;
+  --tabs-h: 36px;
+  --ribbon-h: 108px;
+  --status-h: 32px;
   --sidebar-w: 248px;
 }
 
@@ -1242,8 +1242,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (max-width: 1280px) {
   .builder-page {
     --sidebar-w: 226px;
-    --tabs-h: 38px;
-    --ribbon-h: 124px;
+    --tabs-h: 36px;
+    --ribbon-h: 108px;
   }
 
   .builder-page .tab-button {
@@ -1309,8 +1309,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   gap: 3px;
   padding: 0 16px;
   border-bottom: 1px solid #deddd8;
-  background: linear-gradient(180deg, #ffffff 0%, #fafaf8 100%);
-  box-shadow: 0 1px 0 rgba(16, 16, 16, .025);
+  background: #fff;
+  box-shadow: none;
 }
 
 .builder-page .tab-button {
@@ -1318,7 +1318,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 34px;
+  height: 30px;
   padding: 0 13px;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -1337,8 +1337,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .builder-page .tab-button:hover {
   color: #171715;
-  border-color: #e6e4dc;
-  background: #f5f4ef;
+  border-color: transparent;
+  background: transparent;
 }
 
 .builder-page .tab-button:hover i,
@@ -1348,9 +1348,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .builder-page .tab-button.is-active {
   color: #171715;
-  border-color: #ead590;
-  background: linear-gradient(180deg, #fffdf5 0%, #fff8d7 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 201, 40, .08), 0 1px 2px rgba(16, 16, 16, .05);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .builder-page .tab-button::after {
@@ -1368,10 +1368,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .builder-page .ribbon {
-  padding: 7px 8px 8px;
+  height: 108px;
+  min-height: 108px;
+  padding: 4px 8px 5px;
   border-bottom-color: #d8d7d2;
-  background: #f4f4f1;
-  box-shadow: 0 4px 12px rgba(18, 18, 16, .045);
+  background: #fafaf8;
+  box-shadow: 0 2px 7px rgba(18, 18, 16, .035);
   scrollbar-color: #c4c2ba transparent;
   scrollbar-width: thin;
 }
@@ -1381,25 +1383,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .ribbon::-webkit-scrollbar-thumb { border-radius: 999px; background: #c4c2ba; }
 
 .builder-page .ribbon-panel {
-  gap: 7px;
+  gap: 0;
   height: 100%;
   padding-right: 2px;
 }
 
 .builder-page .ribbon-group {
-  gap: 6px;
+  gap: 5px;
   min-width: 76px;
   height: 100%;
-  padding: 7px 9px 24px;
+  padding: 4px 8px 20px;
   overflow: visible;
-  border: 1px solid #e1e0da;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 0 1px 2px rgba(16, 16, 16, .035);
+  border: 0;
+  border-right: 1px solid #e2e1dc;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .builder-page .ribbon-group:last-child {
-  border-right: 1px solid #e1e0da;
+  border-right: 0;
 }
 
 .builder-page .ribbon-group-label {
@@ -1407,8 +1410,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   bottom: 6px;
   left: 9px;
   overflow: hidden;
-  padding-top: 4px;
-  border-top: 1px solid #e3e1da;
+  padding-top: 2px;
+  border-top: 0;
   color: #777771;
   font-size: 8px;
   font-weight: 750;
@@ -1437,9 +1440,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .builder-page .tool-button:hover {
-  border-color: #e7d17f;
-  background: #fff8db;
-  box-shadow: 0 1px 2px rgba(16, 16, 16, .05);
+  border-color: transparent;
+  background: #fff4c4;
+  box-shadow: none;
 }
 
 .builder-page .tool-button:hover i { color: #8c6200; }
@@ -1465,13 +1468,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .builder-page .tool-button.tool-tall {
   justify-content: center;
-  border-color: #ecebe6;
-  background: #fafaf8;
+  min-height: 58px;
+  height: 58px;
+  border-color: transparent;
+  background: transparent;
 }
 
 .builder-page .tool-button.tool-tall:hover {
-  border-color: #e0bd49;
-  background: #fff7d5;
+  border-color: transparent;
+  background: #fff4c4;
 }
 
 .builder-page .tool-button.tool-tall i {
@@ -1508,6 +1513,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .builder-page .preset-card {
+  height: 50px;
   border-color: #e0dfd9;
   border-radius: 7px;
   color: #464641;
@@ -1552,6 +1558,28 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .builder-page .tab-button { gap: 5px; padding-inline: 9px; }
   .builder-page .tab-button i { display: none; }
   .builder-page .ribbon { padding-inline: 6px; }
-  .builder-page .ribbon-panel { gap: 5px; }
+  .builder-page .ribbon-panel { gap: 0; }
   .builder-page .ribbon-group { padding-inline: 7px; }
+}
+
+/* Compact builder footer: retain Notes and zoom while maximizing canvas room. */
+.builder-page .status-bar {
+  min-height: var(--status-h);
+  padding: 0 14px;
+}
+
+.builder-page .status-left,
+.builder-page .status-right { gap: 7px; }
+
+.builder-page .status-bar button {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 7px;
+}
+
+.builder-page .status-bar .zoom-button { width: 28px; }
+
+.builder-page #zoomValue {
+  min-width: 42px;
+  font-size: 11px;
 }
