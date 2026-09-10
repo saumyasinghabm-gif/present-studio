@@ -41,27 +41,6 @@ $("#imageAudio").onchange=e=>{const o=active();if(o?.mediaType!=="image")return;
 $("#transitionType").onchange=e=>{ensure(activeSlide()).canvas.transition.type=e.target.value;schedule()};function setTransitionDuration(value){const duration=Math.max(50,Math.min(10000,Number(value)||500));ensure(activeSlide()).canvas.transition.duration_ms=duration;const custom=$("#transitionDurationCustom");if(custom)custom.value=duration;schedule()}$("#transitionDuration").onchange=e=>setTransitionDuration(e.target.value);const transitionDurationCustom=$("#transitionDurationCustom");if(transitionDurationCustom)transitionDurationCustom.oninput=e=>setTransitionDuration(e.target.value);function setAnimationTiming(){const o=active();if(!o||o.type==="activeSelection")return;o.set({animationDuration:Math.max(100,Math.min(5000,Number($("#animationDuration")?.value)||600)),animationDelay:Math.max(0,Math.min(5000,Number($("#animationDelay")?.value)||0))});schedule()}const animationDuration=$("#animationDuration"),animationDelay=$("#animationDelay");if(animationDuration)animationDuration.oninput=setAnimationTiming;if(animationDelay)animationDelay.oninput=setAnimationTiming;$("#playbackMode").onchange=e=>{playback().mode=e.target.value;syncPlayback();schedule()};$("#playbackInterval").onchange=e=>{playback().interval_ms=+e.target.value;schedule()};$("#mediaMode").onchange=e=>{playback().media_mode=e.target.value;schedule()};$("#mediaCycle").onchange=e=>{playback().media_cycle=e.target.value;schedule()};$("#mediaInterval").onchange=e=>{playback().media_interval_ms=+e.target.value;schedule()};$("#loopVideos").onchange=e=>{playback().loop_videos=e.target.checked;schedule()};
 document.querySelectorAll("[data-slide-prev]").forEach(b=>b.onclick=()=>move(-1));document.querySelectorAll("[data-slide-next]").forEach(b=>b.onclick=()=>move(1));const addSlideButton=$("#addSlide"),duplicateSlideButton=$("#duplicateSlide"),deleteSlideButton=$("#deleteSlide");if(addSlideButton)addSlideButton.onclick=addSlide;if(duplicateSlideButton)duplicateSlideButton.onclick=duplicateSlide;if(deleteSlideButton)deleteSlideButton.onclick=deleteSlide;$("#renamePresentation").onclick=()=>{const v=prompt("Presentation title",presentation.title);if(v?.trim()){presentation.title=v.trim();render();schedule()}};$("#renameSlide").onclick=()=>{const v=prompt("Slide title",activeSlide().title);if(v?.trim()){activeSlide().title=v.trim();const t=canvas.getObjects().find(o=>o.id==="title");if(t)t.set("text",v.trim());render();schedule()}};
 $("#bringForward").onclick=()=>action("forward");$("#sendBackward").onclick=()=>action("backward");$("#duplicateElement").onclick=()=>action("duplicate");$("#deleteElement").onclick=()=>action("delete");$("#sharePermission").onchange=syncShareCodeInput;$("#shareScreenCode")?.addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,4)});syncShareCodeInput();$("#generateLink").onclick=async()=>{setShareLink("","");const screenCode=requestScreenAccessCode();if(screenCode===null)return;try{await save();const r=await api.createShareLink(presentation.id,"presenter",screenCode);setShareLink(r.url,r.permission,r.screenUrl||"")}catch(e){setShareError(e.message)}};$("#copyLink").onclick=async()=>{if(!shareUrl)return toast("Generate a link first.");try{await navigator.clipboard.writeText(shareUrl);toast("Remote link copied.")}catch{$("#shareStatus").textContent=shareUrl}};$("#copyScreenLink")&&( $("#copyScreenLink").onclick=async()=>{if(!screenShareUrl)return toast("Generate a Remote Control link first.");try{await navigator.clipboard.writeText(screenShareUrl);toast("Screen link copied.")}catch{$("#screenShareStatus").textContent=screenShareUrl}});$("#openShareLink").onclick=()=>{if(shareUrl)window.open(shareUrl,"_blank","noopener,noreferrer")};$("#openScreenLink")&&( $("#openScreenLink").onclick=()=>{if(screenShareUrl)window.open(screenShareUrl,"_blank","noopener,noreferrer")});const startLiveButton=$("#startLive");if(startLiveButton)startLiveButton.onclick=start;const openAudienceButton=$("#openAudience");if(openAudienceButton)openAudienceButton.onclick=async()=>{const screenCode=requestScreenAccessCode();if(screenCode===null)return;try{await save();const r=await api.createShareLink(presentation.id,"viewer",screenCode);window.open(r.url,"_blank","noopener")}catch(e){toast(e.message)}};document.querySelectorAll("[data-media-input]").forEach(i=>i.addEventListener("change",upload));$("#fileUpload").addEventListener("change",upload);
-document.addEventListener("keydown", e => {
-  const target = e.target;
-
-  const isTyping =
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target?.isContentEditable;
-
-  if (isTyping || active()?.isEditing) return;
-
-  if (e.key === "Delete" || e.key === "Backspace") {
-    e.preventDefault();
-    action("delete");
-  }
-
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
-    e.preventDefault();
-    action("duplicate");
-  }
-});
 }
 
 async function init(){

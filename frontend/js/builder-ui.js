@@ -11,8 +11,12 @@
   const uploadOverlay = byId("builderUploadOverlay");
   const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
   const MAX_MEDIA_UPLOAD_LABEL = "100 MB";
+  const HISTORY_LIMIT = 100;
   let builderClipboard = null;
   let builderClipboardText = "";
+  const slideHistory = new Map();
+  let historyApplying = false;
+  let historySyncTimer = 0;
   let zoom = 100;
   let builderUploadRequestId = 0;
   let shapeTextEditSession = null;
@@ -63,6 +67,74 @@
     if (object.shapeKind || object.shapeText) return "shape";
     return "";
   }
+
+  function isTypingContext(target = document.activeElement) {
+    const element = target instanceof Element ? target : document.activeElement;
+    const editable = element?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]');
+    return Boolean(editable || active()?.isEditing || shapeTextEditSession || componentEditSession);
+  }
+
+  function canvasHistorySnapshot() {
+    if (!presentation || loading) return "";
+    capture();
+    const data = ensure(activeSlide()).canvas;
+    return JSON.stringify({ background: data.background, fabric: data.fabric });
+  }
+
+  function recordHistoryState() {
+    if (historyApplying || loading || !presentation) return;
+    const slideId = activeSlide()?.id;
+    const snapshot = canvasHistorySnapshot();
+    if (!slideId || !snapshot) return;
+    const history = slideHistory.get(slideId) || { entries: [], index: -1 };
+    if (history.entries[history.index] === snapshot) return;
+    history.entries.splice(history.index + 1);
+    history.entries.push(snapshot);
+    if (history.entries.length > HISTORY_LIMIT) history.entries.shift();
+    history.index = history.entries.length - 1;
+    slideHistory.set(slideId, history);
+  }
+
+  function queueHistoryState(attempt = 0) {
+    window.clearTimeout(historySyncTimer);
+    historySyncTimer = window.setTimeout(() => {
+      if (loading && attempt < 100) queueHistoryState(attempt + 1);
+      else recordHistoryState();
+    }, attempt ? 20 : 0);
+  }
+
+  function restoreHistory(direction) {
+    recordHistoryState();
+    const slideId = activeSlide()?.id;
+    const history = slideHistory.get(slideId);
+    const nextIndex = (history?.index ?? -1) + direction;
+    if (!history || nextIndex < 0 || nextIndex >= history.entries.length) {
+      toast(direction < 0 ? "Nothing to undo." : "Nothing to redo.");
+      return;
+    }
+    const state = JSON.parse(history.entries[nextIndex]);
+    history.index = nextIndex;
+    historyApplying = true;
+    loading = true;
+    canvas.discardActiveObject();
+    canvas.loadFromJSON(state.fabric, () => {
+      canvas.backgroundColor = state.background || "#fffefb";
+      canvas.renderAll();
+      loading = false;
+      historyApplying = false;
+      capture();
+      renderList();
+      panel();
+      queueVideoOverlayUpdate();
+      schedule();
+    });
+  }
+
+  const scheduleWithoutHistory = schedule;
+  schedule = function scheduleWithHistory() {
+    queueHistoryState();
+    return scheduleWithoutHistory();
+  };
 
   function visualObjects(object) {
     return object?.type === "group" ? object.getObjects?.() || [] : [];
@@ -458,6 +530,7 @@
       notesEditor.value = slide?.canvas?.notes || "";
     }
     renderSlideAudio();
+    queueHistoryState();
     window.setTimeout(queueVideoOverlayUpdate, 60);
     window.setTimeout(queueVideoOverlayUpdate, 300);
   };
@@ -1455,18 +1528,88 @@
 
   let internalCopyPending = false;
 
-  function copyObject() {
-    const object = active();
-    if (!object) { toast("Select an element to copy."); return false; }
+  function setClipboardFromObject(object, announce = true) {
     object.clone((clone) => {
       builderClipboard = clone;
       builderClipboardText = ["textbox", "text", "i-text"].includes(object.type) ? object.text : `Present Studio object ${object.id || Date.now()}`;
       internalCopyPending = true;
       navigator.clipboard?.writeText(builderClipboardText).catch(() => {});
-      toast("Object copied.");
+      if (announce) toast("Object copied.");
+    });
+  }
+
+  function copyObject() {
+    const object = active();
+    if (!object) { toast("Select an element to copy."); return false; }
+    setClipboardFromObject(object);
+    return true;
+  }
+
+  function removeSelectedObjects(objects = canvas.getActiveObjects()) {
+    if (!objects.length) return false;
+    canvas.discardActiveObject();
+    objects.forEach((object) => canvas.remove(object));
+    canvas.requestRenderAll();
+    panel();
+    schedule();
+    return true;
+  }
+
+  function cutObject() {
+    const object = active();
+    if (!object) { toast("Select an element to cut."); return false; }
+    const objects = canvas.getActiveObjects().slice();
+    object.clone((clone) => {
+      builderClipboard = clone;
+      builderClipboardText = ["textbox", "text", "i-text"].includes(object.type) ? object.text : `Present Studio object ${object.id || Date.now()}`;
+      internalCopyPending = true;
+      navigator.clipboard?.writeText(builderClipboardText).catch(() => {});
+      removeSelectedObjects(objects);
+      toast("Object cut.");
     });
     return true;
   }
+
+  function duplicateObject() {
+    const object = active();
+    if (!object) { toast("Select an element on the slide first."); return false; }
+    object.clone((clone) => {
+      clone.set({ left: (clone.left || 0) + 28, top: (clone.top || 0) + 28 });
+      canvas.discardActiveObject();
+      if (clone.type === "activeSelection") {
+        clone.canvas = canvas;
+        clone.forEachObject((item, index) => {
+          item.set({ id: `element_${Date.now()}_${index}` });
+          canvas.add(item);
+        });
+        clone.setCoords();
+      } else {
+        clone.set({ id: `element_${Date.now()}` });
+        configureTextResize(clone, true);
+        fitPastedTextToSlide(clone);
+        canvas.add(clone);
+      }
+      canvas.setActiveObject(clone);
+      canvas.requestRenderAll();
+      panel();
+      schedule();
+      toast("Object duplicated.");
+    });
+    return true;
+  }
+
+  const originalAction = action;
+  action = function builderAction(type) {
+    if (type === "delete") {
+      if (!removeSelectedObjects()) toast("Select an element on the slide first.");
+      return;
+    }
+    if (type === "duplicate") {
+      duplicateObject();
+      return;
+    }
+    originalAction(type);
+  };
 
   function fitPastedTextToSlide(object, padding = 36) {
     if (!object || !["textbox", "text", "i-text"].includes(object.type)) return object;
@@ -2157,8 +2300,7 @@
       case "copy": break;
       case "paste": break;
       case "cut":
-        if (!object) return toast("Select an element to cut.");
-        object.clone((clone) => { builderClipboard = clone; canvas.remove(object); canvas.requestRenderAll(); schedule(); });
+        cutObject();
         break;
       case "bold": { const value = selectedTextStyle(textObject, "fontWeight"); format({ fontWeight: String(value) === "bold" || Number(value) >= 700 ? "normal" : "bold" }); break; }
       case "italic": format({ fontStyle: selectedTextStyle(textObject, "fontStyle") === "italic" ? "normal" : "italic" }); break;
@@ -2503,7 +2645,7 @@
   canvas.on("after:render", renderSmartGuides);
 
   document.addEventListener("keydown", (event) => {
-    const typingTarget = event.target.matches?.("input,textarea,select,[contenteditable=true]");
+    const typingTarget = isTypingContext(event.target);
     const selectedObject = active();
     const canEditShapeText = !typingTarget && !selectedObject?.isEditing && !componentEditSession && (["shape", "flowchart", ""].includes(componentTypeFor(selectedObject)) && (Boolean(shapeTextParts(selectedObject)) || isEditableShape(selectedObject)));
     const printableKey = event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
@@ -2518,24 +2660,60 @@
       return;
     }
     if (event.key === "Escape" && !shareModal.hidden) closeShare();
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && !event.target.matches("input,textarea")) {
-      event.preventDefault();
-      byId("copyObject").click();
-    }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && internalCopyPending && !event.target.matches("input,textarea,[contenteditable=true]") && !active()?.isEditing) {
-      event.preventDefault();
-      internalCopyPending = false;
-      pasteObject();
-    }
-    if ((event.ctrlKey || event.metaKey) && ["b", "u", "i"].includes(event.key.toLowerCase()) && active()?.isEditing) {
+    if ((event.ctrlKey || event.metaKey) && ["b", "u", "i"].includes(event.key.toLowerCase()) && active()?.isEditing && !event.target.closest?.("input,textarea,select,[contenteditable]")) {
       event.preventDefault();
       const actionName = { b: "bold", u: "underline", i: "italic" }[event.key.toLowerCase()];
       document.querySelector(`[data-builder-action="${actionName}"]`)?.click();
+      return;
+    }
+    if (typingTarget) return;
+    const commandKey = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    if (commandKey && key === "c") { event.preventDefault(); copyObject(); return; }
+    if (commandKey && key === "x") { event.preventDefault(); cutObject(); return; }
+    if (commandKey && key === "v" && internalCopyPending) {
+      event.preventDefault();
+      internalCopyPending = false;
+      pasteObject();
+      return;
+    }
+    if (commandKey && key === "a") {
+      event.preventDefault();
+      const objects = canvas.getObjects().filter((object) => object.selectable !== false);
+      canvas.discardActiveObject();
+      if (objects.length === 1) canvas.setActiveObject(objects[0]);
+      else if (objects.length > 1) canvas.setActiveObject(new fabric.ActiveSelection(objects, { canvas }));
+      canvas.requestRenderAll();
+      panel();
+      return;
+    }
+    if (commandKey && key === "s") { event.preventDefault(); save().catch(() => {}); return; }
+    if (commandKey && key === "d") { event.preventDefault(); duplicateObject(); return; }
+    if (commandKey && (key === "z" || key === "y")) {
+      event.preventDefault();
+      restoreHistory(key === "y" || event.shiftKey ? 1 : -1);
+      return;
+    }
+    if ((event.key === "Delete" || event.key === "Backspace") && selectedObject) {
+      event.preventDefault();
+      removeSelectedObjects();
+      return;
     }
   });
 
   document.addEventListener("paste", (event) => {
     const target = event.target;
+    if (isTypingContext(target)) {
+      const editingObject = active();
+      if (editingObject?.isEditing) {
+        window.setTimeout(() => {
+          fitPastedTextToSlide(editingObject);
+          canvas.requestRenderAll();
+          schedule();
+        }, 0);
+      }
+      return;
+    }
     const imageItem = [...(event.clipboardData?.items || [])].find((item) => item.kind === "file" && item.type.startsWith("image/"));
     if (imageItem) {
       event.preventDefault();
@@ -2548,16 +2726,6 @@
       event.preventDefault();
       active()?.exitEditing?.();
       insertClipboardImageSource(htmlImage);
-      return;
-    }
-    if (target?.matches?.("input,textarea,[contenteditable=true]")) return;
-    if (active()?.isEditing) {
-      const editingObject = active();
-      window.setTimeout(() => {
-        fitPastedTextToSlide(editingObject);
-        canvas.requestRenderAll();
-        schedule();
-      }, 0);
       return;
     }
     const value = event.clipboardData?.getData("text/plain") || "";
