@@ -682,7 +682,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .shape-tool-grid .tool-button { justify-content: flex-start; min-height: 24px; padding: 3px 5px; }
 .builder-page .builder-symbol-group .shape-tool-grid {
   grid-template-columns: repeat(3, 28px);
-  gap: 3px;
+  gap: 2px;
 }
 .builder-page .builder-shapes-group .shape-tool-grid { grid-template-columns: repeat(6, 28px); }
 .builder-page .builder-frames-group .shape-tool-grid { grid-template-columns: repeat(4, 28px); }
@@ -690,8 +690,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   justify-content: center;
   width: 28px;
   min-width: 28px;
-  height: 28px;
-  min-height: 28px;
+  height: 24px;
+  min-height: 24px;
   padding: 3px;
 }
 .builder-page .builder-symbol-group .shape-tool-grid .tool-button i { margin: 0; font-size: 16px; }
@@ -920,7 +920,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page {
   --header-h: 58px;
   --tabs-h: 36px;
-  --ribbon-h: 96px;
+  --ribbon-h: 88px;
   --status-h: 32px;
   --sidebar-w: 248px;
 }
@@ -1259,7 +1259,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .builder-page {
     --sidebar-w: 226px;
     --tabs-h: 36px;
-    --ribbon-h: 96px;
+    --ribbon-h: 88px;
   }
 
   .builder-page .tab-button {
@@ -1384,9 +1384,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .builder-page .ribbon {
-  height: 96px;
-  min-height: 96px;
-  padding: 4px 8px 5px;
+  height: 88px;
+  min-height: 88px;
+  padding: 2px 8px 3px;
   border-bottom-color: #d8d7d2;
   background: #fafaf8;
   box-shadow: 0 2px 7px rgba(18, 18, 16, .035);
@@ -1408,7 +1408,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   gap: 5px;
   min-width: 76px;
   height: 100%;
-  padding: 4px 8px 20px;
+  padding: 2px 8px 17px;
   overflow: visible;
   border: 0;
   border-right: 1px solid #e2e1dc;
@@ -1423,13 +1423,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .builder-page .ribbon-group-label {
   right: 9px;
-  bottom: 6px;
+  bottom: 4px;
   left: 9px;
   overflow: hidden;
   padding-top: 2px;
   border-top: 0;
   color: #777771;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 750;
   letter-spacing: .075em;
   line-height: 1;
@@ -1488,6 +1488,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   height: 58px;
   border-color: transparent;
   background: transparent;
+}
+
+.builder-page .ribbon .tool-button.tool-tall {
+  height: 48px;
+  min-height: 48px;
+}
+
+.builder-page .ribbon .preset-card,
+.builder-page .ribbon .theme-card {
+  height: 48px;
+  min-height: 48px;
+}
+
+.builder-page .ribbon .tool-row { gap: 2px; }
+.builder-page .ribbon .tool-stack { gap: 2px; }
+.builder-page .ribbon .ribbon-input,
+.builder-page .ribbon .ribbon-select,
+.builder-page .ribbon .builder-color-input {
+  height: 24px;
+  min-height: 24px;
 }
 
 .builder-page .tool-button.tool-tall:hover {
