@@ -680,6 +680,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   white-space: nowrap;
 }
 .builder-page .shape-tool-grid .tool-button { justify-content: flex-start; min-height: 24px; padding: 3px 5px; }
+.builder-page .builder-symbol-group .shape-tool-grid {
+  grid-template-columns: repeat(3, 28px);
+  gap: 3px;
+}
+.builder-page .builder-shapes-group .shape-tool-grid { grid-template-columns: repeat(6, 28px); }
+.builder-page .builder-frames-group .shape-tool-grid { grid-template-columns: repeat(4, 28px); }
+.builder-page .builder-symbol-group .shape-tool-grid .tool-button {
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 3px;
+}
+.builder-page .builder-symbol-group .shape-tool-grid .tool-button i { margin: 0; font-size: 16px; }
+.builder-page .builder-symbol-group .shape-tool-grid .tool-button span { display: none; }
 .builder-page .shape-format-color .builder-color-input,
 .builder-page .visual-format-color .builder-color-input { width: 30px; height: 26px; }
 .builder-page .shape-format-range input,
@@ -904,7 +920,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page {
   --header-h: 58px;
   --tabs-h: 36px;
-  --ribbon-h: 108px;
+  --ribbon-h: 96px;
   --status-h: 32px;
   --sidebar-w: 248px;
 }
@@ -1243,7 +1259,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .builder-page {
     --sidebar-w: 226px;
     --tabs-h: 36px;
-    --ribbon-h: 108px;
+    --ribbon-h: 96px;
   }
 
   .builder-page .tab-button {
@@ -1368,8 +1384,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .builder-page .ribbon {
-  height: 108px;
-  min-height: 108px;
+  height: 96px;
+  min-height: 96px;
   padding: 4px 8px 5px;
   border-bottom-color: #d8d7d2;
   background: #fafaf8;

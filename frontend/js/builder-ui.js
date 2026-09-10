@@ -1990,6 +1990,9 @@
     byId("fontSize").value = Math.round(size);
     byId("fontFamily").value = textObject.fontFamily || "Arial";
     byId("textColor").value = colorInputValue(fill, "#171717");
+    const highlight = selectedTextStyle(textObject, "textBackgroundColor");
+    const highlightInput = byId("highlightColor");
+    if (highlight && highlightInput) highlightInput.value = colorInputValue(highlight, "#fff0a8");
     const weight = selectedTextStyle(textObject, "fontWeight");
     byId("boldButton").classList.toggle("active", String(weight) === "bold" || Number(weight) >= 700);
     byId("italicButton").classList.toggle("active", selectedTextStyle(textObject, "fontStyle") === "italic");
@@ -2105,6 +2108,7 @@
   byId("lineSpacing")?.addEventListener("change", (event) => format({ lineHeight: Number(event.target.value) }));
   byId("fontSize")?.addEventListener("input", (event) => format({ fontSize: Math.max(8, Math.min(240, Number(event.target.value) || 32)) }));
   byId("textColor")?.addEventListener("input", (event) => format({ fill: event.target.value }));
+  byId("highlightColor")?.addEventListener("input", (event) => format({ textBackgroundColor: event.target.value }));
   byId("fontFamily")?.addEventListener("change", (event) => format({ fontFamily: event.target.value }));
   canvas.on("selection:created", syncTextControls);
   canvas.on("selection:updated", syncTextControls);
@@ -2306,7 +2310,8 @@
       case "italic": format({ fontStyle: selectedTextStyle(textObject, "fontStyle") === "italic" ? "normal" : "italic" }); break;
       case "underline": format({ underline: !selectedTextStyle(textObject, "underline") }); break;
       case "strike": format({ linethrough: !selectedTextStyle(textObject, "linethrough") }); break;
-      case "highlight": format({ textBackgroundColor: selectedTextStyle(textObject, "textBackgroundColor") ? "" : "#fff0a8" }); break;
+      case "highlight": format({ textBackgroundColor: byId("highlightColor")?.value || "#fff0a8" }); break;
+      case "clear-highlight": format({ textBackgroundColor: "" }); break;
       case "font-size-decrease": { const size = Number(selectedTextStyle(textObject, "fontSize") || textObject?.fontSize || 42); format({ fontSize: Math.max(8, size - 2) }); break; }
       case "font-size-increase": { const size = Number(selectedTextStyle(textObject, "fontSize") || textObject?.fontSize || 42); format({ fontSize: Math.min(240, size + 2) }); break; }
       case "align-left": applyParagraphAlignment("left"); break;
