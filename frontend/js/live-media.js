@@ -179,6 +179,7 @@
     async function join() {
       if (joining || room) return;
       if (!livekit?.Room) { setStatus("Audio/video library could not be loaded", "error"); return; }
+      if (!api?.getLiveMediaToken) { setStatus("This page is out of date. Refresh it and try again.", "error"); return; }
       if (options.fullscreenTarget && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
       joining = true; joinButton.disabled = true; nameInput.disabled = true; setStatus("Joining…");
       try {
