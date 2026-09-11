@@ -27,11 +27,52 @@ jobs:
           script: |
             set -e
 
-            cd "${{ secrets.SERVER_PROJECT_PATH }}"
+            SOURCE_DIR="${{ secrets.SERVER_PROJECT_PATH }}"
+            PROD_DIR="/srv/projects/present-studio"
+            BACKUP_ROOT="/srv/projects/present-studio-backups"
 
+            echo "=== UPDATE SOURCE REPO ==="
+            cd "$SOURCE_DIR"
             git fetch origin master
+            git checkout master
             git reset --hard origin/master
+            git log -1 --oneline
 
-            docker compose config --quiet
-            docker compose up -d --build
-            docker compose ps
+            echo "=== CREATE BACKUP ==="
+            STAMP=$(date +%Y%m%d-%H%M%S)
+            mkdir -p "$BACKUP_ROOT/$STAMP"
+
+            cp -a "$PROD_DIR/backend" "$BACKUP_ROOT/$STAMP/backend"
+            cp -a "$PROD_DIR/frontend" "$BACKUP_ROOT/$STAMP/frontend"
+            cp "$PROD_DIR/.env" "$BACKUP_ROOT/$STAMP/.env"
+            cp "$PROD_DIR/docker-compose.yml" "$BACKUP_ROOT/$STAMP/docker-compose.yml"
+
+            echo "=== DEPLOY BACKEND + FRONTEND ==="
+            rm -rf "$PROD_DIR/backend"
+            rm -rf "$PROD_DIR/frontend"
+
+            cp -a "$SOURCE_DIR/backend" "$PROD_DIR/backend"
+            cp -a "$SOURCE_DIR/frontend" "$PROD_DIR/frontend"
+
+            echo "=== UPDATE COMPOSE FILE ==="
+            cp "$SOURCE_DIR/docker-compose.yml" "$PROD_DIR/docker-compose.yml"
+
+            echo "=== VALIDATE COMPOSE ==="
+            cd "$PROD_DIR"
+            docker compose --env-file .env -p present-studio-prod config --quiet
+
+            echo "=== BUILD BACKEND ==="
+            docker compose --env-file .env -p present-studio-prod build backend
+
+            echo "=== RECREATE BACKEND ==="
+            docker compose --env-file .env -p present-studio-prod \
+              up -d --force-recreate backend
+
+            echo "=== STATUS ==="
+            docker compose --env-file .env -p present-studio-prod ps
+
+            echo "=== HEALTH CHECK ==="
+            curl -f http://127.0.0.1:18473/api/health
+
+            echo
+            echo "Deployment successful."
