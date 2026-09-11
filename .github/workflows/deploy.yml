@@ -36,6 +36,8 @@ jobs:
             git fetch origin master
             git checkout master
             git reset --hard origin/master
+
+            echo "Deploying commit:"
             git log -1 --oneline
 
             echo "=== CREATE BACKUP ==="
@@ -46,6 +48,8 @@ jobs:
             cp -a "$PROD_DIR/frontend" "$BACKUP_ROOT/$STAMP/frontend"
             cp "$PROD_DIR/.env" "$BACKUP_ROOT/$STAMP/.env"
             cp "$PROD_DIR/docker-compose.yml" "$BACKUP_ROOT/$STAMP/docker-compose.yml"
+
+            echo "Backup created: $BACKUP_ROOT/$STAMP"
 
             echo "=== DEPLOY BACKEND + FRONTEND ==="
             rm -rf "$PROD_DIR/backend"
@@ -59,20 +63,98 @@ jobs:
 
             echo "=== VALIDATE COMPOSE ==="
             cd "$PROD_DIR"
-            docker compose --env-file .env -p present-studio-prod config --quiet
+
+            docker compose \
+              --env-file .env \
+              -p present-studio-prod \
+              config --quiet
 
             echo "=== BUILD BACKEND ==="
-            docker compose --env-file .env -p present-studio-prod build backend
+            docker compose \
+              --env-file .env \
+              -p present-studio-prod \
+              build backend
 
             echo "=== RECREATE BACKEND ==="
-            docker compose --env-file .env -p present-studio-prod \
+            docker compose \
+              --env-file .env \
+              -p present-studio-prod \
               up -d --force-recreate backend
 
-            echo "=== STATUS ==="
-            docker compose --env-file .env -p present-studio-prod ps
+            echo "=== CONTAINER STATUS ==="
+            docker compose \
+              --env-file .env \
+              -p present-studio-prod \
+              ps
 
-            echo "=== HEALTH CHECK ==="
-            curl -f http://127.0.0.1:18473/api/health
+            echo "=== WAIT FOR BACKEND ==="
+
+            HEALTH_OK=false
+
+            for i in $(seq 1 30); do
+              echo "Health check attempt $i/30..."
+
+              if curl \
+                --silent \
+                --show-error \
+                --fail \
+                --max-time 5 \
+                http://127.0.0.1:18473/api/health; then
+
+                echo
+                echo "Backend is healthy."
+                HEALTH_OK=true
+                break
+              fi
+
+              sleep 2
+            done
+
+            if [ "$HEALTH_OK" != "true" ]; then
+              echo "Backend failed health check."
+
+              echo "=== BACKEND LOGS ==="
+              docker compose \
+                --env-file .env \
+                -p present-studio-prod \
+                logs --tail=100 backend
+
+              exit 1
+            fi
+
+            echo "=== PUBLIC HEALTH CHECK ==="
+
+            PUBLIC_OK=false
+
+            for i in $(seq 1 15); do
+              if curl \
+                --silent \
+                --show-error \
+                --fail \
+                --max-time 10 \
+                https://studio.snapkey.in/api/health; then
+
+                echo
+                echo "Public endpoint is healthy."
+                PUBLIC_OK=true
+                break
+              fi
+
+              echo "Public health attempt $i/15 failed; retrying..."
+              sleep 2
+            done
+
+            if [ "$PUBLIC_OK" != "true" ]; then
+              echo "Public health check failed."
+              exit 1
+            fi
+
+            echo "=== FINAL STATUS ==="
+
+            docker compose \
+              --env-file .env \
+              -p present-studio-prod \
+              ps
 
             echo
             echo "Deployment successful."
