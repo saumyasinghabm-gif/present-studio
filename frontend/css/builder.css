@@ -1589,6 +1589,44 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 600;
 }
 
+/* Keep contextual format controls inside the fixed-height ribbon. */
+.builder-page .shape-format-group,
+.builder-page .visual-format-group {
+  align-items: flex-start;
+}
+
+.builder-page .shape-format-tools,
+.builder-page .visual-format-tools {
+  justify-content: flex-start;
+  gap: 1px;
+}
+
+.builder-page .shape-format-tools > .tool-row,
+.builder-page .visual-format-tools > .tool-row {
+  min-height: 17px;
+  line-height: 1;
+}
+
+.builder-page .shape-format-tools .builder-color-input,
+.builder-page .visual-format-tools .builder-color-input,
+.builder-page .visual-format-tools .ribbon-select {
+  height: 20px;
+  min-height: 20px;
+}
+
+.builder-page .shape-format-tools input[type="range"],
+.builder-page .visual-format-tools input[type="range"] {
+  height: 13px;
+}
+
+.builder-page .visual-format-tools .tool-small {
+  width: 22px;
+  min-width: 22px;
+  height: 20px;
+  min-height: 20px;
+  padding: 2px;
+}
+
 @media (max-width: 900px) {
   .builder-page .tab-nav { padding-inline: 8px; }
   .builder-page .tab-button { gap: 5px; padding-inline: 9px; }
