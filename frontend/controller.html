@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260908-controller-full-thumbnails">
+    <link rel="stylesheet" href="/css/styles.css?v=20260910-screen-share">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -22,6 +22,15 @@
         <button type="button" id="pauseMedia"><strong>Pause / Play</strong><small>Toggle active audio or video</small></button>
         <button type="button" id="replayMedia"><strong>Replay</strong><small>Restart the active item</small></button>
         <button type="button" id="stopMedia"><strong>Clear Screen</strong><small>Stop media and return to black</small></button>
+      </section>
+
+      <section class="controller-section live-media-panel" id="controllerLiveMedia" aria-labelledby="controllerLiveMediaTitle">
+        <div class="controller-section-heading"><div><p class="eyebrow">Interactive session</p><h2 id="controllerLiveMediaTitle">Camera &amp; microphone</h2></div><span data-live-count>0 connected</span></div>
+        <div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div>
+        <p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p>
+        <div class="live-media-actions"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
+        <section class="live-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
+        <div class="live-media-tiles" data-live-tiles aria-live="polite"></div>
       </section>
 
       <section class="controller-section">
@@ -90,6 +99,8 @@
     <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260908-screen-code"></script>
-    <script src="/js/controller.js?v=20260908-controller-full-thumbnails"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
+    <script src="/js/live-media.js?v=20260910-screen-share"></script>
+    <script src="/js/controller.js?v=20260910-screen-share"></script>
   </body>
 </html>

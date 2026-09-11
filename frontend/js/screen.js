@@ -109,9 +109,11 @@
         activeMedia = video;
         video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
       });
-      playLinkedAudio(data.audio?.src || (!videos.length ? firstAudio : ""), data.audio?.loop !== false);
+      const slideAudioSrc = data.audio?.src;
+      const audioSrc = slideAudioSrc || (!videos.length ? firstAudio : "");
+      playLinkedAudio(audioSrc);
     } else {
-      playLinkedAudio(data.audio?.src, data.audio?.loop !== false);
+      playLinkedAudio(data.audio?.src);
     }
     transition();
   }

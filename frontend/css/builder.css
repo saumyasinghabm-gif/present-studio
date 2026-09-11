@@ -562,7 +562,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .modal-header button { width: 34px; height: 34px; border-radius: 4px; }
 .modal-header button:hover { background: #eee; }
 .modal-body { padding: 20px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 20px; border-top: 1px solid var(--border); }
+.modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; padding: 14px 20px; border-top: 1px solid var(--border); }
 .modal-actions button { min-height: 38px; padding: 0 18px; border: 1px solid #c9c9c5; border-radius: 4px; font-weight: 650; }
 .modal-actions .primary { border-color: var(--yellow-strong); background: var(--yellow-strong); }
 .modal-actions .danger { border-color: var(--danger); color: #fff; background: var(--danger); }

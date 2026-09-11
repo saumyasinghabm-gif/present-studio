@@ -415,7 +415,7 @@
       return;
     }
     if (player.src !== new URL(track.src, location.href).href) player.src = track.src;
-    player.loop = track.loop !== false;
+    player.loop = false;
     byId("slideAudioName").textContent = track.name || "Slide music";
     dock.hidden = false;
   }
@@ -424,7 +424,7 @@
   addAsset = function addBuilderAsset(asset, announce = true) {
     if (!asset) return;
     if (asset.mimeType.startsWith("audio/")) {
-      ensure(activeSlide()).canvas.audio = { id: asset.id, src: asset.url, name: asset.name, loop: true };
+      ensure(activeSlide()).canvas.audio = { id: asset.id, src: asset.url, name: asset.name, loop: false };
       renderSlideAudio();
       renderList();
       schedule();

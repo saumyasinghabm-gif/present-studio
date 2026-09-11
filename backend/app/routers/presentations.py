@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import json
 from urllib.parse import urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
 from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
-from ..schemas import LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, SlideOut
+from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, optional_current_user, resolve_share_permission, verify_password
 from ..socket_manager import sio
 
@@ -79,6 +80,33 @@ def serialize_presentation(presentation: Presentation) -> PresentationOut:
         status=presentation.status,
         updatedAt=presentation.updated_at.isoformat() if presentation.updated_at else None,
         slides=[SlideOut(id=slide.id, order=slide.order, title=slide.title, canvas=slide.canvas or {}) for slide in slides],
+    )
+
+
+def create_livekit_join_token(room_name: str, identity: str, name: str, permission: str) -> str:
+    """Create a short-lived LiveKit join token without exposing server credentials."""
+    settings = get_settings()
+    try:
+        from livekit import api
+    except ImportError as exc:  # Keeps the rest of the application usable if the optional integration is absent.
+        raise HTTPException(status_code=503, detail="Interactive audio/video is not installed") from exc
+
+    return (
+        api.AccessToken(settings.livekit_api_key, settings.livekit_api_secret)
+        .with_identity(identity)
+        .with_name(name)
+        .with_metadata(json.dumps({"role": permission}, separators=(",", ":")))
+        .with_ttl(timedelta(minutes=max(1, settings.livekit_token_minutes)))
+        .with_grants(
+            api.VideoGrants(
+                room_join=True,
+                room=room_name,
+                can_publish=True,
+                can_subscribe=True,
+                can_publish_data=False,
+            )
+        )
+        .to_jwt()
     )
 
 
@@ -233,6 +261,51 @@ def create_share_link(
         requiresScreenCode=True,
         screenUrl=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}" if screen_share else None,
         screenToken=screen_share.token if screen_share else None,
+        audienceUrl=f"{base}/present.html?id={presentation_id}&token={(screen_share or share).token}",
+    )
+
+
+@router.post("/{presentation_id}/live/media-token")
+def create_live_media_token(
+    presentation_id: str,
+    payload: LiveMediaTokenRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> LiveMediaTokenOut:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    settings = get_settings()
+    if not all((settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret)):
+        raise HTTPException(status_code=503, detail="Interactive audio/video is not configured")
+
+    user = optional_current_user(request, db)
+    permission = None
+    default_name = "Guest"
+    if user and can_view_presentation(db, presentation, user):
+        permission = "presenter" if can_edit_presentation(db, presentation, user) else "viewer"
+        default_name = user.name
+    elif payload.shareToken:
+        share = active_share_link(db, presentation_id, payload.shareToken)
+        if share:
+            permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
+            default_name = "Presenter" if permission == "presenter" else "Guest"
+            if permission == "viewer" and not verify_screen_access_code(share, payload.screenAccessCode):
+                raise HTTPException(status_code=403, detail="Screen access code is required")
+    if not permission:
+        raise HTTPException(status_code=403, detail="A valid presentation session is required")
+
+    participant_name = " ".join((payload.displayName or default_name).strip().split())[:80] or default_name
+    participant_identity = new_id("participant")
+    token = create_livekit_join_token(presentation_id, participant_identity, participant_name, permission)
+    return LiveMediaTokenOut(
+        url=settings.livekit_url,
+        token=token,
+        roomName=presentation_id,
+        participantIdentity=participant_identity,
+        participantName=participant_name,
+        permission=permission,
     )
 
 

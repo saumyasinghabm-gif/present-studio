@@ -24,6 +24,10 @@ class Settings(BaseModel):
     cloudinary_folder: str = os.getenv("CLOUDINARY_FOLDER", "present-studio")
     admin_email: str | None = os.getenv("ADMIN_EMAIL")
     admin_password: str | None = os.getenv("ADMIN_PASSWORD")
+    livekit_url: str | None = os.getenv("LIVEKIT_URL")
+    livekit_api_key: str | None = os.getenv("LIVEKIT_API_KEY")
+    livekit_api_secret: str | None = os.getenv("LIVEKIT_API_SECRET")
+    livekit_token_minutes: int = int(os.getenv("LIVEKIT_TOKEN_MINUTES", "15"))
 
 
 @lru_cache

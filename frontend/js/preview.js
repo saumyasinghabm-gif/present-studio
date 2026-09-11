@@ -90,7 +90,7 @@
     if (track?.src) {
       const audio = document.createElement("audio");
       audio.src = track.src;
-      Object.assign(audio, { autoplay: true, muted: !audioEnabled, loop: track.loop !== false, playsInline: true });
+      Object.assign(audio, { autoplay: true, muted: !audioEnabled, loop: false, playsInline: true });
       byId("previewMedia").append(audio);
       audio.play().catch(() => {
         audio.muted = true;

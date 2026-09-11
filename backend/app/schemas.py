@@ -84,6 +84,22 @@ class ShareLinkOut(BaseModel):
     requiresScreenCode: bool = False
     screenUrl: str | None = None
     screenToken: str | None = None
+    audienceUrl: str | None = None
+
+
+class LiveMediaTokenRequest(BaseModel):
+    displayName: str | None = Field(default=None, max_length=80)
+    shareToken: str = Field(default="", max_length=200)
+    screenAccessCode: str | None = Field(default=None, pattern=r"^\d{4}$")
+
+
+class LiveMediaTokenOut(BaseModel):
+    url: str
+    token: str
+    roomName: str
+    participantIdentity: str
+    participantName: str
+    permission: SharePermission
 
 
 class ScreenAccessRequest(BaseModel):

@@ -18,6 +18,7 @@
   let teachZoom = 1;
   let teachPan = { x: 0, y: 0 };
   let teachPointer = null;
+  let liveMediaSession = null;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -406,6 +407,12 @@
     ]);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
+    liveMediaSession = window.SnapKeyLiveMedia?.create({
+      root: $("#controllerLiveMedia"),
+      presentationId,
+      shareToken,
+      displayName: api.getCachedSession()?.name || "Presenter"
+    });
     previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
     const initialSlide = slideById(live.activeSlideId) || presentation.slides[0];
@@ -464,6 +471,7 @@
     socket?.on("presentation_deleted", event => {
       if (event.presentationId !== presentationId) return;
       stopLoop();
+      liveMediaSession?.leave();
       $("#controllerTitle").textContent = "Presentation deleted";
       showPreviewPlaceholder("This presentation is no longer available.");
       document.querySelectorAll("button").forEach(button => { if (button.id !== "backToEditor") button.disabled = true; });

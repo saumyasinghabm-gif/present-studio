@@ -88,6 +88,7 @@ backend/
 - Image, video, and MP3 asset library with per-image audio linking.
 - Dedicated presenter controller with direct slide/media selection and selected-media loops.
 - Clean fullscreen audience screen synchronized through Socket.IO.
+- Optional two-way LiveKit camera, microphone, and participant tiles for presenters and interactive audience members.
 - Alembic migration scaffold.
 - Docker Compose with PostgreSQL.
 
@@ -142,6 +143,28 @@ and API secret from the Cloudinary dashboard before starting the backend. Keep t
 API secret server-side and never add it to frontend JavaScript or commit it to Git.
 The backend automatically loads these values from the `.env` file in the project root.
 Restart the backend after changing that file.
+
+## Interactive Audio/Video
+
+Create a LiveKit Cloud project or provide a self-hosted LiveKit server, then add
+these values to the root `.env` file:
+
+```text
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_TOKEN_MINUTES=15
+```
+
+Rebuild and restart the backend after adding the values. The API secret remains
+server-side. If these settings are absent, presentation editing, slide sync, the
+presenter controller, and the locked screen continue to work; only the optional
+audio/video join action reports that it is not configured.
+
+The existing Screen link remains a clean projection with no camera or microphone.
+Use **Copy Interactive Audience** in the Share dialog for participants who should
+join the two-way audio/video room. Both links continue to use the same presentation
+ID and the same synchronized live slide session.
 
 ## Important Local Test Flow
 

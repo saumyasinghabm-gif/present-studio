@@ -965,3 +965,56 @@ button.present-back {
 .live-output-stage.output-enter { animation: output-enter 800ms cubic-bezier(.2,.75,.2,1) both; }
 @keyframes output-enter { from { opacity: 0; transform: scale(1.025); filter: blur(8px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
 @media (max-width: 760px) { .live-controller-shell { padding: 14px; } .live-controller-header { align-items: flex-start; flex-direction: column; } .controller-quick-controls, .controller-loop-grid { grid-template-columns: 1fr; } .controller-preview-panel { position: static; grid-template-columns: 1fr; } }
+
+/* Interactive LiveKit layer. It is independent from slide synchronization. */
+.live-media-panel { min-width: 0; }
+.live-media-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.live-media-heading .live-media-toggle { flex: 0 0 30px; width: 30px; min-height: 30px; padding: 0; border-radius: 50%; font-size: 1rem; }
+.live-media-heading span, .live-media-panel [data-live-count] { color: var(--muted); font-family: var(--mono); font-size: .7rem; }
+.live-media-join { display: flex; align-items: end; gap: 10px; margin-top: 14px; }
+.live-media-join label { flex: 1; display: grid; gap: 5px; color: var(--muted); font-family: var(--mono); font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.live-media-join input { width: 100%; min-height: 40px; border: 1px solid var(--line); border-radius: 6px; padding: 0 11px; background: #fff; color: var(--ink); font: 500 .86rem var(--sans); text-transform: none; }
+.live-media-panel button { min-height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 12px; background: #fff; color: var(--ink); font: 700 .72rem var(--mono); cursor: pointer; }
+.live-media-panel button:hover:not(:disabled) { border-color: var(--yellow-dk); background: #fff5c8; }
+.live-media-panel button:disabled { cursor: not-allowed; opacity: .45; }
+.live-media-status { min-height: 18px; margin: 10px 0; color: var(--muted); font-size: .78rem; }
+.live-media-status[data-kind="success"] { color: #178447; }
+.live-media-status[data-kind="error"] { color: #b52f2f; }
+.live-media-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.live-media-actions [data-live-leave] { color: #a72a2a; }
+.live-media-actions [data-live-enable-audio] { border-color: #d6a900; background: #ffd54a; color: #171717; }
+.live-screen-share { margin-top: 14px; overflow: hidden; border: 1px solid rgba(255, 213, 74, .4); border-radius: 9px; background: #111; color: #fff; }
+.live-screen-share-heading { display: flex; align-items: center; min-height: 36px; padding: 0 10px; background: #24200f; color: #ffd54a; font-size: .75rem; }
+.live-screen-share-media { display: grid; gap: 8px; padding: 8px; }
+.live-screen-share-media figure { position: relative; margin: 0; overflow: hidden; border-radius: 6px; background: #000; }
+.live-screen-share-media video { display: block; width: 100%; height: auto !important; aspect-ratio: 16 / 9; object-fit: contain; }
+.live-screen-share-media figcaption { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); overflow: hidden; border-radius: 4px; padding: 4px 7px; background: rgba(0, 0, 0, .75); color: #fff; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.live-media-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+.live-media-tile { min-width: 0; overflow: hidden; border: 2px solid transparent; border-radius: 9px; background: #161616; color: #fff; transition: border-color .15s ease; }
+.live-media-tile.is-speaking { border-color: #ffd54a; }
+.live-media-tile-video { aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; background: #252525; }
+.live-media-tile-video video { width: 100%; height: 100% !important; object-fit: cover; }
+.live-media-avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #ffd54a; color: #171717; font-size: 1.35rem; font-weight: 900; }
+.live-media-tile footer { display: grid; gap: 2px; padding: 7px 9px; }
+.live-media-tile footer strong { overflow: hidden; font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
+.live-media-tile footer span { color: #bbb; font-size: .64rem; }
+.present-live-media { position: fixed; z-index: 30; right: 20px; bottom: 20px; width: min(350px, calc(100vw - 40px)); max-height: min(560px, calc(100vh - 40px)); overflow: auto; border: 1px solid rgba(255, 213, 74, .32); border-radius: 12px; padding: 14px; background: rgba(18, 18, 18, .96); box-shadow: 0 18px 55px rgba(0, 0, 0, .42); color: #fff; }
+.present-live-media .live-media-heading span, .present-live-media .live-media-status, .present-live-media .live-media-join label { color: #bbb; }
+.present-live-media .live-media-join input { border-color: #555; background: #242424; color: #fff; }
+.present-live-media button { border-color: #555; background: #242424; color: #fff; }
+.present-live-media button:hover:not(:disabled) { border-color: #ffd54a; background: #3a3420; }
+.present-live-media.has-screen-share { width: min(720px, calc(100vw - 40px)); }
+.present-live-media.is-connected .live-media-join { display: none; }
+.present-live-media.is-collapsed { width: auto; max-width: calc(100vw - 40px); padding: 9px 11px; }
+.present-live-media.is-collapsed .live-media-heading { margin: 0; }
+.present-live-media.is-collapsed > :not(.live-media-heading) { display: none; }
+.audience-live-view { overflow: hidden; background: #000; }
+.audience-live-view .present-stage { width: 100vw; height: 100vh; min-height: 0; display: grid; place-items: center; overflow: hidden; padding: 0; background: #000; }
+.audience-live-view .present-meta, .audience-live-view .present-mode-badge, .audience-live-view .present-controls { display: none !important; }
+.audience-live-view .present-frame { width: min(100vw, 177.7777778vh); height: min(100vh, 56.25vw); margin: 0; padding: 0; border: 0; box-shadow: none; background: #000; }
+.audience-live-view .present-frame .canvas-container { width: 100% !important; height: 100% !important; }
+.audience-live-view .present-frame canvas { width: 100% !important; height: 100% !important; }
+@media (max-width: 760px) {
+  .live-media-join { align-items: stretch; flex-direction: column; }
+  .present-live-media { right: 10px; bottom: 10px; width: calc(100vw - 20px); max-height: 45vh; }
+}

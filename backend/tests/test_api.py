@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+import jwt
 from app.database import SessionLocal
+from app.config import get_settings
 from app.main import fastapi_app
 from app.models import Presentation, User
 from app.security import hash_password
@@ -78,10 +80,80 @@ def test_share_link_permissions_are_returned_to_frontend():
         assert "/controller.html?" in presenter_link.json()["url"]
         assert "/screen.html?" in presenter_link.json()["screenUrl"]
         assert presenter_link.json()["screenToken"]
+        assert "/present.html?" in presenter_link.json()["audienceUrl"]
 
         presenter_payload = client.get(f"/api/presentations/pres_demo?token={presenter_link.json()['token']}")
         assert presenter_payload.status_code == 200
         assert presenter_payload.json()["permission"] == "presenter"
+
+
+def test_live_media_token_is_optional_and_requires_configuration():
+    settings = get_settings()
+    with patch.object(settings, "livekit_url", None), patch.object(settings, "livekit_api_key", None), patch.object(settings, "livekit_api_secret", None):
+        with TestClient(fastapi_app) as client:
+            login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+            response = client.post(
+                "/api/presentations/pres_demo/live/media-token",
+                json={"displayName": "Presenter"},
+                headers={"Authorization": f"Bearer {login.json()['accessToken']}"},
+            )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Interactive audio/video is not configured"
+
+
+def test_live_media_token_uses_presentation_as_room_and_protects_viewer_links():
+    settings = get_settings()
+    with TestClient(fastapi_app) as client:
+        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
+        headers = {"Authorization": f"Bearer {login.json()['accessToken']}"}
+        link = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "viewer", "screenAccessCode": "8642"},
+            headers=headers,
+        ).json()
+    with TestClient(fastapi_app) as client:
+        with patch.object(settings, "livekit_url", "wss://example.livekit.cloud"), patch.object(settings, "livekit_api_key", "key"), patch.object(settings, "livekit_api_secret", "secret"), patch("app.routers.presentations.create_livekit_join_token", return_value="signed-token") as signer:
+            denied = client.post(
+                "/api/presentations/pres_demo/live/media-token",
+                json={"displayName": "Audience Member", "shareToken": link["token"], "screenAccessCode": "0000"},
+            )
+            accepted = client.post(
+                "/api/presentations/pres_demo/live/media-token",
+                json={"displayName": "  Audience   Member  ", "shareToken": link["token"], "screenAccessCode": "8642"},
+            )
+            invalid = client.post(
+                "/api/presentations/pres_demo/live/media-token",
+                json={"displayName": "Unknown", "shareToken": "invalid-token", "screenAccessCode": "8642"},
+            )
+    assert denied.status_code == 403
+    assert invalid.status_code == 403
+    assert accepted.status_code == 200
+    assert accepted.json()["roomName"] == "pres_demo"
+    assert accepted.json()["participantName"] == "Audience Member"
+    assert accepted.json()["permission"] == "viewer"
+    assert accepted.json()["token"] == "signed-token"
+    assert accepted.json()["participantIdentity"].startswith("participant_")
+    assert signer.call_args.args[0] == "pres_demo"
+
+
+def test_livekit_tokens_publish_without_room_admin():
+    from app.routers.presentations import create_livekit_join_token
+
+    settings = get_settings()
+    with patch.object(settings, "livekit_api_key", "test-key"), patch.object(settings, "livekit_api_secret", "test-secret"):
+        tokens = [
+            create_livekit_join_token("pres_demo", "participant_presenter", "Presenter", "presenter"),
+            create_livekit_join_token("pres_demo", "participant_viewer", "Viewer", "viewer"),
+        ]
+    for token in tokens:
+        claims = jwt.decode(token, "test-secret", algorithms=["HS256"], options={"verify_aud": False})
+        grants = claims["video"]
+        assert grants["roomJoin"] is True
+        assert grants["room"] == "pres_demo"
+        assert grants["canPublish"] is True
+        assert grants["canSubscribe"] is True
+        assert grants["canPublishData"] is False
+        assert grants.get("roomAdmin", False) is False
 
 
 def test_share_link_rejects_invalid_permission():
