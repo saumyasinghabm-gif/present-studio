@@ -26,6 +26,7 @@
   let previewToolbarTimer;
   let liveMediaSession = null;
   let notesReturnFocus = null;
+  let previewAudioEnabled = true;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -352,9 +353,97 @@
     document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#controllerNotesModal").hidden) closeSlideNotes(); });
   }
 
+  function previewMediaElements() { return [...$("#controllerPreviewMedia").querySelectorAll("video,audio")]; }
+  function primaryPreviewMedia() { return previewMediaElements().at(-1) || null; }
+  function formatMediaTime(value) {
+    const seconds = Math.max(0, Math.floor(Number(value) || 0));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainder = seconds % 60;
+    return hours ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}` : `${minutes}:${String(remainder).padStart(2, "0")}`;
+  }
+
+  function updatePreviewMediaState() {
+    const media = primaryPreviewMedia();
+    const pauseButton = $("#pauseMedia");
+    const replayButton = $("#replayMedia");
+    const audioButton = $("#previewAudio");
+    pauseButton.disabled = !media;
+    replayButton.disabled = !media;
+    audioButton.disabled = !media;
+    pauseButton.querySelector("strong").textContent = media && !media.paused && !media.ended ? "Pause" : "Play";
+    audioButton.querySelector("strong").textContent = previewAudioEnabled ? "Mute Preview" : "Enable Audio";
+    audioButton.querySelector("small").textContent = previewAudioEnabled ? "Presenter can hear media" : "Preview is muted";
+    const timing = $("#previewMediaTiming");
+    if (!media) timing.textContent = "No active media";
+    else {
+      const duration = Number.isFinite(media.duration) ? ` / ${formatMediaTime(media.duration)}` : "";
+      const state = media.ended ? "Ended" : media.paused ? "Paused" : "Playing";
+      timing.textContent = `${state} · ${formatMediaTime(media.currentTime)}${duration}`;
+    }
+  }
+
+  function monitorPreviewMedia(media, autoplay = true) {
+    media.muted = !previewAudioEnabled;
+    ["loadedmetadata", "timeupdate", "play", "pause", "ended", "volumechange"].forEach(eventName => media.addEventListener(eventName, updatePreviewMediaState));
+    if (autoplay) media.play().catch(() => {
+      media.muted = true;
+      previewAudioEnabled = false;
+      updatePreviewMediaState();
+      media.play().catch(() => {});
+    });
+    updatePreviewMediaState();
+    return media;
+  }
+
+  function addPreviewAudio(src) {
+    if (!src) return null;
+    const audio = document.createElement("audio");
+    audio.src = src;
+    audio.preload = "auto";
+    audio.hidden = true;
+    $("#controllerPreviewMedia").append(audio);
+    return monitorPreviewMedia(audio);
+  }
+
+  function setPreviewMediaPosition(media, position) {
+    if (!Number.isFinite(position) || !media.seekable) return;
+    try { if (Math.abs(media.currentTime - position) > 0.2) media.currentTime = Math.max(0, position); } catch {}
+  }
+
+  function controlPreviewMedia(action, position) {
+    const mediaElements = previewMediaElements();
+    mediaElements.forEach(media => {
+      if (["play", "pause"].includes(action)) setPreviewMediaPosition(media, position);
+      if (action === "play") { media.muted = !previewAudioEnabled; media.play().catch(() => {}); }
+      if (action === "pause") media.pause();
+      if (action === "toggle") media.paused ? media.play().catch(() => {}) : media.pause();
+      if (action === "replay") { try { media.currentTime = 0; } catch {} media.muted = !previewAudioEnabled; media.play().catch(() => {}); }
+      if (action === "stop") media.pause();
+    });
+    updatePreviewMediaState();
+  }
+
+  function sendMediaControl(requestedAction) {
+    const media = primaryPreviewMedia();
+    const action = requestedAction === "toggle" ? (media && !media.paused && !media.ended ? "pause" : "play") : requestedAction;
+    const position = action === "replay" ? 0 : Number(media?.currentTime) || 0;
+    controlPreviewMedia(action, position);
+    socket?.emit("media_control", { ...credentials(), action, position });
+  }
+
+  function togglePreviewAudio() {
+    previewAudioEnabled = !previewAudioEnabled;
+    previewMediaElements().forEach(media => {
+      media.muted = !previewAudioEnabled;
+    });
+    updatePreviewMediaState();
+  }
+
   function stopPreviewMedia() {
-    $("#controllerPreviewMedia").querySelectorAll("video,audio").forEach(media => media.pause?.());
+    previewMediaElements().forEach(media => media.pause?.());
     $("#controllerPreviewMedia").replaceChildren();
+    updatePreviewMediaState();
   }
 
   function showPreviewPlaceholder(message = "", background = "#000") {
@@ -401,10 +490,11 @@
       objectFit: item.fit || (item.full_bleed ? "fill" : "contain")
     });
     if (node.tagName === "VIDEO") {
-      Object.assign(node, { autoplay: true, muted: true, loop: item.loop !== false, playsInline: true });
-      node.play().catch(() => {});
+      Object.assign(node, { autoplay: true, loop: item.loop !== false, playsInline: true });
     }
     $("#controllerPreviewMedia").append(node);
+    if (node.tagName === "VIDEO") monitorPreviewMedia(node);
+    return node;
   }
 
   function renderSlidePreview(slide) {
@@ -437,6 +527,7 @@
       elements.filter(item => ["image", "video"].includes(item.type)).forEach(item => addPositionedPreviewMedia(item));
       finish();
     }
+    if (data.audio?.src) addPreviewAudio(data.audio.src);
   }
 
   function renderTargetPreview(target) {
@@ -451,15 +542,17 @@
       audio.src = target.src;
       audio.controls = true;
       mediaLayer.append(audio);
+      monitorPreviewMedia(audio);
       return;
     }
     if (!target.src) return showPreviewPlaceholder(target.title);
     const node = document.createElement(target.kind === "video" ? "video" : "img");
     node.src = target.src;
     node.className = "controller-preview-direct";
-    if (target.kind === "video") Object.assign(node, { autoplay: true, muted: true, loop: true, playsInline: true });
+    if (target.kind === "video") Object.assign(node, { autoplay: true, loop: target.loop !== false, playsInline: true });
     mediaLayer.append(node);
-    node.play?.().catch(() => {});
+    if (target.kind === "video") monitorPreviewMedia(node);
+    if (target.kind === "image" && target.audioSrc) addPreviewAudio(target.audioSrc);
   }
 
   function collectTargets() {
@@ -479,7 +572,8 @@
           mediaId: object.id || String(mediaIndex),
           title: object.audioName || `${slide.title || `Slide ${slideIndex + 1}`} · ${object.mediaType === "image" ? "Image" : "Video"} ${mediaIndex + 1}`,
           src: object.src,
-          audioSrc: object.audioSrc || ""
+          audioSrc: object.audioSrc || "",
+          loop: object.loop !== false
         });
       });
     });
@@ -758,9 +852,10 @@
     $("#startImageLoop").onclick = () => startLoop("image", "#imageLoopList");
     $("#startVideoLoop").onclick = () => startLoop("video", "#videoLoopList");
     $("#stopLoop").onclick = stopLoop;
-    $("#pauseMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "toggle" });
-    $("#replayMedia").onclick = () => socket?.emit("media_control", { ...credentials(), action: "replay" });
-    $("#stopMedia").onclick = () => { stopLoop(); socket?.emit("media_control", { ...credentials(), action: "stop" }); $("#previewTitle").textContent = "Screen cleared"; showPreviewPlaceholder("Black screen"); };
+    $("#pauseMedia").onclick = () => sendMediaControl("toggle");
+    $("#previewAudio").onclick = togglePreviewAudio;
+    $("#replayMedia").onclick = () => sendMediaControl("replay");
+    $("#stopMedia").onclick = () => { stopLoop(); sendMediaControl("stop"); $("#previewTitle").textContent = "Screen cleared"; showPreviewPlaceholder("Black screen"); };
     $("#openScreen").onclick = async () => {
       if (shareToken) {
         window.open(secureAppUrl(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`), "_blank", "noopener");

@@ -929,8 +929,11 @@ button.present-back {
 .controller-preview-control-label { margin-bottom: 5px; color: #aaa9a2; font: 800 .58rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
 .controller-preview-control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .controller-preview-control-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.controller-preview-control-grid-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .controller-preview-control-grid button { min-width: 0; min-height: 52px; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 8px 10px; background: #292925; color: #fff; text-align: left; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
 .controller-preview-control-grid button:hover, .controller-preview-control-grid button:focus-visible { border-color: #ffd54a; background: #34342e; transform: translateY(-1px); }
+.controller-preview-control-grid button:disabled { cursor: not-allowed; opacity: .42; transform: none; }
+.controller-preview-control-grid button:disabled:hover { border-color: rgba(255,255,255,.18); background: #292925; transform: none; }
 .controller-preview-control-grid button.is-danger:hover, .controller-preview-control-grid button.is-danger:focus-visible { border-color: #ff7c72; color: #ffb0aa; }
 .controller-preview-control-grid strong, .controller-preview-control-grid small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .controller-preview-control-grid strong { font: 800 .68rem var(--mono); letter-spacing: .04em; text-transform: uppercase; }
@@ -1233,6 +1236,7 @@ button.present-back {
   .controller-console-preview { min-height: 540px; }
   .controller-console-actions { grid-template-columns: 1fr; }
   .controller-preview-control-grid-three { grid-template-columns: 1fr; }
+  .controller-preview-control-grid-four { grid-template-columns: 1fr 1fr; }
   .controller-library-panel .controller-target-grid { grid-template-columns: 1fr; }
   .interactive-meeting-header { align-items: flex-start; flex-direction: column; }
   .interactive-workspace .interactive-control-dock button { min-width: 118px; }

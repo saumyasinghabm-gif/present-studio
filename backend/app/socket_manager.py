@@ -92,16 +92,24 @@ async def media_selected(sid, data):
 async def media_control(sid, data):
     presentation_id = data.get("presentationId")
     action = data.get("action")
+    position = data.get("position")
     auth_token = data.get("authToken") or ""
     share_token = data.get("shareToken") or ""
-    if not presentation_id or action not in {"toggle", "stop", "replay"}:
+    if not presentation_id or action not in {"toggle", "play", "pause", "stop", "replay"}:
         return
+    try:
+        position = max(0.0, min(float(position), 86400.0)) if position is not None else None
+    except (TypeError, ValueError):
+        position = None
     with SessionLocal() as db:
         presentation = db.get(Presentation, presentation_id)
         if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
             await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
             return
-    await sio.emit("presentation_media_control", {"presentationId": presentation_id, "action": action}, room=presentation_id)
+    payload = {"presentationId": presentation_id, "action": action}
+    if position is not None:
+        payload["position"] = position
+    await sio.emit("presentation_media_control", payload, room=presentation_id)
 
 
 @sio.event

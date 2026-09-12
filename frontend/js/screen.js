@@ -135,12 +135,19 @@
     renderSlide(slideById(previousSlideId || event.activeSlideId) || presentation.slides[0]);
   }
 
-  function control(action) {
-    const media = activeMedia;
+  function control(action, position) {
+    const mediaItems = [...mediaLayer.querySelectorAll("video,audio")];
     if (action === "stop") { stopMedia(); mediaLayer.replaceChildren(); canvasWrap.hidden = true; stage.classList.remove("output-enter"); return; }
-    if (!media) return;
-    if (action === "toggle") media.paused ? media.play().catch(() => {}) : media.pause();
-    if (action === "replay") { media.currentTime = 0; media.play().catch(() => {}); }
+    if (!mediaItems.length) return;
+    mediaItems.forEach(media => {
+      if (["play", "pause"].includes(action) && Number.isFinite(Number(position))) {
+        try { if (Math.abs(media.currentTime - Number(position)) > 0.2) media.currentTime = Math.max(0, Number(position)); } catch {}
+      }
+      if (action === "play") media.play().catch(() => {});
+      if (action === "pause") media.pause();
+      if (action === "toggle") media.paused ? media.play().catch(() => {}) : media.pause();
+      if (action === "replay") { try { media.currentTime = 0; } catch {} media.play().catch(() => {}); }
+    });
   }
 
   function drawAnnotationPath(points = [], color = "#ffd54a", size = 7) {
@@ -221,7 +228,7 @@
     socket?.on("active_slide_changed", event => { if (event.presentationId !== presentationId) return; const slide = slideById(event.slideId); if (slide) renderSlide(slide); });
     socket?.on("presentation_updated", handlePresentationUpdate);
     socket?.on("presentation_deleted", event => { if (event.presentationId === presentationId) control("stop"); });
-    socket?.on("presentation_media_control", event => { if (event.presentationId === presentationId) control(event.action); });
+    socket?.on("presentation_media_control", event => { if (event.presentationId === presentationId) control(event.action, event.position); });
     socket?.on("presentation_annotation", handleAnnotation);
     socket?.on("session_ended", event => { if (!event?.presentationId || event.presentationId === presentationId) control("stop"); });
     setInterval(async () => {
