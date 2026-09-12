@@ -63,10 +63,10 @@
       fullscreenButton.title = active ? "Exit preview fullscreen" : "Open preview in fullscreen";
       fullscreenButton.querySelector("[aria-hidden='true']").textContent = active ? "×" : "⛶";
       fullscreenButton.querySelector("[data-preview-fullscreen-label]").textContent = active ? "Exit" : "Fullscreen";
-      if (active) showPreviewToolbar();
-      else {
+      if (!active) {
         clearTimeout(previewToolbarTimer);
-        stage.classList.remove("is-toolbar-visible", "is-preview-grabbing");
+        $("#previewFullscreenTools").classList.remove("is-visible");
+        stage.classList.remove("is-preview-grabbing");
         previewToolPointer = null;
         if (previewToolZoom !== 1 || previewToolPan.x || previewToolPan.y) {
           previewToolZoom = 1;
@@ -154,11 +154,13 @@
 
   function showPreviewToolbar() {
     const stage = $("#previewStage");
-    stage.classList.add("is-toolbar-visible");
+    const toolbar = $("#previewFullscreenTools");
+    if (document.fullscreenElement !== stage) return;
+    toolbar.classList.add("is-visible");
     clearTimeout(previewToolbarTimer);
     previewToolbarTimer = setTimeout(() => {
-      if (!$("#previewFullscreenTools").matches(":focus-within")) stage.classList.remove("is-toolbar-visible");
-    }, 1600);
+      if (!toolbar.matches(":focus-within")) toolbar.classList.remove("is-visible");
+    }, 2400);
   }
 
   function bindFullscreenPreviewTools() {
@@ -173,11 +175,11 @@
     $("#previewClearAnnotations").onclick = () => clearPreviewToolAnnotations(true);
     toolbar.addEventListener("pointerenter", showPreviewToolbar);
     toolbar.addEventListener("focusin", showPreviewToolbar);
+    stage.addEventListener("pointerdown", showPreviewToolbar, { passive: true });
+    stage.addEventListener("touchstart", showPreviewToolbar, { passive: true });
     stage.addEventListener("pointermove", event => {
       if (document.fullscreenElement !== stage) return;
-      const bounds = stage.getBoundingClientRect();
-      if (event.clientY >= bounds.bottom - 110) showPreviewToolbar();
-      else if (!previewToolPointer && !toolbar.matches(":focus-within")) stage.classList.remove("is-toolbar-visible");
+      showPreviewToolbar();
       if (!previewToolPointer || previewToolPointer.id !== event.pointerId) return;
       if (previewTool === "pan") {
         previewToolPan = {

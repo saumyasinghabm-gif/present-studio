@@ -73,16 +73,16 @@
               <div class="controller-preview-annotation-text" id="previewAnnotationText" aria-live="polite"></div>
             </div>
             <div class="controller-fullscreen-tools" id="previewFullscreenTools" role="toolbar" aria-label="Fullscreen presentation tools">
-              <button type="button" data-preview-tool="highlighter" class="is-active" aria-pressed="true">Highlighter</button>
-              <button type="button" data-preview-tool="text" aria-pressed="false">Text</button>
-              <button type="button" data-preview-tool="pan" aria-pressed="false">Grab</button>
-              <label>Color <input id="previewToolColor" type="color" value="#ffd54a"></label>
-              <label>Size <input id="previewToolSize" type="range" min="4" max="36" value="18"></label>
-              <button type="button" id="previewZoomOut" aria-label="Zoom out">−</button>
+              <button type="button" data-preview-tool="highlighter" class="is-active" aria-label="Highlighter" title="Highlighter" aria-pressed="true">✎</button>
+              <button type="button" data-preview-tool="text" aria-label="Add text" title="Add text" aria-pressed="false">T</button>
+              <button type="button" data-preview-tool="pan" aria-label="Grab and move" title="Grab and move" aria-pressed="false">✥</button>
+              <label class="controller-preview-tool-field" title="Highlighter color"><span>Color</span><input id="previewToolColor" type="color" value="#ffdc2d" aria-label="Highlighter color"></label>
+              <label class="controller-preview-tool-field" title="Highlighter size"><span>Size</span><select id="previewToolSize" aria-label="Highlighter size"><option value="6">Fine</option><option value="12">Medium</option><option value="18" selected>Wide</option><option value="30">Extra wide</option></select></label>
+              <button type="button" id="previewZoomOut" aria-label="Zoom out" title="Zoom out">−</button>
               <span id="previewZoomValue" aria-live="polite">100%</span>
-              <button type="button" id="previewZoomIn" aria-label="Zoom in">+</button>
-              <button type="button" id="previewResetView">Reset</button>
-              <button type="button" id="previewClearAnnotations">Clear</button>
+              <button type="button" id="previewZoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+              <button type="button" id="previewResetView" aria-label="Reset zoom to 100 percent" title="Reset zoom">1:1</button>
+              <button type="button" id="previewClearAnnotations" aria-label="Clear annotations" title="Clear annotations">⌫</button>
             </div>
           </div>
           <div class="controller-preview-controls" aria-label="Live presentation controls">

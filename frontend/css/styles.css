@@ -941,18 +941,24 @@ button.present-back {
 .controller-preview-stage:fullscreen { width: 100vw; max-width: none; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0; background: #000; touch-action: none; }
 .controller-preview-stage:fullscreen .controller-preview-visual { top: 50%; left: 50%; right: auto; bottom: auto; width: min(100vw, calc(100vh * 16 / 9)); height: min(100vh, calc(100vw * 9 / 16)); transform: translate(-50%, -50%) translate(var(--preview-pan-x, 0px), var(--preview-pan-y, 0px)) scale(var(--preview-zoom, 1)); }
 .controller-fullscreen-tools { display: none; }
-.controller-preview-stage:fullscreen .controller-fullscreen-tools { position: absolute; z-index: 8; bottom: 18px; left: 50%; display: flex; align-items: center; gap: 7px; max-width: calc(100vw - 24px); overflow-x: auto; padding: 8px; border: 1px solid rgba(255,255,255,.2); border-radius: 7px; background: rgba(23,23,19,.94); box-shadow: 0 12px 38px rgba(0,0,0,.38); opacity: 0; pointer-events: none; transform: translate(-50%, 10px); transition: opacity .16s ease, transform .16s ease; }
-.controller-preview-stage:fullscreen.is-toolbar-visible .controller-fullscreen-tools,
-.controller-preview-stage:fullscreen .controller-fullscreen-tools:focus-within { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
-.controller-fullscreen-tools button, .controller-fullscreen-tools label { flex: 0 0 auto; min-height: 34px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.18); border-radius: 4px; padding: 7px 10px; background: #292925; color: #fff; font: 800 .68rem var(--mono); letter-spacing: .04em; text-transform: uppercase; }
-.controller-fullscreen-tools button:hover, .controller-fullscreen-tools button:focus-visible, .controller-fullscreen-tools button.is-active { border-color: #ffd54a; color: #ffd54a; }
-.controller-fullscreen-tools input[type="color"] { width: 30px; height: 24px; border: 0; padding: 0; background: transparent; }
-.controller-fullscreen-tools input[type="range"] { width: 96px; accent-color: #ffd54a; }
-#previewZoomValue { flex: 0 0 46px; color: #ffd54a; font: 800 .72rem var(--mono); text-align: center; }
+.controller-preview-stage:fullscreen .controller-fullscreen-tools { position: absolute; z-index: 8; bottom: 18px; left: 18px; display: flex; align-items: center; gap: 6px; max-width: calc(100vw - 36px); overflow-x: auto; padding: 6px; border: 1px solid rgba(255,255,255,.2); border-radius: 7px; background: rgba(18,18,18,.78); box-shadow: 0 6px 24px rgba(0,0,0,.35); opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .16s ease, transform .16s ease; }
+.controller-preview-stage:fullscreen .controller-fullscreen-tools.is-visible,
+.controller-preview-stage:fullscreen .controller-fullscreen-tools:focus-within { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.controller-fullscreen-tools button { flex: 0 0 auto; width: 36px; height: 34px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #fff; font: 600 22px/1 Arial, sans-serif; }
+.controller-fullscreen-tools button:hover, .controller-fullscreen-tools button:focus-visible { background: rgba(255,255,255,.18); }
+.controller-fullscreen-tools button.is-active { color: #111; background: #ffd740; }
+.controller-fullscreen-tools [data-preview-tool="highlighter"], .controller-fullscreen-tools #previewClearAnnotations { font-size: 18px; }
+.controller-fullscreen-tools [data-preview-tool="text"] { font-size: 16px; font-weight: 800; }
+.controller-fullscreen-tools [data-preview-tool="pan"] { font-size: 19px; }
+.controller-fullscreen-tools #previewResetView { width: 42px; font-size: 11px; }
+.controller-preview-tool-field { flex: 0 0 auto; min-height: 34px; display: grid; grid-template-columns: auto auto; align-items: center; gap: 4px; padding: 0 6px; border-radius: 4px; color: rgba(255,255,255,.72); font: 600 9px/1 Arial, sans-serif; }
+.controller-preview-tool-field:focus-within { background: rgba(255,255,255,.14); }
+.controller-preview-tool-field input[type="color"] { width: 24px; height: 24px; padding: 1px; border: 0; background: transparent; cursor: pointer; }
+.controller-preview-tool-field select { height: 26px; max-width: 84px; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; color: #fff; background: #292929; font-size: 11px; }
+#previewZoomValue { flex: 0 0 46px; color: #fff; font: 600 11px/1 Arial, sans-serif; text-align: center; }
 .controller-preview-stage:fullscreen.is-preview-highlighting { cursor: crosshair; }
 .controller-preview-stage:fullscreen.is-preview-panning { cursor: grab; }
 .controller-preview-stage:fullscreen.is-preview-grabbing { cursor: grabbing; }
-@media (hover: none) { .controller-preview-stage:fullscreen .controller-fullscreen-tools { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); } }
 .controller-empty { color: var(--muted); }
 .teaching-remote { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #0b0b0b; color: #fff; }
 .teaching-remote[hidden] { display: none !important; }
