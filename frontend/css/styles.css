@@ -1339,3 +1339,51 @@ button.present-back {
   .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar { width: min(88vw, 300px); }
   .audience-live-view .present-live-media.is-connected .live-media-tiles { grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; }
 }
+
+/* Controller meeting: full-height stage with a collapsible participant rail. */
+.interactive-workspace { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 360px); grid-template-rows: minmax(0, 1fr); gap: 0; transition: grid-template-columns .22s ease; }
+.interactive-workspace.is-sidebar-hidden { grid-template-columns: minmax(0, 1fr) 0; }
+.interactive-workspace:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; }
+.interactive-workspace .interactive-main-stage { grid-column: 1; grid-row: 1; grid-template-rows: minmax(0, 1fr); }
+.interactive-workspace.is-connected .interactive-main-stage,
+.interactive-workspace.has-screen-share .interactive-main-stage { grid-template-rows: minmax(0, 1fr); }
+.interactive-workspace .interactive-presentation-feed { grid-area: 1 / 1; }
+.interactive-workspace.has-screen-share .interactive-screen-share { grid-area: 1 / 1; }
+.interactive-workspace .interactive-session-sidebar { grid-column: 2; grid-row: 1; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); overflow: hidden; border-top: 0; border-left: 1px solid rgba(255,255,255,.12); padding: 0; background: #191916; opacity: 1; transform: translateX(0); transition: opacity .16s ease, transform .22s ease, visibility 0s; }
+.interactive-workspace.is-sidebar-hidden .interactive-session-sidebar { visibility: hidden; opacity: 0; pointer-events: none; transform: translateX(22px); transition: opacity .14s ease, transform .22s ease, visibility 0s .22s; }
+.interactive-session-sidebar-header { min-width: 0; min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 9px 8px 12px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.interactive-session-sidebar-header > div { min-width: 0; }
+.interactive-session-sidebar-header > div:first-child strong, .interactive-session-sidebar-header > div:first-child span { display: block; }
+.interactive-session-sidebar-header > div:first-child strong { overflow: hidden; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
+.interactive-session-sidebar-header > div:first-child span { margin-top: 2px; color: #aaa8a1; font-size: .59rem; }
+.interactive-session-sidebar-header > div:last-child { display: flex; gap: 5px; }
+.interactive-workspace .interactive-session-sidebar-header .interactive-header-button { width: 32px; min-width: 32px; min-height: 32px; display: grid; place-items: center; padding: 0; border-radius: 5px; font-size: .67rem; }
+.interactive-workspace .interactive-session-sidebar-header [data-controller-mode-target] { width: auto; padding: 0 8px; }
+.interactive-workspace .interactive-session-card { margin: 9px 9px 0; padding: 10px; }
+.interactive-workspace .interactive-session-setup .eyebrow { margin: 0 0 7px; }
+.interactive-workspace.is-connected .interactive-session-setup { display: none; }
+.interactive-workspace .interactive-control-dock { min-width: 0; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; justify-content: stretch; gap: 7px; overflow: visible; padding: 9px; border-top: 0; border-bottom: 1px solid rgba(255,255,255,.12); background: #191916; }
+.interactive-workspace .interactive-control-dock button { min-width: 0; min-height: 39px; padding: 5px 7px; border-radius: 6px; font-size: .6rem; line-height: 1.15; white-space: normal; }
+.interactive-workspace .interactive-control-dock [data-live-leave] { grid-column: 1 / -1; }
+.interactive-workspace .interactive-participant-grid,
+.interactive-workspace.is-connected .interactive-participant-grid,
+.interactive-workspace.has-screen-share .interactive-participant-grid { position: relative; z-index: 1; grid-row: auto; height: auto; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; gap: 8px; overflow-x: hidden; overflow-y: auto; margin: 0; padding: 9px; background: #11110f; scrollbar-color: #4d4b44 transparent; scrollbar-width: thin; }
+.interactive-workspace .interactive-participant-grid .live-media-tile,
+.interactive-workspace.is-connected .interactive-participant-grid .live-media-tile { min-height: 0; display: grid; grid-template-rows: auto auto; border-radius: 8px; background: #20201c; box-shadow: 0 5px 16px rgba(0,0,0,.18); }
+.interactive-workspace .interactive-participant-grid .live-media-tile-video { width: 100%; min-height: 0; height: auto; aspect-ratio: 16 / 9; }
+.interactive-workspace .interactive-participant-grid .live-media-avatar { width: 46px; height: 46px; font-size: 1.2rem; }
+.interactive-workspace .interactive-participant-grid .live-media-tile footer { padding: 6px 7px; }
+.interactive-sidebar-restore { position: absolute; z-index: 8; top: 12px; right: 12px; min-height: 36px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,213,74,.6) !important; padding: 0 11px !important; background: rgba(20,20,17,.88) !important; color: #ffd54a !important; box-shadow: 0 5px 18px rgba(0,0,0,.28); }
+.interactive-sidebar-restore[hidden] { display: none; }
+
+@media (max-width: 820px) {
+  .interactive-workspace,
+  .interactive-workspace.is-sidebar-hidden { position: relative; grid-template-columns: minmax(0, 1fr); }
+  .interactive-workspace .interactive-session-sidebar { position: absolute; z-index: 10; top: 0; right: 0; bottom: 0; width: min(82vw, 320px); border-left-color: rgba(255,255,255,.2); box-shadow: -16px 0 42px rgba(0,0,0,.38); }
+  .interactive-workspace.is-sidebar-hidden .interactive-session-sidebar { transform: translateX(100%); }
+}
+
+@media (max-width: 390px) {
+  .interactive-workspace .interactive-session-sidebar { width: min(88vw, 300px); }
+  .interactive-workspace .interactive-participant-grid { gap: 6px; padding: 6px; }
+}

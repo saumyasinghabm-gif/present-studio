@@ -15,7 +15,7 @@
     const leaveButton = root.querySelector("[data-live-leave]");
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
     const panelRestore = root.querySelector("[data-live-panel-restore]");
-    const meetingSidebar = root.querySelector(".audience-meeting-sidebar");
+    const meetingSidebar = root.querySelector(".live-meeting-sidebar");
     const fullscreenButton = root.querySelector("[data-live-fullscreen]");
     const status = root.querySelector("[data-live-status]");
     const count = root.querySelector("[data-live-count]");
@@ -203,7 +203,7 @@
     }
 
     function setAudienceSidebarHidden(hidden, moveFocus = false) {
-      const collapsed = Boolean(hidden && root.classList.contains("is-connected"));
+      const collapsed = Boolean(hidden);
       root.classList.toggle("is-sidebar-hidden", collapsed);
       if (meetingSidebar) {
         meetingSidebar.inert = collapsed;
