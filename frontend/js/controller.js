@@ -22,6 +22,7 @@
   let previewToolZoom = 1;
   let previewToolPan = { x: 0, y: 0 };
   let previewToolPointer = null;
+  let previewTextPoint = null;
   let previewToolbarTimer;
   let liveMediaSession = null;
 
@@ -66,6 +67,7 @@
       if (!active) {
         clearTimeout(previewToolbarTimer);
         $("#previewFullscreenTools").classList.remove("is-visible");
+        closePreviewTextEditor();
         stage.classList.remove("is-preview-grabbing");
         previewToolPointer = null;
         if (previewToolZoom !== 1 || previewToolPan.x || previewToolPan.y) {
@@ -124,6 +126,20 @@
     $("#previewAnnotationText").append(label);
   }
 
+  function openPreviewTextEditor(point) {
+    previewTextPoint = point;
+    const editor = $("#previewTextEditor");
+    const input = $("#previewTextInput");
+    input.value = "";
+    editor.hidden = false;
+    requestAnimationFrame(() => input.focus());
+  }
+
+  function closePreviewTextEditor() {
+    previewTextPoint = null;
+    $("#previewTextEditor").hidden = true;
+  }
+
   function clearPreviewToolAnnotations(send = true) {
     const canvas = $("#previewAnnotationCanvas");
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
@@ -173,6 +189,16 @@
     $("#previewZoomIn").onclick = () => { previewToolZoom = Math.min(3, previewToolZoom + .1); applyPreviewToolViewport(); };
     $("#previewResetView").onclick = () => { previewToolZoom = 1; previewToolPan = { x: 0, y: 0 }; applyPreviewToolViewport(); };
     $("#previewClearAnnotations").onclick = () => clearPreviewToolAnnotations(true);
+    $("#previewTextCancel").onclick = closePreviewTextEditor;
+    $("#previewTextEditor").onsubmit = event => {
+      event.preventDefault();
+      const value = $("#previewTextInput").value.trim();
+      if (!value || !previewTextPoint) return;
+      const payload = { text: value.slice(0, 180), point: previewTextPoint, color: color(), size: size() };
+      addPreviewToolText(payload.text, payload.point, payload.color, payload.size);
+      teachPayload("text", payload);
+      closePreviewTextEditor();
+    };
     toolbar.addEventListener("pointerenter", showPreviewToolbar);
     toolbar.addEventListener("focusin", showPreviewToolbar);
     stage.addEventListener("pointerdown", showPreviewToolbar, { passive: true });
@@ -196,15 +222,11 @@
       drawPreviewToolPath([previous, point], previewHighlighterColor(), size());
     });
     stage.addEventListener("pointerdown", event => {
-      if (document.fullscreenElement !== stage || event.button !== 0 || event.target.closest("#previewFullscreenTools")) return;
+      if (document.fullscreenElement !== stage || event.button !== 0 || event.target.closest("#previewFullscreenTools, #previewTextEditor")) return;
       const point = previewToolPoint(event);
       if (previewTool !== "pan" && !point) return;
       if (previewTool === "text") {
-        const value = prompt("Text to show on the live screen");
-        if (!value?.trim()) return;
-        const payload = { text: value.trim().slice(0, 180), point, color: color(), size: size() };
-        addPreviewToolText(payload.text, payload.point, payload.color, payload.size);
-        teachPayload("text", payload);
+        openPreviewTextEditor(point);
         return;
       }
       previewToolPointer = { id: event.pointerId, startX: event.clientX, startY: event.clientY, pan: { ...previewToolPan }, points: point ? [point] : [] };

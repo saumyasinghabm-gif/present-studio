@@ -956,6 +956,15 @@ button.present-back {
 .controller-preview-tool-field input[type="color"] { width: 24px; height: 24px; padding: 1px; border: 0; background: transparent; cursor: pointer; }
 .controller-preview-tool-field select { height: 26px; max-width: 84px; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; color: #fff; background: #292929; font-size: 11px; }
 #previewZoomValue { flex: 0 0 46px; color: #fff; font: 600 11px/1 Arial, sans-serif; text-align: center; }
+.controller-preview-text-editor { position: absolute; z-index: 10; top: 50%; left: 50%; width: min(420px, calc(100vw - 32px)); display: grid; gap: 12px; padding: 18px; border: 1px solid rgba(255,255,255,.22); border-radius: 8px; background: rgba(18,18,18,.96); color: #fff; box-shadow: 0 18px 60px rgba(0,0,0,.48); transform: translate(-50%, -50%); }
+.controller-preview-text-editor[hidden] { display: none !important; }
+.controller-preview-text-editor label { color: #ffd740; font: 800 .7rem var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.controller-preview-text-editor input { width: 100%; min-height: 42px; border: 1px solid rgba(255,255,255,.25); border-radius: 5px; padding: 0 12px; outline: 0; background: #292929; color: #fff; font: 500 .9rem var(--sans); }
+.controller-preview-text-editor input:focus { border-color: #ffd740; box-shadow: 0 0 0 3px rgba(255,215,64,.18); }
+.controller-preview-text-editor > div { display: flex; justify-content: flex-end; gap: 8px; }
+.controller-preview-text-editor button { min-height: 34px; border: 1px solid rgba(255,255,255,.24); border-radius: 4px; padding: 0 13px; background: transparent; color: #fff; font: 800 .68rem var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.controller-preview-text-editor button:hover, .controller-preview-text-editor button:focus-visible { border-color: #ffd740; }
+.controller-preview-text-editor button.is-primary { border-color: #ffd740; background: #ffd740; color: #111; }
 .controller-preview-stage:fullscreen.is-preview-highlighting { cursor: crosshair; }
 .controller-preview-stage:fullscreen.is-preview-panning { cursor: grab; }
 .controller-preview-stage:fullscreen.is-preview-grabbing { cursor: grabbing; }

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260912-fullscreen-tools">
+    <link rel="stylesheet" href="/css/styles.css?v=20260912-inline-preview-text">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -84,6 +84,14 @@
               <button type="button" id="previewResetView" aria-label="Reset zoom to 100 percent" title="Reset zoom">1:1</button>
               <button type="button" id="previewClearAnnotations" aria-label="Clear annotations" title="Clear annotations">⌫</button>
             </div>
+            <form class="controller-preview-text-editor" id="previewTextEditor" hidden>
+              <label for="previewTextInput">Add text to the live screen</label>
+              <input id="previewTextInput" type="text" maxlength="180" autocomplete="off" placeholder="Type your text">
+              <div>
+                <button type="button" id="previewTextCancel">Cancel</button>
+                <button type="submit" class="is-primary">Add text</button>
+              </div>
+            </form>
           </div>
           <div class="controller-preview-controls" aria-label="Live presentation controls">
             <section class="controller-preview-control-group" aria-labelledby="playbackControlLabel">
@@ -134,6 +142,6 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260911-livekit-media-token"></script>
-    <script src="/js/controller.js?v=20260912-fullscreen-tools"></script>
+    <script src="/js/controller.js?v=20260912-inline-preview-text"></script>
   </body>
 </html>
