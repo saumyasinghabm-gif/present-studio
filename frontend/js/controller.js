@@ -27,6 +27,51 @@
   function setConnectionStatus(label) { $("#connectionStatus").innerHTML = `<i></i> ${label}`; }
   function teachPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
 
+  function syncPreviewDockSpace() {
+    const panel = $("#controllerPreviewPanel");
+    if (!panel) return;
+    const space = Math.ceil(panel.getBoundingClientRect().height + 32);
+    document.documentElement.style.setProperty("--controller-preview-space", `${space}px`);
+  }
+
+  function setPreviewDockMinimized(minimized) {
+    const panel = $("#controllerPreviewPanel");
+    const button = $("#previewMinimize");
+    panel.classList.toggle("is-minimized", minimized);
+    button.setAttribute("aria-expanded", String(!minimized));
+    button.setAttribute("aria-label", minimized ? "Restore preview dock" : "Minimize preview dock");
+    button.title = minimized ? "Restore preview dock" : "Minimize preview dock";
+    button.querySelector("[data-preview-minimize-icon]").textContent = minimized ? "□" : "—";
+    button.querySelector("[data-preview-minimize-label]").textContent = minimized ? "Restore" : "Minimize";
+    try { sessionStorage.setItem("presentStudio.controllerPreviewMinimized", minimized ? "1" : "0"); } catch {}
+    requestAnimationFrame(syncPreviewDockSpace);
+  }
+
+  function bindPreviewDock() {
+    const panel = $("#controllerPreviewPanel");
+    const stage = $("#previewStage");
+    const minimizeButton = $("#previewMinimize");
+    const fullscreenButton = $("#previewFullscreen");
+    let minimized = false;
+    try { minimized = sessionStorage.getItem("presentStudio.controllerPreviewMinimized") === "1"; } catch {}
+    setPreviewDockMinimized(minimized);
+    minimizeButton.onclick = () => setPreviewDockMinimized(!panel.classList.contains("is-minimized"));
+    fullscreenButton.onclick = () => {
+      if (document.fullscreenElement === stage) document.exitFullscreen?.().catch(() => {});
+      else stage.requestFullscreen?.().catch(error => toast(error.message || "Fullscreen was blocked."));
+    };
+    document.addEventListener("fullscreenchange", () => {
+      const active = document.fullscreenElement === stage;
+      fullscreenButton.setAttribute("aria-label", active ? "Exit preview fullscreen" : "Open preview in fullscreen");
+      fullscreenButton.title = active ? "Exit preview fullscreen" : "Open preview in fullscreen";
+      fullscreenButton.querySelector("[aria-hidden='true']").textContent = active ? "×" : "⛶";
+      fullscreenButton.querySelector("[data-preview-fullscreen-label]").textContent = active ? "Exit" : "Fullscreen";
+    });
+    window.addEventListener("resize", syncPreviewDockSpace);
+    if (window.ResizeObserver) new ResizeObserver(syncPreviewDockSpace).observe(panel);
+    requestAnimationFrame(syncPreviewDockSpace);
+  }
+
   function slideById(id) { return presentation?.slides?.find(slide => slide.id === id); }
 
   function stopPreviewMedia() {
@@ -398,6 +443,8 @@
     stageWrap.addEventListener("pointerup", finishPointer);
     stageWrap.addEventListener("pointercancel", finishPointer);
   }
+
+  bindPreviewDock();
 
   try {
     if (!window.fabric) throw new Error("The slide preview library could not be loaded.");

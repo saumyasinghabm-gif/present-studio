@@ -4,25 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260910-screen-share">
+    <link rel="stylesheet" href="/css/styles.css?v=20260912-controller-dock">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
       <header class="live-controller-header">
         <div><p class="eyebrow">Private presenter panel</p><h1 id="controllerTitle">Live Controller</h1></div>
         <div class="live-controller-actions">
-          <span class="controller-connection" id="connectionStatus"><i></i> Connecting</span>
-          <button class="button button-soft" id="openScreen" type="button">Open Screen</button>
-          <button class="button button-soft" id="teachMode" type="button">Teach Live</button>
           <a class="button button-soft" id="backToEditor" href="/dashboard.html">Editor</a>
         </div>
       </header>
-
-      <section class="controller-quick-controls">
-        <button type="button" id="pauseMedia"><strong>Pause / Play</strong><small>Toggle active audio or video</small></button>
-        <button type="button" id="replayMedia"><strong>Replay</strong><small>Restart the active item</small></button>
-        <button type="button" id="stopMedia"><strong>Clear Screen</strong><small>Stop media and return to black</small></button>
-      </section>
 
       <section class="controller-section live-media-panel" id="controllerLiveMedia" aria-labelledby="controllerLiveMediaTitle">
         <div class="controller-section-heading"><div><p class="eyebrow">Interactive session</p><h2 id="controllerLiveMediaTitle">Camera &amp; microphone</h2></div><span data-live-count>0 connected</span></div>
@@ -63,12 +54,38 @@
         <button class="button button-soft" type="button" id="stopLoop">Stop Loop</button>
       </section>
 
-      <aside class="controller-preview-panel">
-        <div><span class="label">Live selection</span><strong id="previewTitle">Screen ready</strong></div>
-        <div class="controller-preview-stage" id="previewStage">
-          <canvas id="controllerPreviewCanvas" width="1280" height="720" aria-label="Current slide preview"></canvas>
-          <div class="controller-preview-media" id="controllerPreviewMedia"></div>
-          <span class="controller-preview-placeholder" id="controllerPreviewPlaceholder">Waiting for a selection</span>
+      <aside class="controller-preview-panel" id="controllerPreviewPanel" aria-label="Live output preview and controls">
+        <div class="controller-preview-bar">
+          <div class="controller-preview-summary"><span class="label">Live output preview</span><strong id="previewTitle" aria-live="polite">Screen ready</strong></div>
+          <span class="controller-connection" id="connectionStatus"><i></i> Connecting</span>
+          <div class="controller-preview-window-actions">
+            <button type="button" id="previewFullscreen" aria-label="Open preview in fullscreen" title="Open preview in fullscreen"><span aria-hidden="true">⛶</span><span data-preview-fullscreen-label>Fullscreen</span></button>
+            <button type="button" id="previewMinimize" aria-label="Minimize preview dock" aria-expanded="true" title="Minimize preview dock"><span aria-hidden="true" data-preview-minimize-icon>—</span><span data-preview-minimize-label>Minimize</span></button>
+          </div>
+        </div>
+        <div class="controller-preview-body">
+          <div class="controller-preview-stage" id="previewStage">
+            <canvas id="controllerPreviewCanvas" width="1280" height="720" aria-label="Current slide preview"></canvas>
+            <div class="controller-preview-media" id="controllerPreviewMedia"></div>
+            <span class="controller-preview-placeholder" id="controllerPreviewPlaceholder">Waiting for a selection</span>
+          </div>
+          <div class="controller-preview-controls" aria-label="Live presentation controls">
+            <section class="controller-preview-control-group" aria-labelledby="playbackControlLabel">
+              <span class="controller-preview-control-label" id="playbackControlLabel">Playback</span>
+              <div class="controller-preview-control-grid controller-preview-control-grid-three">
+                <button type="button" id="pauseMedia"><strong>Pause / Play</strong><small>Toggle media</small></button>
+                <button type="button" id="replayMedia"><strong>Replay</strong><small>Restart item</small></button>
+                <button type="button" id="stopMedia" class="is-danger"><strong>Black Screen</strong><small>Clear output</small></button>
+              </div>
+            </section>
+            <section class="controller-preview-control-group" aria-labelledby="outputControlLabel">
+              <span class="controller-preview-control-label" id="outputControlLabel">Presentation</span>
+              <div class="controller-preview-control-grid">
+                <button type="button" id="openScreen"><strong>Open Screen</strong><small>Launch audience output</small></button>
+                <button type="button" id="teachMode"><strong>Teach Live</strong><small>Annotate and zoom</small></button>
+              </div>
+            </section>
+          </div>
         </div>
       </aside>
     </main>
@@ -101,6 +118,6 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260911-livekit-media-token"></script>
-    <script src="/js/controller.js?v=20260910-screen-share"></script>
+    <script src="/js/controller.js?v=20260912-controller-dock"></script>
   </body>
 </html>
