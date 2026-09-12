@@ -18,6 +18,11 @@
   let teachZoom = 1;
   let teachPan = { x: 0, y: 0 };
   let teachPointer = null;
+  let previewTool = "highlighter";
+  let previewToolZoom = 1;
+  let previewToolPan = { x: 0, y: 0 };
+  let previewToolPointer = null;
+  let previewToolbarTimer;
   let liveMediaSession = null;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
@@ -58,7 +63,165 @@
       fullscreenButton.title = active ? "Exit preview fullscreen" : "Open preview in fullscreen";
       fullscreenButton.querySelector("[aria-hidden='true']").textContent = active ? "×" : "⛶";
       fullscreenButton.querySelector("[data-preview-fullscreen-label]").textContent = active ? "Exit" : "Fullscreen";
+      if (active) showPreviewToolbar();
+      else {
+        clearTimeout(previewToolbarTimer);
+        stage.classList.remove("is-toolbar-visible", "is-preview-grabbing");
+        previewToolPointer = null;
+        if (previewToolZoom !== 1 || previewToolPan.x || previewToolPan.y) {
+          previewToolZoom = 1;
+          previewToolPan = { x: 0, y: 0 };
+          applyPreviewToolViewport();
+        }
+      }
     });
+    bindFullscreenPreviewTools();
+  }
+
+  function previewHighlighterColor() {
+    const value = $("#previewToolColor").value || "#ffd54a";
+    const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(value);
+    if (!match) return "rgba(255, 213, 74, .38)";
+    return `rgba(${parseInt(match[1], 16)}, ${parseInt(match[2], 16)}, ${parseInt(match[3], 16)}, .38)`;
+  }
+
+  function previewToolPoint(event) {
+    const bounds = $("#controllerPreviewVisual").getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) return null;
+    return {
+      x: (event.clientX - bounds.left) / bounds.width,
+      y: (event.clientY - bounds.top) / bounds.height
+    };
+  }
+
+  function drawPreviewToolPath(points, color, size) {
+    if (points.length < 2) return;
+    const canvas = $("#previewAnnotationCanvas");
+    const context = canvas.getContext("2d");
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    points.forEach((point, index) => {
+      const x = point.x * canvas.width;
+      const y = point.y * canvas.height;
+      if (index) context.lineTo(x, y);
+      else context.moveTo(x, y);
+    });
+    context.stroke();
+    context.restore();
+  }
+
+  function addPreviewToolText(text, point, color, size) {
+    const label = document.createElement("span");
+    label.textContent = text;
+    label.style.left = `${point.x * 100}%`;
+    label.style.top = `${point.y * 100}%`;
+    label.style.setProperty("--annotation-color", color);
+    label.style.setProperty("--annotation-size", `${Math.max(18, size * 3.8)}px`);
+    $("#previewAnnotationText").append(label);
+  }
+
+  function clearPreviewToolAnnotations(send = true) {
+    const canvas = $("#previewAnnotationCanvas");
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    $("#previewAnnotationText").replaceChildren();
+    if (send) teachPayload("clear");
+  }
+
+  function applyPreviewToolViewport(send = true) {
+    const visual = $("#controllerPreviewVisual");
+    visual.style.setProperty("--preview-zoom", String(previewToolZoom));
+    visual.style.setProperty("--preview-pan-x", `${previewToolPan.x}px`);
+    visual.style.setProperty("--preview-pan-y", `${previewToolPan.y}px`);
+    $("#previewZoomValue").textContent = `${Math.round(previewToolZoom * 100)}%`;
+    if (send) teachPayload("viewport", { zoom: previewToolZoom, x: previewToolPan.x, y: previewToolPan.y });
+  }
+
+  function setPreviewTool(tool) {
+    previewTool = tool;
+    document.querySelectorAll("[data-preview-tool]").forEach(button => {
+      const active = button.dataset.previewTool === tool;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    const stage = $("#previewStage");
+    stage.classList.toggle("is-preview-highlighting", tool === "highlighter");
+    stage.classList.toggle("is-preview-panning", tool === "pan");
+  }
+
+  function showPreviewToolbar() {
+    const stage = $("#previewStage");
+    stage.classList.add("is-toolbar-visible");
+    clearTimeout(previewToolbarTimer);
+    previewToolbarTimer = setTimeout(() => {
+      if (!$("#previewFullscreenTools").matches(":focus-within")) stage.classList.remove("is-toolbar-visible");
+    }, 1600);
+  }
+
+  function bindFullscreenPreviewTools() {
+    const stage = $("#previewStage");
+    const toolbar = $("#previewFullscreenTools");
+    const color = () => $("#previewToolColor").value || "#ffd54a";
+    const size = () => Number($("#previewToolSize").value) || 18;
+    document.querySelectorAll("[data-preview-tool]").forEach(button => button.onclick = () => setPreviewTool(button.dataset.previewTool));
+    $("#previewZoomOut").onclick = () => { previewToolZoom = Math.max(.5, previewToolZoom - .1); applyPreviewToolViewport(); };
+    $("#previewZoomIn").onclick = () => { previewToolZoom = Math.min(3, previewToolZoom + .1); applyPreviewToolViewport(); };
+    $("#previewResetView").onclick = () => { previewToolZoom = 1; previewToolPan = { x: 0, y: 0 }; applyPreviewToolViewport(); };
+    $("#previewClearAnnotations").onclick = () => clearPreviewToolAnnotations(true);
+    toolbar.addEventListener("pointerenter", showPreviewToolbar);
+    toolbar.addEventListener("focusin", showPreviewToolbar);
+    stage.addEventListener("pointermove", event => {
+      if (document.fullscreenElement !== stage) return;
+      const bounds = stage.getBoundingClientRect();
+      if (event.clientY >= bounds.bottom - 110) showPreviewToolbar();
+      else if (!previewToolPointer && !toolbar.matches(":focus-within")) stage.classList.remove("is-toolbar-visible");
+      if (!previewToolPointer || previewToolPointer.id !== event.pointerId) return;
+      if (previewTool === "pan") {
+        previewToolPan = {
+          x: previewToolPointer.pan.x + event.clientX - previewToolPointer.startX,
+          y: previewToolPointer.pan.y + event.clientY - previewToolPointer.startY
+        };
+        applyPreviewToolViewport();
+        return;
+      }
+      const point = previewToolPoint(event);
+      if (!point) return;
+      const previous = previewToolPointer.points.at(-1);
+      previewToolPointer.points.push(point);
+      drawPreviewToolPath([previous, point], previewHighlighterColor(), size());
+    });
+    stage.addEventListener("pointerdown", event => {
+      if (document.fullscreenElement !== stage || event.button !== 0 || event.target.closest("#previewFullscreenTools")) return;
+      const point = previewToolPoint(event);
+      if (previewTool !== "pan" && !point) return;
+      if (previewTool === "text") {
+        const value = prompt("Text to show on the live screen");
+        if (!value?.trim()) return;
+        const payload = { text: value.trim().slice(0, 180), point, color: color(), size: size() };
+        addPreviewToolText(payload.text, payload.point, payload.color, payload.size);
+        teachPayload("text", payload);
+        return;
+      }
+      previewToolPointer = { id: event.pointerId, startX: event.clientX, startY: event.clientY, pan: { ...previewToolPan }, points: point ? [point] : [] };
+      stage.setPointerCapture(event.pointerId);
+      stage.classList.toggle("is-preview-grabbing", previewTool === "pan");
+      event.preventDefault();
+    });
+    const finishPointer = event => {
+      if (!previewToolPointer || previewToolPointer.id !== event.pointerId) return;
+      if (previewTool === "highlighter" && previewToolPointer.points.length > 1) {
+        teachPayload("draw", { points: previewToolPointer.points, color: previewHighlighterColor(), size: size() });
+      }
+      previewToolPointer = null;
+      stage.classList.remove("is-preview-grabbing");
+    };
+    stage.addEventListener("pointerup", finishPointer);
+    stage.addEventListener("pointercancel", finishPointer);
+    setPreviewTool(previewTool);
+    applyPreviewToolViewport(false);
   }
 
   function slideById(id) { return presentation?.slides?.find(slide => slide.id === id); }

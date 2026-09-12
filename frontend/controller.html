@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260912-controller-panel">
+    <link rel="stylesheet" href="/css/styles.css?v=20260912-fullscreen-tools">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -65,9 +65,25 @@
         </div>
         <div class="controller-preview-body">
           <div class="controller-preview-stage" id="previewStage">
-            <canvas id="controllerPreviewCanvas" width="1280" height="720" aria-label="Current slide preview"></canvas>
-            <div class="controller-preview-media" id="controllerPreviewMedia"></div>
-            <span class="controller-preview-placeholder" id="controllerPreviewPlaceholder">Waiting for a selection</span>
+            <div class="controller-preview-visual" id="controllerPreviewVisual">
+              <canvas id="controllerPreviewCanvas" width="1280" height="720" aria-label="Current slide preview"></canvas>
+              <div class="controller-preview-media" id="controllerPreviewMedia"></div>
+              <span class="controller-preview-placeholder" id="controllerPreviewPlaceholder">Waiting for a selection</span>
+              <canvas class="controller-preview-annotation-canvas" id="previewAnnotationCanvas" width="1280" height="720" aria-hidden="true"></canvas>
+              <div class="controller-preview-annotation-text" id="previewAnnotationText" aria-live="polite"></div>
+            </div>
+            <div class="controller-fullscreen-tools" id="previewFullscreenTools" role="toolbar" aria-label="Fullscreen presentation tools">
+              <button type="button" data-preview-tool="highlighter" class="is-active" aria-pressed="true">Highlighter</button>
+              <button type="button" data-preview-tool="text" aria-pressed="false">Text</button>
+              <button type="button" data-preview-tool="pan" aria-pressed="false">Grab</button>
+              <label>Color <input id="previewToolColor" type="color" value="#ffd54a"></label>
+              <label>Size <input id="previewToolSize" type="range" min="4" max="36" value="18"></label>
+              <button type="button" id="previewZoomOut" aria-label="Zoom out">−</button>
+              <span id="previewZoomValue" aria-live="polite">100%</span>
+              <button type="button" id="previewZoomIn" aria-label="Zoom in">+</button>
+              <button type="button" id="previewResetView">Reset</button>
+              <button type="button" id="previewClearAnnotations">Clear</button>
+            </div>
           </div>
           <div class="controller-preview-controls" aria-label="Live presentation controls">
             <section class="controller-preview-control-group" aria-labelledby="playbackControlLabel">
@@ -118,6 +134,6 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260911-livekit-media-token"></script>
-    <script src="/js/controller.js?v=20260912-controller-panel"></script>
+    <script src="/js/controller.js?v=20260912-fullscreen-tools"></script>
   </body>
 </html>
