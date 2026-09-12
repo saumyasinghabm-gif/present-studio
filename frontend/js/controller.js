@@ -30,13 +30,72 @@
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
   function secureAppUrl(path) { const url = new URL(path, location.origin); if (!["localhost", "127.0.0.1", "::1"].includes(url.hostname)) url.protocol = "https:"; return url.href; }
   function credentials() { return { presentationId, authToken, shareToken }; }
-  function setConnectionStatus(label) { $("#connectionStatus").innerHTML = `<i></i> ${label}`; }
+  function setConnectionStatus(label) {
+    const status = $("#connectionStatus");
+    const state = label === "Live" ? "live" : label === "Connecting" ? "connecting" : label.toLowerCase().includes("backup") ? "backup" : "offline";
+    status.dataset.state = state;
+    status.innerHTML = `<i></i> ${label}`;
+  }
   function teachPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
+
+  function setControllerMode(mode, remember = true) {
+    const nextMode = mode === "interactive" ? "interactive" : "control";
+    document.querySelectorAll("[data-controller-mode-view]").forEach(view => { view.hidden = view.dataset.controllerModeView !== nextMode; });
+    document.querySelectorAll("[data-controller-mode-target]").forEach(button => {
+      const active = button.dataset.controllerModeTarget === nextMode;
+      if (button.matches("[role='tab']")) {
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-selected", String(active));
+        button.tabIndex = active ? 0 : -1;
+      }
+    });
+    document.body.dataset.controllerMode = nextMode;
+    if (remember) try { sessionStorage.setItem("presentStudio.controllerMode", nextMode); } catch {}
+  }
+
+  function setLibraryPanel(panelName, remember = true) {
+    const names = ["slides", "images", "videos", "audio", "loops"];
+    const nextPanel = names.includes(panelName) ? panelName : "slides";
+    document.querySelectorAll("[data-controller-library-panel]").forEach(panel => { panel.hidden = panel.dataset.controllerLibraryPanel !== nextPanel; });
+    document.querySelectorAll("[data-controller-library-target]").forEach(button => {
+      const active = button.dataset.controllerLibraryTarget === nextPanel;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    const title = { slides: "Slides", images: "Images", videos: "Videos", audio: "Audio", loops: "Media loops" }[nextPanel];
+    $("#libraryPanelTitle").textContent = title;
+    if (remember) try { sessionStorage.setItem("presentStudio.controllerLibraryPanel", nextPanel); } catch {}
+  }
+
+  function bindControllerConsole() {
+    document.querySelectorAll("[data-controller-mode-target]").forEach(button => button.addEventListener("click", () => setControllerMode(button.dataset.controllerModeTarget)));
+    document.querySelectorAll("[data-controller-library-target]").forEach(button => button.addEventListener("click", () => setLibraryPanel(button.dataset.controllerLibraryTarget)));
+    document.querySelectorAll("[role='tablist']").forEach(tabList => tabList.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      const tabs = [...tabList.querySelectorAll("[role='tab']")];
+      const current = Math.max(0, tabs.indexOf(document.activeElement));
+      const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[next]?.focus();
+      tabs[next]?.click();
+      event.preventDefault();
+    }));
+    let initialMode = "control";
+    let initialPanel = "slides";
+    try {
+      initialMode = sessionStorage.getItem("presentStudio.controllerMode") || initialMode;
+      initialPanel = sessionStorage.getItem("presentStudio.controllerLibraryPanel") || initialPanel;
+    } catch {}
+    setLibraryPanel(initialPanel, false);
+    setControllerMode(initialMode, false);
+  }
 
   function setPreviewDockMinimized(minimized) {
     const panel = $("#controllerPreviewPanel");
     const button = $("#previewMinimize");
     panel.classList.toggle("is-minimized", minimized);
+    panel.closest(".controller-console-preview")?.classList.toggle("is-preview-minimized", minimized);
+    panel.closest(".controller-console-preview")?.classList.toggle("is-preview-minimized", minimized);
     button.setAttribute("aria-expanded", String(!minimized));
     button.setAttribute("aria-label", minimized ? "Restore preview dock" : "Minimize preview dock");
     button.title = minimized ? "Restore preview dock" : "Minimize preview dock";
@@ -620,6 +679,7 @@
     stageWrap.addEventListener("pointercancel", finishPointer);
   }
 
+  bindControllerConsole();
   bindPreviewDock();
 
   try {
@@ -634,7 +694,9 @@
       root: $("#controllerLiveMedia"),
       presentationId,
       shareToken,
-      displayName: api.getCachedSession()?.name || "Presenter"
+      displayName: api.getCachedSession()?.name || "Presenter",
+      fullscreenTarget: $("#controllerLiveMedia"),
+      fullscreenOnJoin: false
     });
     previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;

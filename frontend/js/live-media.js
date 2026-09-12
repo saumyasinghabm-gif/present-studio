@@ -180,7 +180,7 @@
       if (joining || room) return;
       if (!livekit?.Room) { setStatus("Audio/video library could not be loaded", "error"); return; }
       if (!api?.getLiveMediaToken) { setStatus("This page is out of date. Refresh it and try again.", "error"); return; }
-      if (options.fullscreenTarget && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
+      if (options.fullscreenTarget && options.fullscreenOnJoin !== false && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
       joining = true; joinButton.disabled = true; nameInput.disabled = true; setStatus("Joining…");
       try {
         const credentials = await api.getLiveMediaToken(options.presentationId, {
@@ -261,7 +261,7 @@
     });
     document.addEventListener("fullscreenchange", () => {
       if (!fullscreenButton) return;
-      const active = Boolean(document.fullscreenElement);
+      const active = document.fullscreenElement === options.fullscreenTarget;
       fullscreenButton.textContent = active ? "×" : "⛶";
       fullscreenButton.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
       fullscreenButton.title = active ? "Exit fullscreen" : "Enter fullscreen";

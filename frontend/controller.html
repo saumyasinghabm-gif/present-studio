@@ -4,114 +4,100 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260912-inline-preview-text">
+    <link rel="stylesheet" href="/css/styles.css?v=20260912-controller-console">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
       <header class="live-controller-header">
-        <div><p class="eyebrow">Private presenter panel</p><h1 id="controllerTitle">Live Controller</h1></div>
+        <div class="controller-brand"><p class="eyebrow">Private presenter panel</p><h1 id="controllerTitle">Live Controller</h1></div>
+        <nav class="controller-mode-switch" aria-label="Controller workspace" role="tablist">
+          <button type="button" id="controllerControlTab" role="tab" aria-controls="controllerControlView" data-controller-mode-target="control" class="is-active" aria-selected="true"><span aria-hidden="true">▣</span> Control</button>
+          <button type="button" id="controllerInteractiveTab" role="tab" aria-controls="controllerLiveMedia" data-controller-mode-target="interactive" aria-selected="false"><span aria-hidden="true">◉</span> Interactive</button>
+        </nav>
         <div class="live-controller-actions">
+          <span class="controller-connection" id="connectionStatus" data-state="connecting"><i></i> Connecting</span>
           <a class="button button-soft" id="backToEditor" href="/dashboard.html">Editor</a>
         </div>
       </header>
 
-      <section class="controller-section live-media-panel" id="controllerLiveMedia" aria-labelledby="controllerLiveMediaTitle">
-        <div class="controller-section-heading"><div><p class="eyebrow">Interactive session</p><h2 id="controllerLiveMediaTitle">Camera &amp; microphone</h2></div><span data-live-count>0 connected</span></div>
-        <div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div>
-        <p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p>
-        <div class="live-media-actions"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
-        <section class="live-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
-        <div class="live-media-tiles" data-live-tiles aria-live="polite"></div>
-      </section>
-
-      <section class="controller-section">
-        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Slides</h2></div><span id="slideTargetCount">0 items</span></div>
-        <div class="controller-target-grid" id="slideTargets"></div>
-      </section>
-
-      <section class="controller-section">
-        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Images</h2></div><span id="imageTargetCount">0 items</span></div>
-        <div class="controller-target-grid" id="imageTargets"></div>
-      </section>
-
-      <section class="controller-section">
-        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Videos</h2></div><span id="videoTargetCount">0 items</span></div>
-        <div class="controller-target-grid" id="videoTargets"></div>
-      </section>
-
-      <section class="controller-section">
-        <div class="controller-section-heading"><div><p class="eyebrow">Direct control</p><h2>Music &amp; Audio</h2></div><span id="audioTargetCount">0 items</span></div>
-        <div class="controller-target-grid" id="audioTargets"></div>
-      </section>
-
-      <section class="controller-section controller-loop-section">
-        <div class="controller-section-heading"><div><p class="eyebrow">Loop control</p><h2>Selected media loops</h2></div><span id="loopStatus">No loop running</span></div>
-        <div class="controller-loop-grid">
-          <article><div><strong>Images</strong><button type="button" id="startImageLoop">Start Image Loop</button></div><div class="controller-loop-list" id="imageLoopList"></div></article>
-          <article><div><strong>Videos</strong><button type="button" id="startVideoLoop">Start Video Loop</button></div><div class="controller-loop-list" id="videoLoopList"></div></article>
-        </div>
-        <label class="controller-duration">Change item every <select id="loopInterval"><option value="5000">5 seconds</option><option value="8000" selected>8 seconds</option><option value="12000">12 seconds</option><option value="20000">20 seconds</option></select></label>
-        <button class="button button-soft" type="button" id="stopLoop">Stop Loop</button>
-      </section>
-
-      <aside class="controller-preview-panel" id="controllerPreviewPanel" aria-label="Live output preview and controls">
-        <div class="controller-preview-bar">
-          <div class="controller-preview-summary"><span class="label">Live output preview</span><strong id="previewTitle" aria-live="polite">Screen ready</strong></div>
-          <span class="controller-connection" id="connectionStatus"><i></i> Connecting</span>
-          <div class="controller-preview-window-actions">
-            <button type="button" id="previewFullscreen" aria-label="Open preview in fullscreen" title="Open preview in fullscreen"><span aria-hidden="true">⛶</span><span data-preview-fullscreen-label>Fullscreen</span></button>
-            <button type="button" id="previewMinimize" aria-label="Minimize preview dock" aria-expanded="true" title="Minimize preview dock"><span aria-hidden="true" data-preview-minimize-icon>—</span><span data-preview-minimize-label>Minimize</span></button>
-          </div>
-        </div>
-        <div class="controller-preview-body">
-          <div class="controller-preview-stage" id="previewStage">
-            <div class="controller-preview-visual" id="controllerPreviewVisual">
-              <canvas id="controllerPreviewCanvas" width="1280" height="720" aria-label="Current slide preview"></canvas>
-              <div class="controller-preview-media" id="controllerPreviewMedia"></div>
-              <span class="controller-preview-placeholder" id="controllerPreviewPlaceholder">Waiting for a selection</span>
-              <canvas class="controller-preview-annotation-canvas" id="previewAnnotationCanvas" width="1280" height="720" aria-hidden="true"></canvas>
-              <div class="controller-preview-annotation-text" id="previewAnnotationText" aria-live="polite"></div>
+      <section class="controller-mode-view controller-control-view" id="controllerControlView" data-controller-mode-view="control" role="tabpanel" aria-labelledby="controllerControlTab">
+        <div class="controller-console-layout">
+          <section class="controller-console-preview" aria-label="Presentation output console">
+            <aside class="controller-preview-panel" id="controllerPreviewPanel" aria-label="Live output preview and controls">
+              <div class="controller-preview-bar">
+                <div class="controller-preview-summary"><span class="label">Live output preview</span><strong id="previewTitle" aria-live="polite">Screen ready</strong></div>
+                <div class="controller-preview-window-actions">
+                  <button type="button" id="previewFullscreen" aria-label="Open preview in fullscreen" title="Open preview in fullscreen"><span aria-hidden="true">⛶</span><span data-preview-fullscreen-label>Fullscreen</span></button>
+                  <button type="button" id="previewMinimize" aria-label="Minimize preview" aria-expanded="true" title="Minimize preview"><span aria-hidden="true" data-preview-minimize-icon>—</span><span data-preview-minimize-label>Minimize</span></button>
+                </div>
+              </div>
+              <div class="controller-preview-body">
+                <div class="controller-preview-stage" id="previewStage">
+                  <div class="controller-preview-visual" id="controllerPreviewVisual">
+                    <canvas id="controllerPreviewCanvas" width="1280" height="720" aria-label="Current slide preview"></canvas>
+                    <div class="controller-preview-media" id="controllerPreviewMedia"></div>
+                    <span class="controller-preview-placeholder" id="controllerPreviewPlaceholder">Waiting for a selection</span>
+                    <canvas class="controller-preview-annotation-canvas" id="previewAnnotationCanvas" width="1280" height="720" aria-hidden="true"></canvas>
+                    <div class="controller-preview-annotation-text" id="previewAnnotationText" aria-live="polite"></div>
+                  </div>
+                  <div class="controller-fullscreen-tools" id="previewFullscreenTools" role="toolbar" aria-label="Fullscreen presentation tools">
+                    <button type="button" data-preview-tool="highlighter" class="is-active" aria-label="Highlighter" title="Highlighter" aria-pressed="true">✎</button>
+                    <button type="button" data-preview-tool="text" aria-label="Add text" title="Add text" aria-pressed="false">T</button>
+                    <button type="button" data-preview-tool="pan" aria-label="Grab and move" title="Grab and move" aria-pressed="false">✥</button>
+                    <label class="controller-preview-tool-field" title="Highlighter color"><span>Color</span><input id="previewToolColor" type="color" value="#ffdc2d" aria-label="Highlighter color"></label>
+                    <label class="controller-preview-tool-field" title="Highlighter size"><span>Size</span><select id="previewToolSize" aria-label="Highlighter size"><option value="6">Fine</option><option value="12">Medium</option><option value="18" selected>Wide</option><option value="30">Extra wide</option></select></label>
+                    <button type="button" id="previewZoomOut" aria-label="Zoom out" title="Zoom out">−</button><span id="previewZoomValue" aria-live="polite">100%</span><button type="button" id="previewZoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+                    <button type="button" id="previewResetView" aria-label="Reset zoom to 100 percent" title="Reset zoom">1:1</button><button type="button" id="previewClearAnnotations" aria-label="Clear annotations" title="Clear annotations">⌫</button>
+                  </div>
+                  <form class="controller-preview-text-editor" id="previewTextEditor" hidden><label for="previewTextInput">Add text to the live screen</label><input id="previewTextInput" type="text" maxlength="180" autocomplete="off" placeholder="Type your text"><div><button type="button" id="previewTextCancel">Cancel</button><button type="submit" class="is-primary">Add text</button></div></form>
+                </div>
+              </div>
+            </aside>
+            <div class="controller-preview-controls controller-console-actions" aria-label="Live presentation controls">
+              <section class="controller-preview-control-group" aria-labelledby="playbackControlLabel"><span class="controller-preview-control-label" id="playbackControlLabel">Playback</span><div class="controller-preview-control-grid controller-preview-control-grid-three"><button type="button" id="pauseMedia"><strong>Pause / Play</strong><small>Toggle media</small></button><button type="button" id="replayMedia"><strong>Replay</strong><small>Restart item</small></button><button type="button" id="stopMedia" class="is-danger"><strong>Black Screen</strong><small>Clear output</small></button></div></section>
+              <section class="controller-preview-control-group" aria-labelledby="outputControlLabel"><span class="controller-preview-control-label" id="outputControlLabel">Presentation</span><div class="controller-preview-control-grid"><button type="button" id="openScreen"><strong>Open Screen</strong><small>Launch audience output</small></button><button type="button" id="teachMode"><strong>Teach Live</strong><small>Annotate and zoom</small></button></div></section>
             </div>
-            <div class="controller-fullscreen-tools" id="previewFullscreenTools" role="toolbar" aria-label="Fullscreen presentation tools">
-              <button type="button" data-preview-tool="highlighter" class="is-active" aria-label="Highlighter" title="Highlighter" aria-pressed="true">✎</button>
-              <button type="button" data-preview-tool="text" aria-label="Add text" title="Add text" aria-pressed="false">T</button>
-              <button type="button" data-preview-tool="pan" aria-label="Grab and move" title="Grab and move" aria-pressed="false">✥</button>
-              <label class="controller-preview-tool-field" title="Highlighter color"><span>Color</span><input id="previewToolColor" type="color" value="#ffdc2d" aria-label="Highlighter color"></label>
-              <label class="controller-preview-tool-field" title="Highlighter size"><span>Size</span><select id="previewToolSize" aria-label="Highlighter size"><option value="6">Fine</option><option value="12">Medium</option><option value="18" selected>Wide</option><option value="30">Extra wide</option></select></label>
-              <button type="button" id="previewZoomOut" aria-label="Zoom out" title="Zoom out">−</button>
-              <span id="previewZoomValue" aria-live="polite">100%</span>
-              <button type="button" id="previewZoomIn" aria-label="Zoom in" title="Zoom in">+</button>
-              <button type="button" id="previewResetView" aria-label="Reset zoom to 100 percent" title="Reset zoom">1:1</button>
-              <button type="button" id="previewClearAnnotations" aria-label="Clear annotations" title="Clear annotations">⌫</button>
+          </section>
+
+          <aside class="controller-library" aria-label="Presentation content controls">
+            <header class="controller-library-header"><div><p class="eyebrow">Direct control</p><h2>Content Library</h2></div><span id="libraryPanelTitle">Slides</span></header>
+            <nav class="controller-library-tabs" aria-label="Content type" role="tablist">
+              <button type="button" role="tab" aria-controls="controllerSlidesPanel" data-controller-library-target="slides" class="is-active" aria-selected="true"><span>Slides</span><small id="slideTargetCount">0 items</small></button>
+              <button type="button" role="tab" aria-controls="controllerImagesPanel" data-controller-library-target="images" aria-selected="false"><span>Images</span><small id="imageTargetCount">0 items</small></button>
+              <button type="button" role="tab" aria-controls="controllerVideosPanel" data-controller-library-target="videos" aria-selected="false"><span>Videos</span><small id="videoTargetCount">0 items</small></button>
+              <button type="button" role="tab" aria-controls="controllerAudioPanel" data-controller-library-target="audio" aria-selected="false"><span>Audio</span><small id="audioTargetCount">0 items</small></button>
+              <button type="button" role="tab" aria-controls="controllerLoopsPanel" data-controller-library-target="loops" aria-selected="false"><span>Loops</span><small>Sequence media</small></button>
+            </nav>
+            <div class="controller-library-panels">
+              <section class="controller-library-panel" id="controllerSlidesPanel" role="tabpanel" data-controller-library-panel="slides" aria-label="Slides"><div class="controller-target-grid" id="slideTargets"></div></section>
+              <section class="controller-library-panel" id="controllerImagesPanel" role="tabpanel" data-controller-library-panel="images" aria-label="Images" hidden><div class="controller-target-grid" id="imageTargets"></div></section>
+              <section class="controller-library-panel" id="controllerVideosPanel" role="tabpanel" data-controller-library-panel="videos" aria-label="Videos" hidden><div class="controller-target-grid" id="videoTargets"></div></section>
+              <section class="controller-library-panel" id="controllerAudioPanel" role="tabpanel" data-controller-library-panel="audio" aria-label="Music and audio" hidden><div class="controller-target-grid" id="audioTargets"></div></section>
+              <section class="controller-library-panel controller-loop-section" id="controllerLoopsPanel" role="tabpanel" data-controller-library-panel="loops" aria-label="Media loops" hidden>
+                <div class="controller-section-heading"><div><p class="eyebrow">Loop control</p><h2>Selected media loops</h2></div><span id="loopStatus">No loop running</span></div>
+                <div class="controller-loop-grid"><article><div><strong>Images</strong><button type="button" id="startImageLoop">Start</button></div><div class="controller-loop-list" id="imageLoopList"></div></article><article><div><strong>Videos</strong><button type="button" id="startVideoLoop">Start</button></div><div class="controller-loop-list" id="videoLoopList"></div></article></div>
+                <label class="controller-duration">Change item every <select id="loopInterval"><option value="5000">5 seconds</option><option value="8000" selected>8 seconds</option><option value="12000">12 seconds</option><option value="20000">20 seconds</option></select></label><button class="button button-soft" type="button" id="stopLoop">Stop Loop</button>
+              </section>
             </div>
-            <form class="controller-preview-text-editor" id="previewTextEditor" hidden>
-              <label for="previewTextInput">Add text to the live screen</label>
-              <input id="previewTextInput" type="text" maxlength="180" autocomplete="off" placeholder="Type your text">
-              <div>
-                <button type="button" id="previewTextCancel">Cancel</button>
-                <button type="submit" class="is-primary">Add text</button>
-              </div>
-            </form>
-          </div>
-          <div class="controller-preview-controls" aria-label="Live presentation controls">
-            <section class="controller-preview-control-group" aria-labelledby="playbackControlLabel">
-              <span class="controller-preview-control-label" id="playbackControlLabel">Playback</span>
-              <div class="controller-preview-control-grid controller-preview-control-grid-three">
-                <button type="button" id="pauseMedia"><strong>Pause / Play</strong><small>Toggle media</small></button>
-                <button type="button" id="replayMedia"><strong>Replay</strong><small>Restart item</small></button>
-                <button type="button" id="stopMedia" class="is-danger"><strong>Black Screen</strong><small>Clear output</small></button>
-              </div>
-            </section>
-            <section class="controller-preview-control-group" aria-labelledby="outputControlLabel">
-              <span class="controller-preview-control-label" id="outputControlLabel">Presentation</span>
-              <div class="controller-preview-control-grid">
-                <button type="button" id="openScreen"><strong>Open Screen</strong><small>Launch audience output</small></button>
-                <button type="button" id="teachMode"><strong>Teach Live</strong><small>Annotate and zoom</small></button>
-              </div>
-            </section>
-          </div>
+          </aside>
         </div>
-      </aside>
+      </section>
+
+      <section class="controller-mode-view interactive-workspace live-media-panel" id="controllerLiveMedia" data-controller-mode-view="interactive" role="tabpanel" aria-labelledby="controllerInteractiveTab" hidden>
+        <header class="interactive-meeting-header"><div><p class="eyebrow">Interactive session</p><h2 id="controllerLiveMediaTitle">Audience room</h2></div><div><span data-live-count>0 connected</span><button class="interactive-header-button" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button" data-controller-mode-target="control" type="button">Back to Control</button></div></header>
+        <div class="interactive-session-body">
+          <div class="interactive-main-stage">
+            <div class="interactive-empty-state"><span>◉</span><strong>Your interactive room is ready</strong><small>Join audio and video to start meeting your audience.</small></div>
+            <section class="live-screen-share interactive-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
+            <div class="live-media-tiles interactive-participant-grid" data-live-tiles aria-live="polite"></div>
+          </div>
+          <aside class="interactive-session-sidebar">
+            <div class="interactive-session-card"><p class="eyebrow">Session setup</p><h3>Join the room</h3><div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div><p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p></div>
+            <div class="interactive-session-card interactive-guide"><p class="eyebrow">Presenter tools</p><h3>Run the conversation</h3><ul><li>Use Share Screen for demonstrations.</li><li>Active speakers receive a yellow border.</li><li>Your meeting stays connected when returning to Control.</li></ul></div>
+          </aside>
+        </div>
+        <div class="live-media-actions interactive-control-dock" aria-label="Meeting controls"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
+      </section>
     </main>
     <section class="teaching-remote" id="teachingRemote" hidden>
       <div class="teaching-toolbar">
@@ -141,7 +127,7 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260911-livekit-media-token"></script>
-    <script src="/js/controller.js?v=20260912-inline-preview-text"></script>
+    <script src="/js/live-media.js?v=20260912-controller-console"></script>
+    <script src="/js/controller.js?v=20260912-controller-console"></script>
   </body>
 </html>
