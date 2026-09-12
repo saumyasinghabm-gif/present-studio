@@ -538,7 +538,9 @@
       titleInput.value = presentation.title || "Untitled presentation";
       const slide = activeSlide();
       notesEditor.value = slide?.canvas?.notes || "";
-      byId("notesSlideTitle").textContent = `Slide ${currentSlideIndex + 1} · ${slide?.title || "Untitled slide"}`;
+      const slideLabel = `Slide ${currentSlideIndex + 1}`;
+      const slideTitle = String(slide?.title || "").trim();
+      byId("notesSlideTitle").textContent = slideTitle && slideTitle.toLowerCase() !== slideLabel.toLowerCase() ? `${slideLabel} · ${slideTitle}` : slideLabel;
     }
     renderSlideAudio();
     queueHistoryState();
