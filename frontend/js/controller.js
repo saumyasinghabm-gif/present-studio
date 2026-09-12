@@ -27,13 +27,6 @@
   function setConnectionStatus(label) { $("#connectionStatus").innerHTML = `<i></i> ${label}`; }
   function teachPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
 
-  function syncPreviewDockSpace() {
-    const panel = $("#controllerPreviewPanel");
-    if (!panel) return;
-    const space = Math.ceil(panel.getBoundingClientRect().height + 32);
-    document.documentElement.style.setProperty("--controller-preview-space", `${space}px`);
-  }
-
   function setPreviewDockMinimized(minimized) {
     const panel = $("#controllerPreviewPanel");
     const button = $("#previewMinimize");
@@ -44,7 +37,6 @@
     button.querySelector("[data-preview-minimize-icon]").textContent = minimized ? "□" : "—";
     button.querySelector("[data-preview-minimize-label]").textContent = minimized ? "Restore" : "Minimize";
     try { sessionStorage.setItem("presentStudio.controllerPreviewMinimized", minimized ? "1" : "0"); } catch {}
-    requestAnimationFrame(syncPreviewDockSpace);
   }
 
   function bindPreviewDock() {
@@ -67,9 +59,6 @@
       fullscreenButton.querySelector("[aria-hidden='true']").textContent = active ? "×" : "⛶";
       fullscreenButton.querySelector("[data-preview-fullscreen-label]").textContent = active ? "Exit" : "Fullscreen";
     });
-    window.addEventListener("resize", syncPreviewDockSpace);
-    if (window.ResizeObserver) new ResizeObserver(syncPreviewDockSpace).observe(panel);
-    requestAnimationFrame(syncPreviewDockSpace);
   }
 
   function slideById(id) { return presentation?.slides?.find(slide => slide.id === id); }

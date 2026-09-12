@@ -875,7 +875,7 @@ button.present-back {
 
 /* Dedicated live controller */
 .live-controller-page { min-height: 100vh; background: #f5f1e8; color: var(--ink); }
-.live-controller-shell { width: min(1440px, 100%); margin: 0 auto; padding: 28px 28px calc(28px + var(--controller-preview-space, 290px)); display: grid; gap: 22px; }
+.live-controller-shell { width: min(1440px, 100%); margin: 0 auto; padding: 28px; display: grid; gap: 22px; }
 .live-controller-header, .controller-section-heading, .live-controller-actions, .controller-loop-grid article > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .live-controller-header h1 { margin: 4px 0 0; font-size: clamp(1.7rem, 3vw, 2.7rem); }
 .live-controller-actions { flex-wrap: wrap; }
@@ -902,14 +902,14 @@ button.present-back {
 .controller-loop-list { display: grid; gap: 7px; margin-top: 12px; max-height: 250px; overflow: auto; }
 .controller-loop-list label { display: flex; gap: 8px; align-items: center; padding: 7px; border-top: 1px solid #eee9df; font-size: .78rem; }
 .controller-duration { display: flex; gap: 10px; align-items: center; margin: 15px 0; font-family: var(--mono); font-size: .72rem; }
-.controller-preview-panel { position: fixed; z-index: 45; bottom: 16px; left: 50%; width: min(1060px, calc(100vw - 32px)); overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: #171713; color: #fff; box-shadow: 0 20px 65px rgba(0,0,0,.34); transform: translateX(-50%); }
+.controller-preview-panel { position: static; width: 100%; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: #171713; color: #fff; box-shadow: 0 12px 36px rgba(0,0,0,.18); }
 .controller-preview-panel strong, .controller-preview-panel span { display: block; }
 .controller-preview-bar { min-height: 52px; display: flex; align-items: center; gap: 18px; padding: 9px 10px 9px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
 .controller-preview-summary { min-width: 0; margin-right: auto; }
 .controller-preview-summary .label { color: #ffd54a; font: 800 .61rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
 .controller-preview-summary strong { margin-top: 3px; overflow: hidden; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
 .controller-preview-window-actions { display: flex; gap: 6px; }
-.controller-preview-window-actions button { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; padding: 6px 10px; background: #292925; color: #fff; font: 750 .68rem var(--sans); }
+.controller-preview-window-actions button { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; padding: 6px 10px; background: #292925; color: #fff; font: 800 .68rem var(--mono); letter-spacing: .05em; text-transform: uppercase; }
 .controller-preview-window-actions button:hover, .controller-preview-window-actions button:focus-visible { border-color: #ffd54a; color: #ffd54a; }
 .controller-preview-body { display: grid; grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); gap: 14px; align-items: stretch; padding: 12px; }
 .controller-preview-stage { position: relative; width: 100%; aspect-ratio: 16/9; min-height: 0; display: grid; place-items: center; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 5px; background: #000; color: #888; }
@@ -929,9 +929,9 @@ button.present-back {
 .controller-preview-control-grid button:hover, .controller-preview-control-grid button:focus-visible { border-color: #ffd54a; background: #34342e; transform: translateY(-1px); }
 .controller-preview-control-grid button.is-danger:hover, .controller-preview-control-grid button.is-danger:focus-visible { border-color: #ff7c72; color: #ffb0aa; }
 .controller-preview-control-grid strong, .controller-preview-control-grid small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.controller-preview-control-grid strong { font-size: .74rem; }
-.controller-preview-control-grid small { margin-top: 3px; color: #aaa9a2; font-size: .61rem; }
-.controller-preview-panel.is-minimized { right: 16px; left: auto; width: min(560px, calc(100vw - 32px)); transform: none; }
+.controller-preview-control-grid strong { font: 800 .68rem var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.controller-preview-control-grid small { margin-top: 4px; color: #aaa9a2; font: 400 .68rem var(--sans); }
+.controller-preview-panel.is-minimized { width: 100%; }
 .controller-preview-panel.is-minimized .controller-preview-bar { border-bottom: 0; }
 .controller-preview-panel.is-minimized .controller-preview-body { display: none; }
 .controller-preview-stage:fullscreen { width: 100vw; max-width: none; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0; background: #000; }
@@ -984,13 +984,13 @@ button.present-back {
 .live-output-stage.output-enter { animation: output-enter 800ms cubic-bezier(.2,.75,.2,1) both; }
 @keyframes output-enter { from { opacity: 0; transform: scale(1.025); filter: blur(8px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
 @media (max-width: 760px) {
-  .live-controller-shell { padding: 14px 14px calc(14px + var(--controller-preview-space, 440px)); }
+  .live-controller-shell { padding: 14px; }
   .live-controller-header { align-items: flex-start; flex-direction: column; }
   .controller-loop-grid { grid-template-columns: 1fr; }
-  .controller-preview-panel { bottom: 10px; width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
-  .controller-preview-body { grid-template-columns: 1fr; max-height: calc(100vh - 72px); overflow-y: auto; }
+  .controller-preview-panel { width: 100%; }
+  .controller-preview-body { grid-template-columns: 1fr; }
   .controller-preview-stage { width: min(100%, 420px); justify-self: center; }
-  .controller-preview-panel.is-minimized { right: 10px; width: calc(100vw - 20px); }
+  .controller-preview-panel.is-minimized { width: 100%; }
   .controller-preview-bar { gap: 9px; padding-left: 12px; }
   .controller-preview-bar .controller-connection { display: none; }
   .controller-preview-window-actions button { width: 34px; justify-content: center; padding: 6px; }
