@@ -25,6 +25,7 @@
   let previewTextPoint = null;
   let previewToolbarTimer;
   let liveMediaSession = null;
+  let notesReturnFocus = null;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -309,6 +310,48 @@
 
   function slideById(id) { return presentation?.slides?.find(slide => slide.id === id); }
 
+  function openSlideNotes(slideId, trigger = null) {
+    const slide = slideById(slideId);
+    if (!slide) return toast("Slide notes are unavailable.");
+    const modal = $("#controllerNotesModal");
+    const notes = String(slide.canvas?.notes || "").trim();
+    notesReturnFocus = trigger || document.activeElement;
+    modal.dataset.slideId = slide.id;
+    $("#controllerNotesTitle").textContent = slide.title || "Untitled slide";
+    $("#controllerNotesContent").textContent = notes || "No presenter notes have been added for this slide yet.";
+    $("#controllerNotesContent").classList.toggle("is-empty", !notes);
+    modal.hidden = false;
+    $("#controllerNotesContent").focus();
+  }
+
+  function closeSlideNotes() {
+    const modal = $("#controllerNotesModal");
+    if (modal.hidden) return;
+    modal.hidden = true;
+    delete modal.dataset.slideId;
+    notesReturnFocus?.focus?.();
+    notesReturnFocus = null;
+  }
+
+  function updatePreviewNotesButton(target) {
+    const button = $("#previewNotes");
+    const isSlide = target?.kind === "slide" && Boolean(slideById(target.slideId));
+    button.disabled = !isSlide;
+    button.dataset.slideId = isSlide ? target.slideId : "";
+    button.title = isSlide ? `Open notes for ${target.title}` : "Select a slide to view notes";
+  }
+
+  function bindControllerNotes() {
+    $("#previewNotes").addEventListener("click", event => {
+      const slideId = event.currentTarget.dataset.slideId;
+      if (slideId) openSlideNotes(slideId, event.currentTarget);
+    });
+    $("#closeControllerNotes").addEventListener("click", closeSlideNotes);
+    $("#doneControllerNotes").addEventListener("click", closeSlideNotes);
+    $("#controllerNotesModal").addEventListener("click", event => { if (event.target === event.currentTarget) closeSlideNotes(); });
+    document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#controllerNotesModal").hidden) closeSlideNotes(); });
+  }
+
   function stopPreviewMedia() {
     $("#controllerPreviewMedia").querySelectorAll("video,audio").forEach(media => media.pause?.());
     $("#controllerPreviewMedia").replaceChildren();
@@ -397,6 +440,7 @@
   }
 
   function renderTargetPreview(target) {
+    updatePreviewNotesButton(target);
     if (!target) return showPreviewPlaceholder("Waiting for a selection");
     $("#previewTitle").textContent = target.title;
     if (target.kind === "slide") return renderSlidePreview(slideById(target.slideId));
@@ -450,7 +494,10 @@
         : target.src
           ? (target.kind === "video" ? `<video src="${escapeHtml(target.src)}" muted preload="metadata"></video><span class="controller-play-mark">▶</span>` : `<img src="${escapeHtml(target.src)}" alt="">`)
           : `<span class="controller-slide-number">${escapeHtml(target.title.slice(0, 2))}</span>`;
-    return `<button class="controller-target-card" type="button" data-target-id="${escapeHtml(target.id)}"><span class="controller-target-thumb">${visual}</span><span><strong>${escapeHtml(target.title)}</strong><small>${target.kind}${target.audioSrc ? " · linked audio" : ""}</small></span></button>`;
+    const card = `<button class="controller-target-card" type="button" data-target-id="${escapeHtml(target.id)}"><span class="controller-target-thumb">${visual}</span><span><strong>${escapeHtml(target.title)}</strong><small>${target.kind}${target.audioSrc ? " · linked audio" : ""}</small></span></button>`;
+    if (target.kind !== "slide") return card;
+    const hasNotes = Boolean(String(slideById(target.slideId)?.canvas?.notes || "").trim());
+    return `<article class="controller-target-item">${card}<button class="controller-target-notes${hasNotes ? " has-notes" : ""}" type="button" data-controller-slide-notes="${escapeHtml(target.slideId)}" aria-label="Open notes for ${escapeHtml(target.title)}"><span aria-hidden="true">▤</span><strong>Notes</strong><small>${hasNotes ? "View speaker notes" : "No notes added"}</small></button></article>`;
   }
 
   function renderSlideTargetPreviews() {
@@ -500,6 +547,7 @@
 
   function bindTargetCards() {
     document.querySelectorAll("[data-target-id]").forEach(button => button.addEventListener("click", () => selectTarget(targets.find(target => target.id === button.dataset.targetId))));
+    document.querySelectorAll("[data-controller-slide-notes]").forEach(button => button.addEventListener("click", () => openSlideNotes(button.dataset.controllerSlideNotes, button)));
   }
 
   function renderControllerTargets() {
@@ -681,6 +729,7 @@
 
   bindControllerConsole();
   bindPreviewDock();
+  bindControllerNotes();
 
   try {
     if (!window.fabric) throw new Error("The slide preview library could not be loaded.");

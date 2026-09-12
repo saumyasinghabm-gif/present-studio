@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260912-controller-console">
+    <link rel="stylesheet" href="/css/styles.css?v=20260912-slide-notes">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -27,6 +27,7 @@
               <div class="controller-preview-bar">
                 <div class="controller-preview-summary"><span class="label">Live output preview</span><strong id="previewTitle" aria-live="polite">Screen ready</strong></div>
                 <div class="controller-preview-window-actions">
+                  <button type="button" id="previewNotes" aria-label="Open notes for the current slide" title="Open slide notes" disabled><span aria-hidden="true">▤</span><span>Notes</span></button>
                   <button type="button" id="previewFullscreen" aria-label="Open preview in fullscreen" title="Open preview in fullscreen"><span aria-hidden="true">⛶</span><span data-preview-fullscreen-label>Fullscreen</span></button>
                   <button type="button" id="previewMinimize" aria-label="Minimize preview" aria-expanded="true" title="Minimize preview"><span aria-hidden="true" data-preview-minimize-icon>—</span><span data-preview-minimize-label>Minimize</span></button>
                 </div>
@@ -99,6 +100,14 @@
         <div class="live-media-actions interactive-control-dock" aria-label="Meeting controls"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
       </section>
     </main>
+    <div class="controller-notes-backdrop" id="controllerNotesModal" hidden>
+      <section class="controller-notes-dialog" role="dialog" aria-modal="true" aria-labelledby="controllerNotesTitle" aria-describedby="controllerNotesDescription">
+        <header><div><p class="eyebrow">Presenter notes</p><h2 id="controllerNotesTitle">Slide notes</h2></div><button type="button" id="closeControllerNotes" aria-label="Close slide notes" title="Close">×</button></header>
+        <p id="controllerNotesDescription">Private guidance for this slide. These notes are not shown on the audience screen.</p>
+        <div class="controller-notes-content" id="controllerNotesContent" tabindex="0"></div>
+        <footer><button type="button" id="doneControllerNotes">Done</button></footer>
+      </section>
+    </div>
     <section class="teaching-remote" id="teachingRemote" hidden>
       <div class="teaching-toolbar">
         <button type="button" data-teach-tool="pen" class="is-active">Pen</button>
@@ -128,6 +137,6 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260912-controller-console"></script>
-    <script src="/js/controller.js?v=20260912-controller-console"></script>
+    <script src="/js/controller.js?v=20260912-slide-notes"></script>
   </body>
 </html>

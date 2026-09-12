@@ -268,7 +268,9 @@
       const legacyObjects = fabricObjects.length ? [] : (data.elements || []);
       const objects = fabricObjects.map((object) => thumbnailObjectMarkup(object)).join("") + legacyObjects.map((object) => thumbnailObjectMarkup(object, true)).join("");
       const audioBadge = data.audio?.src ? '<span class="slide-thumbnail-audio" title="Slide has music"><i class="bi bi-music-note-beamed"></i></span>' : "";
-      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}. Drag to reorder."><span class="slide-drag-handle" title="Drag to reorder" aria-hidden="true"><i class="bi bi-grip-horizontal"></i></span><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
+      const hasNotes = Boolean(String(data.notes || "").trim());
+      const notesLabel = `${hasNotes ? "Edit" : "Add"} notes for slide ${index + 1}`;
+      return `<article class="slide-item ${index === currentSlideIndex ? "active" : ""}" data-index="${index}" data-slide-number="${index + 1}" tabindex="0" role="button" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" aria-label="Open slide ${index + 1}: ${esc(slide.title || "Untitled slide")}. Drag to reorder."><span class="slide-drag-handle" title="Drag to reorder" aria-hidden="true"><i class="bi bi-grip-horizontal"></i></span><div class="slide-thumbnail-stage" style="--slide-thumbnail-bg:${safeColor(data.background, "#fffefb")}">${objects}${audioBadge}</div><div class="slide-actions-inline"><button type="button" class="slide-notes-button${hasNotes ? " has-notes" : ""}" data-slide-notes="${index}" aria-label="${notesLabel}" title="${notesLabel}"><i class="bi bi-journal-text"></i></button><button type="button" data-slide-duplicate="${index}" aria-label="Duplicate slide ${index + 1}" title="Duplicate"><i class="bi bi-copy"></i></button><button class="is-danger" type="button" data-slide-delete="${index}" aria-label="Delete slide ${index + 1}" title="Delete"><i class="bi bi-trash"></i></button></div></article>`;
     }).join("");
     all("#slideList .slide-item").forEach((item) => {
       const open = () => { capture(); currentSlideIndex = Number(item.dataset.index); render(); };
@@ -311,6 +313,14 @@
     });
     all("[data-slide-duplicate]").forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation(); capture(); currentSlideIndex = Number(button.dataset.slideDuplicate); duplicateSlide();
+    }));
+    all("[data-slide-notes]").forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      capture();
+      currentSlideIndex = Number(button.dataset.slideNotes);
+      render();
+      notesTray.hidden = false;
+      notesEditor.focus();
     }));
     all("[data-slide-delete]").forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation(); currentSlideIndex = Number(button.dataset.slideDelete); deleteSlide();
@@ -528,6 +538,7 @@
       titleInput.value = presentation.title || "Untitled presentation";
       const slide = activeSlide();
       notesEditor.value = slide?.canvas?.notes || "";
+      byId("notesSlideTitle").textContent = `Slide ${currentSlideIndex + 1} · ${slide?.title || "Untitled slide"}`;
     }
     renderSlideAudio();
     queueHistoryState();
@@ -1873,6 +1884,14 @@
   notesEditor.addEventListener("input", () => {
     if (!presentation) return;
     ensure(activeSlide()).canvas.notes = notesEditor.value;
+    const button = document.querySelector(`[data-slide-notes="${currentSlideIndex}"]`);
+    const hasNotes = Boolean(notesEditor.value.trim());
+    if (button) {
+      const label = `${hasNotes ? "Edit" : "Add"} notes for slide ${currentSlideIndex + 1}`;
+      button.classList.toggle("has-notes", hasNotes);
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    }
     schedule();
   });
 

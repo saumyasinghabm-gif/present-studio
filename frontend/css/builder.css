@@ -524,6 +524,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   box-shadow: 0 -5px 16px rgba(0,0,0,.05);
 }
 .notes-tray-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.notes-tray-header > div { min-width: 0; display: flex; align-items: baseline; gap: 9px; }
+.notes-tray-header span { max-width: 380px; overflow: hidden; color: #6b6b66; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .notes-tray-header button { width: 30px; height: 30px; }
 .notes-tray textarea { width: 100%; height: 100px; resize: none; border: 1px solid #ccc; border-radius: 4px; padding: 10px; }
 
@@ -810,6 +812,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .slide-item.active .slide-actions-inline { opacity: 1; }
 .builder-page .slide-actions-inline button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid rgba(0,0,0,.18); border-radius: 3px; color: #111; background: rgba(255,255,255,.92); font-size: 12px; }
 .builder-page .slide-actions-inline button:hover { color: #fff; background: #111; }
+.builder-page .slide-actions-inline .slide-notes-button.has-notes { border-color: #c69700; color: #171713; background: var(--yellow-strong); }
+.builder-page .slide-actions-inline .slide-notes-button.has-notes:hover { color: #fff; background: #111; }
 .builder-page .slide-actions-inline button.is-danger:hover { background: #b9382f; }
 .builder-page .fabric-video-overlay { position: absolute; z-index: 2; object-fit: contain; background: #111; pointer-events: none; }
 .builder-page .fabric-video-control { position: absolute; z-index: 5; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(255,255,255,.65); border-radius: 50%; color: #fff; background: rgba(0,0,0,.72); box-shadow: 0 3px 12px rgba(0,0,0,.28); }

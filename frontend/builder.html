@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260911-format-alignment">
+  <link rel="stylesheet" href="/css/builder.css?v=20260912-slide-notes">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -156,8 +156,8 @@
     </main>
 
     <section class="notes-tray" id="notesTray" aria-label="Speaker notes" hidden>
-      <div class="notes-tray-header"><strong>Speaker notes</strong><button type="button" aria-label="Close notes" id="closeNotes"><i class="bi bi-x-lg"></i></button></div>
-      <textarea id="notesEditor" placeholder="Add notes for this slide..."></textarea>
+      <div class="notes-tray-header"><div><strong>Speaker notes</strong><span id="notesSlideTitle">Current slide</span></div><button type="button" aria-label="Close notes" id="closeNotes"><i class="bi bi-x-lg"></i></button></div>
+      <textarea id="notesEditor" maxlength="12000" placeholder="Add private presenter notes for this slide..."></textarea>
     </section>
 
     <footer class="status-bar">
@@ -220,6 +220,6 @@
   <script src="/js/api.js"></script>
   <script src="/js/editor.js?v=20260910-live-media"></script>
   <script src="/js/builder-ribbon.js?v=20260910-compact-ribbon"></script>
-  <script src="/js/builder-ui.js?v=20260911-audio-once"></script>
+  <script src="/js/builder-ui.js?v=20260912-slide-notes"></script>
 </body>
 </html>
