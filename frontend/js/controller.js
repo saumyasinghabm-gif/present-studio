@@ -158,6 +158,12 @@
         }
       }
     });
+    document.addEventListener("keydown", event => {
+      if (document.fullscreenElement !== stage || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      if (event.target.closest?.("input, select, textarea, [contenteditable='true']") || !$("#previewTextEditor").hidden) return;
+      selectAdjacentSlide(event.key === "ArrowRight" ? 1 : -1);
+      event.preventDefault();
+    });
     bindFullscreenPreviewTools();
   }
 
@@ -334,22 +340,26 @@
   function openSlideNotes(slideId, trigger = null) {
     const slide = slideById(slideId);
     if (!slide) return toast("Slide notes are unavailable.");
-    const modal = $("#controllerNotesModal");
+    const panel = $("#controllerNotesPanel");
     const notes = String(slide.canvas?.notes || "").trim();
-    notesReturnFocus = trigger || document.activeElement;
-    modal.dataset.slideId = slide.id;
+    notesReturnFocus = trigger || notesReturnFocus || document.activeElement;
+    panel.dataset.slideId = slide.id;
     $("#controllerNotesTitle").textContent = slide.title || "Untitled slide";
     $("#controllerNotesContent").textContent = notes || "No presenter notes have been added for this slide yet.";
     $("#controllerNotesContent").classList.toggle("is-empty", !notes);
-    modal.hidden = false;
-    $("#controllerNotesContent").focus();
+    panel.hidden = false;
+    panel.closest(".controller-preview-body")?.classList.add("has-inline-notes");
+    $("#previewNotes").setAttribute("aria-pressed", "true");
+    if (trigger) $("#controllerNotesContent").focus();
   }
 
   function closeSlideNotes() {
-    const modal = $("#controllerNotesModal");
-    if (modal.hidden) return;
-    modal.hidden = true;
-    delete modal.dataset.slideId;
+    const panel = $("#controllerNotesPanel");
+    if (panel.hidden) return;
+    panel.hidden = true;
+    delete panel.dataset.slideId;
+    panel.closest(".controller-preview-body")?.classList.remove("has-inline-notes");
+    $("#previewNotes").setAttribute("aria-pressed", "false");
     notesReturnFocus?.focus?.();
     notesReturnFocus = null;
   }
@@ -360,17 +370,20 @@
     button.disabled = !isSlide;
     button.dataset.slideId = isSlide ? target.slideId : "";
     button.title = isSlide ? `Open notes for ${target.title}` : "Select a slide to view notes";
+    const panel = $("#controllerNotesPanel");
+    if (!panel.hidden && isSlide && panel.dataset.slideId !== target.slideId) openSlideNotes(target.slideId);
+    if (!panel.hidden && !isSlide) closeSlideNotes();
   }
 
   function bindControllerNotes() {
     $("#previewNotes").addEventListener("click", event => {
       const slideId = event.currentTarget.dataset.slideId;
-      if (slideId) openSlideNotes(slideId, event.currentTarget);
+      if (!slideId) return;
+      if (!$("#controllerNotesPanel").hidden) closeSlideNotes();
+      else openSlideNotes(slideId, event.currentTarget);
     });
     $("#closeControllerNotes").addEventListener("click", closeSlideNotes);
-    $("#doneControllerNotes").addEventListener("click", closeSlideNotes);
-    $("#controllerNotesModal").addEventListener("click", event => { if (event.target === event.currentTarget) closeSlideNotes(); });
-    document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#controllerNotesModal").hidden) closeSlideNotes(); });
+    document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("#controllerNotesPanel").hidden) closeSlideNotes(); });
   }
 
   function previewMediaElements() { return [...$("#controllerPreviewMedia").querySelectorAll("video,audio")]; }
@@ -698,6 +711,15 @@
     document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
     renderTeachingBackdrop(target);
     renderTargetPreview(target);
+  }
+
+  function selectAdjacentSlide(direction) {
+    const slides = targets.filter(target => target.kind === "slide");
+    if (!slides.length) return;
+    const active = targets.find(target => target.id === activeTargetId);
+    const currentIndex = Math.max(0, slides.findIndex(target => target.id === activeTargetId || target.slideId === active?.slideId));
+    const nextIndex = (currentIndex + direction + slides.length) % slides.length;
+    selectTarget(slides[nextIndex]);
   }
 
   function selectedLoopTargets(kind, selector) {

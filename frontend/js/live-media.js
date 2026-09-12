@@ -14,6 +14,8 @@
     const enableAudioButton = root.querySelector("[data-live-enable-audio]");
     const leaveButton = root.querySelector("[data-live-leave]");
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
+    const panelRestore = root.querySelector("[data-live-panel-restore]");
+    const meetingSidebar = root.querySelector(".audience-meeting-sidebar");
     const fullscreenButton = root.querySelector("[data-live-fullscreen]");
     const status = root.querySelector("[data-live-status]");
     const count = root.querySelector("[data-live-count]");
@@ -185,6 +187,7 @@
 
     function syncButtons(connected) {
       root.classList.toggle("is-connected", connected);
+      if (!connected) setAudienceSidebarHidden(false);
       joinButton.hidden = connected;
       nameInput.disabled = connected || joining;
       microphoneButton.disabled = !connected;
@@ -197,6 +200,22 @@
       microphoneButton.setAttribute("aria-pressed", String(microphoneEnabled));
       cameraButton.setAttribute("aria-pressed", String(cameraEnabled));
       screenShareButton.setAttribute("aria-pressed", String(screenShareEnabled));
+    }
+
+    function setAudienceSidebarHidden(hidden, moveFocus = false) {
+      const collapsed = Boolean(hidden && root.classList.contains("is-connected"));
+      root.classList.toggle("is-sidebar-hidden", collapsed);
+      if (meetingSidebar) {
+        meetingSidebar.inert = collapsed;
+        meetingSidebar.setAttribute("aria-hidden", String(collapsed));
+      }
+      if (panelToggle) {
+        panelToggle.setAttribute("aria-expanded", String(!collapsed));
+        panelToggle.setAttribute("aria-label", collapsed ? "Show participants and meeting controls" : "Hide participants and meeting controls");
+        panelToggle.title = panelToggle.getAttribute("aria-label");
+      }
+      if (panelRestore) panelRestore.hidden = !collapsed;
+      if (moveFocus) (collapsed ? panelRestore : panelToggle)?.focus();
     }
 
     function syncAudioRecovery() {
@@ -330,12 +349,8 @@
       fullscreenButton.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
       fullscreenButton.title = active ? "Exit fullscreen" : "Enter fullscreen";
     });
-    panelToggle?.addEventListener("click", () => {
-      const collapsed = root.classList.toggle("is-collapsed");
-      panelToggle.textContent = collapsed ? "+" : "−";
-      panelToggle.setAttribute("aria-expanded", String(!collapsed));
-      panelToggle.setAttribute("aria-label", collapsed ? "Show meeting controls" : "Hide meeting controls");
-    });
+    panelToggle?.addEventListener("click", () => setAudienceSidebarHidden(true, true));
+    panelRestore?.addEventListener("click", () => setAudienceSidebarHidden(false, true));
     window.addEventListener("pagehide", leaveOnPageHide, { once: true });
     syncButtons(false);
     return { join, leave };
