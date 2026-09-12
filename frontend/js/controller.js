@@ -27,6 +27,7 @@
   let liveMediaSession = null;
   let notesReturnFocus = null;
   let previewAudioEnabled = true;
+  let previewAudioManuallyMuted = false;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -70,6 +71,21 @@
     if (remember) try { sessionStorage.setItem("presentStudio.controllerLibraryPanel", nextPanel); } catch {}
   }
 
+  function setControllerSidebarHidden(hidden, remember = true, moveFocus = false) {
+    const layout = $("#controllerConsoleLayout");
+    const sidebar = $("#controllerConsoleSidebar");
+    const hideButton = $("#controllerSidebarHide");
+    const restoreButton = $("#controllerSidebarRestore");
+    layout.classList.toggle("is-sidebar-hidden", hidden);
+    sidebar.setAttribute("aria-hidden", String(hidden));
+    sidebar.inert = hidden;
+    restoreButton.hidden = !hidden;
+    restoreButton.setAttribute("aria-expanded", String(!hidden));
+    hideButton.setAttribute("aria-expanded", String(!hidden));
+    if (remember) try { sessionStorage.setItem("presentStudio.controllerSidebarHidden", hidden ? "1" : "0"); } catch {}
+    if (moveFocus) (hidden ? restoreButton : hideButton).focus();
+  }
+
   function bindControllerConsole() {
     document.querySelectorAll("[data-controller-mode-target]").forEach(button => button.addEventListener("click", () => setControllerMode(button.dataset.controllerModeTarget)));
     document.querySelectorAll("[data-controller-library-target]").forEach(button => button.addEventListener("click", () => setLibraryPanel(button.dataset.controllerLibraryTarget)));
@@ -84,10 +100,15 @@
     }));
     let initialMode = "control";
     let initialPanel = "slides";
+    let sidebarHidden = false;
     try {
       initialMode = sessionStorage.getItem("presentStudio.controllerMode") || initialMode;
       initialPanel = sessionStorage.getItem("presentStudio.controllerLibraryPanel") || initialPanel;
+      sidebarHidden = sessionStorage.getItem("presentStudio.controllerSidebarHidden") === "1";
     } catch {}
+    $("#controllerSidebarHide").addEventListener("click", () => setControllerSidebarHidden(true, true, true));
+    $("#controllerSidebarRestore").addEventListener("click", () => setControllerSidebarHidden(false, true, true));
+    setControllerSidebarHidden(sidebarHidden, false);
     setLibraryPanel(initialPanel, false);
     setControllerMode(initialMode, false);
   }
@@ -96,7 +117,6 @@
     const panel = $("#controllerPreviewPanel");
     const button = $("#previewMinimize");
     panel.classList.toggle("is-minimized", minimized);
-    panel.closest(".controller-console-preview")?.classList.toggle("is-preview-minimized", minimized);
     panel.closest(".controller-console-preview")?.classList.toggle("is-preview-minimized", minimized);
     button.setAttribute("aria-expanded", String(!minimized));
     button.setAttribute("aria-label", minimized ? "Restore preview dock" : "Minimize preview dock");
@@ -428,12 +448,14 @@
     const media = primaryPreviewMedia();
     const action = requestedAction === "toggle" ? (media && !media.paused && !media.ended ? "pause" : "play") : requestedAction;
     const position = action === "replay" ? 0 : Number(media?.currentTime) || 0;
+    if (["play", "replay"].includes(action) && !previewAudioManuallyMuted) previewAudioEnabled = true;
     controlPreviewMedia(action, position);
     socket?.emit("media_control", { ...credentials(), action, position });
   }
 
   function togglePreviewAudio() {
     previewAudioEnabled = !previewAudioEnabled;
+    previewAudioManuallyMuted = !previewAudioEnabled;
     previewMediaElements().forEach(media => {
       media.muted = !previewAudioEnabled;
     });
@@ -839,7 +861,12 @@
       shareToken,
       displayName: api.getCachedSession()?.name || "Presenter",
       fullscreenTarget: $("#controllerLiveMedia"),
-      fullscreenOnJoin: false
+      fullscreenOnJoin: false,
+      presentationSource: {
+        canvas: $("#controllerPreviewCanvas"),
+        media: $("#controllerPreviewMedia"),
+        label: () => $("#previewTitle").textContent || presentation.title
+      }
     });
     previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;

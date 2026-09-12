@@ -21,12 +21,19 @@
     const screenShareViewer = root.querySelector("[data-live-screen-share-viewer]");
     const screenShareMedia = root.querySelector("[data-live-screen-share-media]");
     const screenShareLabel = root.querySelector("[data-live-screen-share-label]");
+    const presentationViewer = root.querySelector("[data-live-presentation-viewer]");
+    const presentationCanvas = root.querySelector("[data-live-presentation-canvas]");
+    const presentationMedia = root.querySelector("[data-live-presentation-media]");
+    const presentationLabel = root.querySelector("[data-live-presentation-label]");
+    const presentationEmpty = root.querySelector("[data-live-presentation-empty]");
+    const presentationSource = options.presentationSource || {};
     let room = null;
     let microphoneEnabled = false;
     let cameraEnabled = false;
     let screenShareEnabled = false;
     let joining = false;
     let mountedTracks = [];
+    let presentationMediaSignature = "";
 
     nameInput.value = options.displayName || "";
     const setStatus = (message, kind = "") => { status.textContent = message; status.dataset.kind = kind; };
@@ -34,6 +41,62 @@
     function publications(participant) { return participant?.trackPublications ? [...participant.trackPublications.values()] : []; }
     function isSource(publication, name) { return publication?.source === livekit.Track?.Source?.[name]; }
     function detachMountedTracks() { mountedTracks.forEach(track => track.detach?.()); mountedTracks = []; }
+
+    function presentationSourceLabel() {
+      const value = typeof presentationSource.label === "function" ? presentationSource.label() : presentationSource.label;
+      return String(value || "Current presentation output");
+    }
+
+    function presentationVisualNodes() {
+      return presentationSource.media ? [...presentationSource.media.children].filter(node => ["IMG", "VIDEO"].includes(node.tagName)) : [];
+    }
+
+    function syncPresentationMedia(sourceNodes) {
+      if (!presentationMedia) return;
+      const signature = sourceNodes.map(node => [node.tagName, node.currentSrc || node.src || "", node.className || "", node.getAttribute("style") || ""].join("|" )).join("::");
+      if (signature !== presentationMediaSignature) {
+        presentationMediaSignature = signature;
+        const clones = sourceNodes.map(source => {
+          const clone = source.cloneNode(false);
+          clone.removeAttribute("controls");
+          if (clone.tagName === "VIDEO") Object.assign(clone, { autoplay: true, muted: true, playsInline: true });
+          return clone;
+        });
+        presentationMedia.replaceChildren(...clones);
+      }
+      const clones = [...presentationMedia.children];
+      sourceNodes.forEach((source, index) => {
+        const clone = clones[index];
+        if (!clone || source.tagName !== "VIDEO") return;
+        const sourceTime = Number(source.currentTime);
+        if (Number.isFinite(sourceTime) && Math.abs(Number(clone.currentTime) - sourceTime) > .65) {
+          try { clone.currentTime = sourceTime; } catch {}
+        }
+        if (source.paused || source.ended) clone.pause?.();
+        else clone.play?.().catch(() => {});
+      });
+    }
+
+    function syncPresentationViewer() {
+      if (!presentationViewer || !presentationCanvas) return;
+      const sourceCanvas = presentationSource.canvas;
+      const sourceNodes = presentationVisualNodes();
+      const canvasVisible = Boolean(sourceCanvas && !sourceCanvas.hidden);
+      const context = presentationCanvas.getContext("2d");
+      context.clearRect(0, 0, presentationCanvas.width, presentationCanvas.height);
+      if (canvasVisible) {
+        try { context.drawImage(sourceCanvas, 0, 0, presentationCanvas.width, presentationCanvas.height); } catch {}
+      }
+      syncPresentationMedia(sourceNodes);
+      const hasVisual = canvasVisible || sourceNodes.length > 0;
+      presentationViewer.classList.toggle("is-empty", !hasVisual);
+      presentationCanvas.hidden = !canvasVisible;
+      presentationEmpty.hidden = hasVisual;
+      if (presentationLabel) presentationLabel.textContent = presentationSourceLabel();
+    }
+
+    const presentationSyncTimer = presentationViewer ? window.setInterval(syncPresentationViewer, 300) : 0;
+    syncPresentationViewer();
 
     function syncLocalPublishedState() {
       microphoneEnabled = Boolean(room?.localParticipant?.isMicrophoneEnabled);
@@ -241,6 +304,7 @@
     }
 
     function leaveOnPageHide() {
+      if (presentationSyncTimer) window.clearInterval(presentationSyncTimer);
       const activeRoom = room;
       if (!activeRoom) return;
       activeRoom.localParticipant.setMicrophoneEnabled(false).catch(() => {});
