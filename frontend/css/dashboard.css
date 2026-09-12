@@ -72,3 +72,37 @@ html { height: auto; min-height: 100%; overflow-x: auto; overflow-y: auto; }
     display: flex;
     align-items: center;
 }
+
+@media (max-width: 760px) {
+  html { overflow-x: hidden; }
+  .dashboard-page { min-width: 0; overflow-x: hidden; }
+  .dashboard-header { min-height: 58px; padding: 7px 10px; }
+  .dashboard-header .header-left { min-width: 0; gap: 5px; }
+  .dashboard-header .header-divider,
+  .dashboard-header .header-right .header-icon,
+  .dashboard-header .header-share { display: none; }
+  .dashboard-navigation { min-width: 0; overflow-x: auto; }
+  .dashboard-nav-link { flex: 0 0 auto; min-height: 42px; padding: 0 10px; font-size: 12px; }
+  .dashboard-header .account-button { flex: 0 0 auto; }
+  .dashboard-main { width: calc(100% - 24px); padding: 24px 0 38px; }
+  .dashboard-welcome { align-items: stretch; flex-direction: column; gap: 18px; }
+  .dashboard-welcome h1 { font-size: clamp(28px, 9vw, 36px); }
+  .dashboard-subtitle { font-size: 14px; }
+  .dashboard-new-button { width: 100%; min-width: 0; }
+  .dashboard-stats { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
+  .stat-card { min-height: 84px; gap: 15px; padding: 14px 16px; }
+  .stat-icon { flex-basis: 44px; width: 44px; height: 44px; font-size: 21px; }
+  .stat-card strong { font-size: 28px; }
+  .dashboard-recent { margin-top: 27px; }
+  .recent-heading-row { align-items: stretch; flex-direction: column; gap: 13px; }
+  .recent-controls { display: grid; grid-template-columns: minmax(0, 1fr) 42px 42px; width: 100%; }
+  .dashboard-search, .dashboard-search input { width: 100%; min-width: 0; }
+  .presentation-grid, .presentation-grid.is-list { grid-template-columns: 1fr; gap: 14px; }
+  .presentation-grid.is-list .presentation-card { display: block; }
+  .presentation-grid.is-list .presentation-preview { min-height: 190px; border-right: 0; border-bottom: 1px solid #d7d7d4; }
+  .presentation-preview { min-height: 190px; }
+  .dashboard-cta { grid-template-columns: 1fr; gap: 16px; margin-top: 28px; padding: 20px; }
+  .dashboard-cta h2 { font-size: 21px; }
+  .dashboard-cta .cta-primary { width: 100%; }
+  .dashboard-page .toast { right: 12px; bottom: 12px; left: 12px; text-align: center; }
+}

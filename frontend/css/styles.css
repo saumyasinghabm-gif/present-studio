@@ -1237,3 +1237,70 @@ button.present-back {
   .interactive-meeting-header { align-items: flex-start; flex-direction: column; }
   .interactive-workspace .interactive-control-dock button { min-width: 118px; }
 }
+
+/* Audience meeting: becomes a dedicated workspace after joining. */
+.present-live-media .live-media-heading > div:first-child { min-width: 0; margin-right: auto; }
+.present-live-media .live-media-heading > div:first-child strong,
+.present-live-media .live-media-heading > div:first-child small { display: block; }
+.present-live-media .live-media-heading > div:first-child small { margin-bottom: 2px; color: #ffd54a; font: 800 .58rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.present-live-media .audience-meeting-stage { min-width: 0; min-height: 0; }
+
+.audience-live-view .present-live-media.is-connected {
+  z-index: 100;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  display: grid;
+  grid-template-rows: 64px minmax(0, 1fr) 70px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: #10100e;
+  box-shadow: none;
+}
+.audience-live-view .present-live-media.is-connected:fullscreen { width: 100vw; height: 100vh; }
+.audience-live-view .present-live-media.is-connected .live-media-heading { min-width: 0; min-height: 64px; gap: 12px; margin: 0; padding: 10px 18px; border-bottom: 1px solid rgba(255,255,255,.12); background: #191916; }
+.audience-live-view .present-live-media.is-connected .live-media-heading > div:first-child strong { font-size: .95rem; }
+.audience-live-view .present-live-media.is-connected .live-media-heading [data-live-count] { flex: 0 0 auto; color: #bbb9b2; }
+.audience-live-view .present-live-media.is-connected [data-live-panel-toggle] { display: none; }
+.audience-live-view .present-live-media.is-connected > .live-media-join,
+.audience-live-view .present-live-media.is-connected > .live-media-status { display: none; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-stage { position: relative; display: grid; min-height: 0; overflow: hidden; background: radial-gradient(circle at 50% 38%, #292924 0, #151512 48%, #090908 100%); }
+.audience-live-view .present-live-media.is-connected .live-media-tiles { height: 100%; min-height: 0; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); grid-auto-rows: minmax(170px, 1fr); align-content: center; gap: 12px; overflow-y: auto; margin: 0; padding: 18px; }
+.audience-live-view .present-live-media.is-connected .live-media-tile { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; border-radius: 10px; background: #20201c; box-shadow: 0 8px 26px rgba(0,0,0,.2); }
+.audience-live-view .present-live-media.is-connected .live-media-tile-video { min-height: 0; height: 100%; }
+.audience-live-view .present-live-media.is-connected .live-media-avatar { width: 68px; height: 68px; font-size: 1.8rem; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-controls { min-width: 0; min-height: 70px; display: flex; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; overflow-x: auto; margin: 0; padding: 10px 16px; border-top: 1px solid rgba(255,255,255,.12); background: #191916; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-controls button { flex: 0 0 auto; min-width: 136px; min-height: 44px; border-color: #45453e; border-radius: 7px; background: #292925; color: #fff; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-controls button:hover:not(:disabled) { border-color: #ffd54a; background: #38352a; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-controls [aria-pressed="true"] { border-color: #d3aa0d; background: #ffd54a; color: #171713; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-controls [data-live-leave] { border-color: rgba(213,80,69,.58); color: #ffaaa3; }
+.audience-live-view .present-live-media.is-connected.has-screen-share .audience-meeting-stage { grid-template-rows: minmax(0, 1fr) 142px; }
+.audience-live-view .present-live-media.is-connected.has-screen-share .live-screen-share { grid-row: 1; min-height: 0; margin: 0; border: 0; border-radius: 0; }
+.audience-live-view .present-live-media.is-connected.has-screen-share .live-screen-share-media { height: calc(100% - 36px); grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); padding: 10px; }
+.audience-live-view .present-live-media.is-connected.has-screen-share .live-screen-share-media figure,
+.audience-live-view .present-live-media.is-connected.has-screen-share .live-screen-share-media video { width: 100%; height: 100% !important; object-fit: contain; }
+.audience-live-view .present-live-media.is-connected.has-screen-share .live-media-tiles { grid-row: 2; display: flex; align-items: stretch; gap: 9px; overflow-x: auto; overflow-y: hidden; padding: 9px; background: #11110f; }
+.audience-live-view .present-live-media.is-connected.has-screen-share .live-media-tile { flex: 0 0 210px; }
+
+@media (max-width: 680px) {
+  .audience-live-view .present-live-media.is-connected { grid-template-rows: 58px minmax(0, 1fr) auto; }
+  .audience-live-view .present-live-media.is-connected .live-media-heading { min-height: 58px; padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); }
+  .audience-live-view .present-live-media.is-connected .live-media-heading > div:first-child small { display: none; }
+  .audience-live-view .present-live-media.is-connected .live-media-heading [data-live-count] { font-size: .62rem; }
+  .audience-live-view .present-live-media.is-connected .live-media-tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); grid-auto-rows: minmax(125px, 1fr); gap: 8px; padding: 9px; }
+  .audience-live-view .present-live-media.is-connected .audience-meeting-controls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; min-height: 68px; padding: 8px max(6px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); }
+  .audience-live-view .present-live-media.is-connected .audience-meeting-controls button { min-width: 0; min-height: 48px; height: 100%; padding: 4px; font-size: .58rem; line-height: 1.15; white-space: normal; }
+  .audience-live-view .present-live-media.is-connected.has-screen-share .audience-meeting-stage { grid-template-rows: minmax(0, 1fr) 118px; }
+  .audience-live-view .present-live-media.is-connected.has-screen-share .live-media-tile { flex-basis: 160px; }
+}
+
+@media (max-width: 390px) {
+  .audience-live-view .present-live-media.is-connected .live-media-heading { gap: 7px; }
+  .audience-live-view .present-live-media.is-connected .live-media-heading > div:first-child strong { font-size: .8rem; }
+  .audience-live-view .present-live-media.is-connected .live-media-heading [data-live-count] { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .audience-live-view .present-live-media.is-connected .live-media-tiles { grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(118px, 1fr); }
+}

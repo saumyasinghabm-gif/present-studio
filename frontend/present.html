@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio - Present</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260910-screen-share">
+    <link rel="stylesheet" href="/css/styles.css?v=20260912-audience-meeting">
   </head>
   <body class="present-page">
     <div class="present-loading" id="presentLoading">
@@ -33,13 +33,15 @@
         <button id="nextSlide" type="button">Next ›</button>
         <button id="endLive" type="button" class="end-live-button">End live</button>
       </nav>
-      <aside class="live-media-panel present-live-media" id="presentLiveMedia" aria-label="Live participants">
-        <div class="live-media-heading"><strong>Live participants</strong><span data-live-count>0 connected</span><button class="live-media-toggle" data-live-fullscreen type="button" aria-label="Enter fullscreen" title="Enter fullscreen">⛶</button><button class="live-media-toggle" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide meeting controls" title="Hide meeting controls">−</button></div>
+      <aside class="live-media-panel present-live-media" id="presentLiveMedia" aria-label="Interactive audience meeting">
+        <div class="live-media-heading"><div><small>Interactive session</small><strong>Audience room</strong></div><span data-live-count>0 connected</span><button class="live-media-toggle" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="live-media-toggle" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide meeting controls" title="Hide meeting controls">−</button></div>
         <div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Guest"></label><button data-live-join type="button">Join audio/video</button></div>
         <p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p>
-        <div class="live-media-actions"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
-        <section class="live-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
-        <div class="live-media-tiles" data-live-tiles aria-live="polite"></div>
+        <div class="audience-meeting-stage">
+          <section class="live-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
+          <div class="live-media-tiles" data-live-tiles aria-live="polite"></div>
+        </div>
+        <div class="live-media-actions audience-meeting-controls"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
       </aside>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
@@ -48,6 +50,6 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260911-livekit-media-token"></script>
-    <script src="/js/present.js?v=20260911-audio-once"></script>
+    <script src="/js/present.js?v=20260912-audience-meeting"></script>
   </body>
 </html>
