@@ -262,16 +262,23 @@
       if (joining || room) return;
       if (!livekit?.Room) { setStatus("Audio/video library could not be loaded", "error"); return; }
       if (!api?.getLiveMediaToken) { setStatus("This page is out of date. Refresh it and try again.", "error"); return; }
+      // Run presentation audio playback directly inside the user gesture. This
+      // also unlocks the document's audio playback before the async room join.
+      try { options.onEnableAudio?.(); } catch {}
       if (options.fullscreenTarget && options.fullscreenOnJoin !== false && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
       joining = true; joinButton.disabled = true; nameInput.disabled = true; setStatus("Joining…");
       try {
+        room = new livekit.Room({ adaptiveStream: true, dynacast: true });
+        bindRoomEvents();
+        // startAudio must run while the click's user activation is still valid.
+        // Keep the promise and check it again after the asynchronous room connect.
+        let audioUnlock = Promise.resolve(false);
+        try { audioUnlock = Promise.resolve(room.startAudio()).then(() => true).catch(() => false); } catch {}
         const credentials = await api.getLiveMediaToken(options.presentationId, {
           displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.screenAccessCode || undefined
         });
-        room = new livekit.Room({ adaptiveStream: true, dynacast: true });
-        bindRoomEvents();
         await room.connect(credentials.url, credentials.token, { autoSubscribe: true });
-        const audioReady = await enableAudio(false);
+        const audioReady = await audioUnlock || await enableAudio(false);
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
       } catch (error) {

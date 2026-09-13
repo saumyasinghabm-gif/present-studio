@@ -6,7 +6,7 @@ const authToken = localStorage.getItem("presentStudio.accessToken") || "";
 const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 let canvas;
 const $ = (id) => document.getElementById(id);
-let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = true; let screenAccessCode = ""; let liveMediaSession = null;
+let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let screenAccessCode = ""; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
 function activeSlide() { return presentation.slides[currentSlideIndex]; }
 function playback() { return presentation.slides[0]?.canvas?.presentation_playback || { mode: "manual", interval_ms: 5000, slide_ids: [], media_mode: "all", media_cycle: "all", media_interval_ms: 5000, loop_videos: true }; }
 function setVisible(element, visible) { if (element) element.hidden = !visible; }
@@ -24,14 +24,182 @@ function mediaItems(slide) {
   }));
   return [...legacy, ...fabricVideos].filter(item => config.media_mode === "all" || config.media_mode === `${item.type}s`);
 }
-function renderMedia(slide) { const layer = $("presentMedia"); layer.replaceChildren(); const config = playback(); let items = mediaItems(slide); if (items.length > 1 && config.media_cycle === "sequential") items = [items[mediaIndex % items.length]]; if (items.length > 1 && config.media_cycle === "random") items = [items[Math.floor(Math.random() * items.length)]]; items.forEach(item => { const node = document.createElement(item.type === "video" ? "video" : "img"); node.src = item.src; node.className = `slide-media ${item.full_bleed ? "full-bleed" : ""}`; node.style.left = `${item.x || 0}%`; node.style.top = `${item.y || 0}%`; node.style.width = `${item.width || 100}%`; node.style.height = `${item.height || 100}%`; node.style.objectFit = item.fit || "contain"; if (item.type === "video") Object.assign(node, { autoplay: true, muted: item.muted === true || !audioEnabled, loop: config.loop_videos !== false && item.loop !== false, playsInline: true, controls: permission === "presenter" && !item.full_bleed }); layer.append(node); if (item.type === "video") node.play().catch(() => { node.muted = true; audioEnabled = false; syncAudioButton(); node.play().catch(() => {}); }); }); const track=slide.canvas?.audio; if(track?.src){const audio=document.createElement("audio");audio.src=track.src;audio.dataset.slideMusic="true";Object.assign(audio,{autoplay:true,muted:!audioEnabled,loop:false,playsInline:true});layer.append(audio);audio.play().catch(()=>{audio.muted=true;audioEnabled=false;syncAudioButton();audio.play().catch(()=>{})})} const hasAudio=items.some(item=>item.type==="video")||Boolean(track?.src); setVisible($("audioToggle"),hasAudio); syncAudioButton(); }
+function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || liveState?.muted); }
+function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; if (permission === "presenter") audioEnabled = false; syncAudioButton(); media.play().catch(() => {}); }); }
+function renderMedia(slide) {
+  const layer = $("presentMedia");
+  layer.replaceChildren();
+  const config = playback();
+  let items = mediaItems(slide);
+  if (items.length > 1 && config.media_cycle === "sequential") items = [items[mediaIndex % items.length]];
+  if (items.length > 1 && config.media_cycle === "random") items = [items[Math.floor(Math.random() * items.length)]];
+  items.forEach(item => {
+    const node = document.createElement(item.type === "video" ? "video" : "img");
+    node.src = item.src;
+    node.className = `slide-media ${item.full_bleed ? "full-bleed" : ""}`;
+    node.style.left = `${item.x || 0}%`;
+    node.style.top = `${item.y || 0}%`;
+    node.style.width = `${item.width || 100}%`;
+    node.style.height = `${item.height || 100}%`;
+    node.style.objectFit = item.fit || "contain";
+    if (item.type === "video") {
+      node.dataset.authoredMuted = String(item.muted === true);
+      Object.assign(node, { autoplay: true, muted: mediaMuted(item.muted === true), loop: config.loop_videos !== false && item.loop !== false, playsInline: true, controls: permission === "presenter" && !item.full_bleed });
+    }
+    layer.append(node);
+    if (item.type === "video") startPresentationMedia(node);
+  });
+  const track = slide.canvas?.audio;
+  if (track?.src) {
+    const audio = document.createElement("audio");
+    audio.src = track.src;
+    audio.dataset.slideMusic = "true";
+    Object.assign(audio, { autoplay: true, muted: mediaMuted(), loop: Boolean(track.loop), playsInline: true });
+    layer.append(audio);
+    startPresentationMedia(audio);
+  }
+  const hasAudio = items.some(item => item.type === "video") || Boolean(track?.src);
+  setVisible($("audioToggle"), hasAudio);
+  syncAudioButton();
+}
 function syncAudioButton() { const button = $("audioToggle"); if (!button) return; button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio"; button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio"); }
-function toggleAudio() { audioEnabled = !audioEnabled; const button = $("audioToggle"); button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio"; button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio"); document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = !audioEnabled; if (audioEnabled) media.play().catch(() => { audioEnabled = false; media.muted = true; button.textContent = "🔇 Enable audio"; }); }); }
+function enablePresentationAudio() {
+  audioEnabled = true;
+  document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => {
+    media.muted = mediaMuted(media.dataset.authoredMuted === "true");
+    media.play().catch(() => {});
+  });
+  syncAudioButton();
+}
+function toggleAudio() { audioEnabled = !audioEnabled; document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = mediaMuted(media.dataset.authoredMuted === "true"); if (audioEnabled) media.play().catch(() => { audioEnabled = false; media.muted = true; syncAudioButton(); }); }); syncAudioButton(); }
 function animate(slide) { const frame = $("presentFrame"); const config = slide.canvas?.transition || { type: "fade", duration_ms: 500 }; frame.style.setProperty("--transition-duration", `${config.duration_ms || 500}ms`); frame.classList.remove("transition-fade", "transition-fade-left", "transition-fade-right", "transition-fade-up", "transition-fade-down", "transition-slide", "transition-push-left", "transition-push-right", "transition-push-up", "transition-push-down", "transition-morph", "transition-morph-left", "transition-morph-right", "transition-morph-up", "transition-morph-down", "transition-zoom"); if (config.type && config.type !== "none") requestAnimationFrame(() => { frame.classList.add(`transition-${config.type}`); setTimeout(() => frame.classList.remove(`transition-${config.type}`), config.duration_ms || 500); }); }
 function animateObjects() { canvas.getObjects().forEach(object => { const type = object.animation || "none"; if (type === "none") return; const duration = Math.max(100, Math.min(5000, Number(object.animationDuration) || 600)); const delay = Math.max(0, Math.min(5000, Number(object.animationDelay) || 0)); const finalState = { opacity: object.opacity ?? 1, left: object.left || 0, top: object.top || 0, scaleX: object.scaleX || 1, scaleY: object.scaleY || 1 }; const startState = {}; if (type === "fade") Object.assign(startState, { opacity: 0 }); if (type === "zoom") Object.assign(startState, { opacity: 0, scaleX: finalState.scaleX * 0.78, scaleY: finalState.scaleY * 0.78 }); if (type === "fly") Object.assign(startState, { opacity: 0, left: finalState.left - 140 }); if (type === "rise") Object.assign(startState, { opacity: 0, top: finalState.top + 90 }); if (type === "wipe") Object.assign(startState, { opacity: 0, scaleX: finalState.scaleX * 0.08 }); object.set(startState); setTimeout(() => { Object.entries(finalState).forEach(([key, value]) => object.animate(key, value, { duration, easing: fabric.util.ease.easeOutCubic, onChange: canvas.renderAll.bind(canvas), onComplete: () => { object.set(finalState); canvas.requestRenderAll(); } })); }, delay); }); }
-function setMediaCycle() { clearInterval(mediaTimer); mediaIndex = 0; const config = playback(); if (["sequential", "random"].includes(config.media_cycle) && mediaItems(activeSlide()).length > 1) mediaTimer = setInterval(() => { mediaIndex += 1; renderMedia(activeSlide()); }, Number(config.media_interval_ms) || 5000); }
+function setMediaCycle() { clearInterval(mediaTimer); mediaIndex = 0; if (permission !== "presenter") return; const config = playback(); if (["sequential", "random"].includes(config.media_cycle) && mediaItems(activeSlide()).length > 1) mediaTimer = setInterval(() => { mediaIndex += 1; renderMedia(activeSlide()); }, Number(config.media_interval_ms) || 5000); }
 function sanitizeFabricScene(scene) { (scene.objects || []).forEach(object => { if (object.textBaseline === "alphabetical") object.textBaseline = "alphabetic"; }); return scene; }
-function renderSlide() { const slide = activeSlide(); const data = slide.canvas || {}; canvas.clear(); canvas.backgroundColor = data.background || "#f8f4ea"; const done = () => { canvas.getObjects().forEach(object => { object.selectable = false; object.evented = false; }); canvas.renderAll(); animateObjects(); }; if (data.fabric) { const scene = sanitizeFabricScene(JSON.parse(JSON.stringify(data.fabric))); scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video"); canvas.loadFromJSON(scene, done); } else { (data.elements || []).filter(item => item.type === "text").forEach(item => canvas.add(textObject(item))); done(); } renderMedia(slide); setMediaCycle(); animate(slide); $("slideCounter").textContent = `${currentSlideIndex + 1} / ${presentation.slides.length}`; setStatus(`${presentation.title} · ${permission === "presenter" ? "Live presenter" : "Live audience"}`); }
+function renderSlide() {
+  const slide = activeSlide();
+  const data = slide.canvas || {};
+  $("presentFrame").dataset.slideId = slide.id;
+  $("presentCanvas").hidden = false;
+  $("presentFrame").dataset.kind = "slide";
+  $("presentFrame").dataset.mediaId = "";
+  currentOutputLabel = slide.title || presentation.title;
+  canvas.clear();
+  canvas.backgroundColor = data.background || "#f8f4ea";
+  const done = () => { canvas.getObjects().forEach(object => { object.selectable = false; object.evented = false; }); canvas.renderAll(); animateObjects(); };
+  if (data.fabric) {
+    const scene = sanitizeFabricScene(JSON.parse(JSON.stringify(data.fabric)));
+    scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
+    canvas.loadFromJSON(scene, done);
+  } else {
+    (data.elements || []).filter(item => item.type === "text").forEach(item => canvas.add(textObject(item)));
+    done();
+  }
+  renderMedia(slide);
+  setMediaCycle();
+  animate(slide);
+  $("slideCounter").textContent = `${currentSlideIndex + 1} / ${presentation.slides.length}`;
+  setStatus(`${presentation.title} · ${permission === "presenter" ? "Live presenter" : "Live audience"}`);
+}
+
+function fabricMediaById(slide, mediaId, kind) {
+  return (slide.canvas?.fabric?.objects || []).find((item, index) => item.mediaType === kind && String(item.id || index) === String(mediaId));
+}
+
+function renderDirectOutput(slide, state) {
+  clearInterval(mediaTimer);
+  const layer = $("presentMedia");
+  layer.replaceChildren();
+  canvas.clear();
+  $("presentCanvas").hidden = true;
+  $("presentFrame").dataset.kind = state.kind;
+  $("presentFrame").dataset.mediaId = state.mediaId || "";
+  const item = state.kind === "audio" ? slide.canvas?.audio : fabricMediaById(slide, state.mediaId, state.kind);
+  currentOutputLabel = item?.audioName || item?.name || `${slide.title || "Slide"} · ${state.kind}`;
+  if (state.kind === "audio" && item?.src) {
+    const audio = document.createElement("audio");
+    audio.src = item.src;
+    audio.dataset.slideMusic = "true";
+    Object.assign(audio, { autoplay: true, muted: mediaMuted(), loop: Boolean(item.loop), playsInline: true });
+    layer.append(audio);
+    startPresentationMedia(audio);
+  } else if (item?.src) {
+    const node = document.createElement(state.kind === "video" ? "video" : "img");
+    node.src = item.src;
+    node.className = "slide-media full-bleed";
+    Object.assign(node.style, { left: "0", top: "0", width: "100%", height: "100%", objectFit: item.fit || "contain" });
+    if (state.kind === "video") {
+      node.dataset.authoredMuted = String(item.muted === true);
+      Object.assign(node, { autoplay: true, muted: mediaMuted(item.muted === true), loop: item.loop !== false, playsInline: true });
+    }
+    layer.append(node);
+    if (state.kind === "video") startPresentationMedia(node);
+    if (state.kind === "image" && item.audioSrc) {
+      const audio = document.createElement("audio");
+      audio.src = item.audioSrc;
+      audio.hidden = true;
+      Object.assign(audio, { autoplay: true, muted: mediaMuted(), playsInline: true });
+      layer.append(audio);
+      startPresentationMedia(audio);
+    }
+  }
+  $("slideCounter").textContent = `${currentSlideIndex + 1} / ${presentation.slides.length}`;
+}
+
+function expectedMediaPosition(state) {
+  const position = Math.max(0, Number(state.position) || 0);
+  return state.playing && Number.isFinite(Number(state.serverTime)) ? position + Math.max(0, Date.now() - Number(state.serverTime)) / 1000 : position;
+}
+
+function syncMediaToState(media, state) {
+  const apply = () => {
+    const target = expectedMediaPosition(state);
+    const drift = target - (Number(media.currentTime) || 0);
+    media.muted = mediaMuted(media.dataset.authoredMuted === "true");
+    if (!state.playing) {
+      media.pause();
+      media.playbackRate = 1;
+      if (Math.abs(drift) > .08) try { media.currentTime = target; } catch {}
+      return;
+    }
+    if (Math.abs(drift) > .75) { try { media.currentTime = target; } catch {} media.playbackRate = 1; }
+    else if (Math.abs(drift) > .12) media.playbackRate = drift > 0 ? 1.04 : .96;
+    else media.playbackRate = 1;
+    media.play().catch(() => {});
+  };
+  if (media.readyState >= 1) return apply();
+  media._pendingPresentationState = state;
+  if (media.dataset.syncMetadataPending) return;
+  media.dataset.syncMetadataPending = "true";
+  media.addEventListener("loadedmetadata", () => { delete media.dataset.syncMetadataPending; syncMediaToState(media, media._pendingPresentationState || state); }, { once: true });
+}
+
+function applyPresentationState(rawState, forceRender = false) {
+  const state = { ...rawState, slideId: rawState?.slideId || rawState?.activeSlideId, kind: rawState?.kind || "slide" };
+  if (state.presentationId && state.presentationId !== presentation.id) return;
+  const found = presentation.slides.findIndex(slide => slide.id === state.slideId);
+  if (found < 0) return;
+  liveState = state;
+  currentSlideIndex = found;
+  const frame = $("presentFrame");
+  if (state.kind === "blank") {
+    clearInterval(mediaTimer);
+    $("presentMedia").replaceChildren();
+    canvas.clear();
+    $("presentCanvas").hidden = true;
+    frame.dataset.kind = "blank";
+    frame.dataset.mediaId = "";
+    currentOutputLabel = "Black screen";
+    return;
+  }
+  const changed = forceRender || frame.dataset.slideId !== state.slideId || (frame.dataset.kind || "slide") !== state.kind || String(frame.dataset.mediaId || "") !== String(state.mediaId || "");
+  frame.dataset.slideId = state.slideId;
+  if (changed) {
+    if (["image", "video", "audio"].includes(state.kind)) renderDirectOutput(activeSlide(), state);
+    else renderSlide();
+  }
+  document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => syncMediaToState(media, state));
+}
 function emitSlide() { socket?.emit("slide_changed", { presentationId: presentation.id, slideId: activeSlide().id, authToken, shareToken }); }
 function nextAutoplayIndex() { const config = playback(); if (config.mode === "random") return Math.floor(Math.random() * presentation.slides.length); if (config.mode === "selected") { const selected = presentation.slides.map((slide, index) => config.slide_ids.includes(slide.id) ? index : -1).filter(index => index >= 0); if (selected.length) return selected[(selected.indexOf(currentSlideIndex) + 1 + selected.length) % selected.length]; } return (currentSlideIndex + 1) % presentation.slides.length; }
 function go(delta) { if (permission !== "presenter") return; currentSlideIndex = delta === 1 && autoplayRunning ? nextAutoplayIndex() : (currentSlideIndex + delta + presentation.slides.length) % presentation.slides.length; renderSlide(); emitSlide(); }
@@ -44,8 +212,22 @@ async function endLive() {
   if (!authToken) return;
   try { await api.endLiveSession(presentation.id); } catch (error) { showError(error.message); }
 }
-function controlPresentationMedia(event = {}) { if (event.presentationId && event.presentationId !== presentation.id) return; document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { if (["play", "pause"].includes(event.action) && Number.isFinite(Number(event.position))) { try { if (Math.abs(media.currentTime - Number(event.position)) > .2) media.currentTime = Math.max(0, Number(event.position)); } catch {} } if (event.action === "play") media.play().catch(() => {}); if (event.action === "pause") media.pause(); if (event.action === "toggle") media.paused ? media.play().catch(() => {}) : media.pause(); if (event.action === "replay") { try { media.currentTime = 0; } catch {} media.play().catch(() => {}); } if (event.action === "stop") media.pause(); }); }
-function setupSocket() { if (!socket) return; const joinRoom=()=>socket.emit("join_presentation",{presentationId:presentation.id}); socket.on("connect",joinRoom); socket.on("active_slide_changed",event=>{const found=presentation.slides.findIndex(slide=>slide.id===event.slideId);if(found>=0){currentSlideIndex=found;renderSlide()}}); socket.on("presentation_media_changed",event=>{const found=presentation.slides.findIndex(slide=>slide.id===event.slideId);if(found>=0){currentSlideIndex=found;renderSlide()}}); socket.on("presentation_media_control",controlPresentationMedia); socket.on("presentation_updated",event=>{if(event.presentationId!==presentation.id||!event.presentation)return;const currentId=presentation.slides[currentSlideIndex]?.id;presentation=event.presentation;const found=presentation.slides.findIndex(slide=>slide.id===(event.activeSlideId||currentId));currentSlideIndex=found>=0?found:0;renderSlide();setAutoplay(autoplayRunning)}); socket.on("presentation_deleted",event=>{if(event.presentationId===presentation.id){setAutoplay(false);liveMediaSession?.leave();showError("This presentation has been deleted.")}}); socket.on("presenter_rejected",event=>showError(event.message||"Presenter permission required.")); socket.on("session_ended",()=>{setAutoplay(false);liveMediaSession?.leave();showError("This live session has ended.")}); if(socket.connected)joinRoom(); }
+function setupSocket() {
+  if (!socket) return;
+  const joinRoom = () => socket.emit("join_presentation", { presentationId: presentation.id });
+  socket.on("connect", joinRoom);
+  socket.on("presentation_state", applyPresentationState);
+  socket.on("presentation_updated", event => {
+    if (event.presentationId !== presentation.id || !event.presentation) return;
+    presentation = event.presentation;
+    applyPresentationState(event.liveState || liveState || { slideId: event.activeSlideId }, true);
+    setAutoplay(autoplayRunning);
+  });
+  socket.on("presentation_deleted", event => { if (event.presentationId === presentation.id) { setAutoplay(false); liveMediaSession?.leave(); showError("This presentation has been deleted."); } });
+  socket.on("presenter_rejected", event => showError(event.message || "Presenter permission required."));
+  socket.on("session_ended", () => { setAutoplay(false); liveMediaSession?.leave(); showError("This live session has ended."); });
+  if (socket.connected) joinRoom();
+}
 async function loadPresentationAccess() {
   if (!shareToken) return api.getPresentation(presentationId);
   const access = await api.getScreenAccessRequirements(presentationId, shareToken);
@@ -56,5 +238,38 @@ async function loadPresentationAccess() {
   if (!/^\d{4}$/.test(screenAccessCode)) throw new Error("Enter exactly four digits for the presentation access code.");
   return api.getScreenPresentation(presentationId, shareToken, screenAccessCode);
 }
-async function init() { if (!window.fabric) throw new Error("Fabric.js could not be loaded. Check the presentation's network access and reload."); canvas = new fabric.StaticCanvas("presentCanvas", { width: 1280, height: 720, selection: false }); const result = await loadPresentationAccess(); presentation = result.presentation; permission = result.permission || "viewer"; if (!presentation.slides.length) throw new Error("This presentation has no slides."); const live = await api.getLiveSession(presentation.id); const liveIndex = presentation.slides.findIndex(slide => slide.id === live.activeSlideId); if (liveIndex >= 0) currentSlideIndex = liveIndex; const presenter = permission === "presenter"; document.body.classList.toggle("audience-live-view", !presenter); setVisible($("presentControls"), presenter); $("presenterBadge").textContent = presenter ? "Presenter Mode" : "Audience View"; setVisible($("presenterBadge"), presenter); setVisible($("presentMeta"), presenter); $("previousSlide").onclick = () => go(-1); $("nextSlide").onclick = () => go(1); $("autoplayToggle").onclick = () => setAutoplay(!autoplayRunning); $("audioToggle").onclick = toggleAudio; $("endLive").onclick = endLive; document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "f" && presenter) $("fullscreenToggle").click(); if (event.key === "ArrowLeft") go(-1); if (event.key === "ArrowRight") go(1); }); $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen(); liveMediaSession = window.SnapKeyLiveMedia?.create({ root: $("presentLiveMedia"), presentationId, shareToken, screenAccessCode, displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false, presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => activeSlide()?.title || presentation.title } }); setVisible($("presentLoading"), false); setVisible($("presentStage"), true); renderSlide(); setAutoplay(playback().mode !== "manual"); setupSocket(); }
+async function init() {
+  if (!window.fabric) throw new Error("Fabric.js could not be loaded. Check the presentation's network access and reload.");
+  canvas = new fabric.StaticCanvas("presentCanvas", { width: 1280, height: 720, selection: false });
+  const result = await loadPresentationAccess();
+  presentation = result.presentation;
+  permission = result.permission || "viewer";
+  if (!presentation.slides.length) throw new Error("This presentation has no slides.");
+  const live = await api.getLiveSession(presentation.id);
+  const presenter = permission === "presenter";
+  audioEnabled = presenter;
+  document.body.classList.toggle("audience-live-view", !presenter);
+  setVisible($("presentControls"), presenter);
+  $("presenterBadge").textContent = presenter ? "Presenter Mode" : "Audience View";
+  setVisible($("presenterBadge"), presenter);
+  setVisible($("presentMeta"), presenter);
+  $("previousSlide").onclick = () => go(-1);
+  $("nextSlide").onclick = () => go(1);
+  $("autoplayToggle").onclick = () => setAutoplay(!autoplayRunning);
+  $("audioToggle").onclick = toggleAudio;
+  $("endLive").onclick = endLive;
+  document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "f" && presenter) $("fullscreenToggle").click(); if (event.key === "ArrowLeft") go(-1); if (event.key === "ArrowRight") go(1); });
+  $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen();
+  applyPresentationState(live, true);
+  liveMediaSession = window.SnapKeyLiveMedia?.create({
+    root: $("presentLiveMedia"), presentationId, shareToken, screenAccessCode,
+    displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
+    onEnableAudio: enablePresentationAudio,
+    presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => currentOutputLabel || activeSlide()?.title || presentation.title }
+  });
+  setVisible($("presentLoading"), false);
+  setVisible($("presentStage"), true);
+  setAutoplay(playback().mode !== "manual");
+  setupSocket();
+}
 init().catch(error => showError(error.message));

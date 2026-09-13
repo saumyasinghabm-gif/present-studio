@@ -28,6 +28,7 @@
   let notesReturnFocus = null;
   let previewAudioEnabled = true;
   let previewAudioManuallyMuted = false;
+  let audienceAudioMuted = false;
   let restoredMediaState = null;
   let outputBlanked = false;
 
@@ -408,8 +409,10 @@
     replayButton.disabled = !media;
     audioButton.disabled = !media;
     pauseButton.querySelector("strong").textContent = media && !media.paused && !media.ended ? "Pause" : "Play";
-    audioButton.querySelector("strong").textContent = previewAudioEnabled ? "Mute Audio" : "Enable Audio";
-    audioButton.querySelector("small").textContent = previewAudioEnabled ? "Audience and preview audio on" : "Audience and preview muted";
+    audioButton.querySelector("strong").textContent = audienceAudioMuted ? "Enable Audio" : "Mute Audio";
+    audioButton.querySelector("small").textContent = audienceAudioMuted
+      ? "Audience and preview muted"
+      : previewAudioEnabled ? "Audience and preview audio on" : "Audience audio on · preview muted";
     const timing = $("#previewMediaTiming");
     if (!media) timing.textContent = "No active media";
     else {
@@ -455,8 +458,9 @@
 
   function applyRestoredMediaState(state) {
     restoredMediaState = state;
-    previewAudioEnabled = !state?.muted;
-    previewAudioManuallyMuted = Boolean(state?.muted);
+    audienceAudioMuted = Boolean(state?.muted);
+    previewAudioEnabled = !audienceAudioMuted;
+    previewAudioManuallyMuted = audienceAudioMuted;
     const apply = media => {
       setPreviewMediaPosition(media, projectedMediaPosition(state));
       media.muted = !previewAudioEnabled;
@@ -482,7 +486,7 @@
       mediaId: outputBlanked ? null : (target.mediaId || null),
       position: media && media.readyState >= 1 ? Number(media.currentTime) || 0 : fallbackPosition,
       playing: !outputBlanked && (media && media.readyState >= 1 ? !media.paused && !media.ended : Boolean(restoredMediaState?.playing)),
-      muted: !previewAudioEnabled
+      muted: audienceAudioMuted
     };
   }
 
@@ -512,7 +516,7 @@
     restoredMediaState = {
       position,
       playing: ["play", "replay"].includes(action),
-      muted: !previewAudioEnabled,
+      muted: audienceAudioMuted,
       serverTime: Date.now()
     };
     controlPreviewMedia(action, position);
@@ -521,15 +525,16 @@
   }
 
   function togglePreviewAudio() {
-    previewAudioEnabled = !previewAudioEnabled;
-    previewAudioManuallyMuted = !previewAudioEnabled;
+    audienceAudioMuted = !audienceAudioMuted;
+    previewAudioEnabled = !audienceAudioMuted;
+    previewAudioManuallyMuted = audienceAudioMuted;
     previewMediaElements().forEach(media => {
       media.muted = !previewAudioEnabled;
     });
-    if (restoredMediaState) restoredMediaState = { ...restoredMediaState, muted: !previewAudioEnabled };
+    if (restoredMediaState) restoredMediaState = { ...restoredMediaState, muted: audienceAudioMuted };
     updatePreviewMediaState();
     emitControllerState();
-    socket?.emit("media_control", { ...credentials(), action: "set_audio", muted: !previewAudioEnabled, legacyOnly: true });
+    socket?.emit("media_control", { ...credentials(), action: "set_audio", muted: audienceAudioMuted, legacyOnly: true });
   }
 
   function stopPreviewMedia() {
@@ -780,7 +785,7 @@
     restoredMediaState = {
       position: 0,
       playing: Boolean(previewMediaElements().length),
-      muted: !previewAudioEnabled,
+      muted: audienceAudioMuted,
       serverTime: Date.now()
     };
     if (socket?.connected) setTimeout(emitControllerState, 0);
