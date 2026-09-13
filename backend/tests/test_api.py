@@ -4,7 +4,7 @@ from uuid import uuid4
 import jwt
 from app.database import SessionLocal
 from app.config import get_settings
-from app.main import fastapi_app
+from app.main import fastapi_app, share_link_repair_statements
 from app.models import Presentation, User
 from app.security import hash_password
 
@@ -179,6 +179,29 @@ def test_presenter_share_link_requires_screen_code():
             headers={"Authorization": f"Bearer {token}"},
         )
     assert response.status_code == 422
+
+
+def test_share_link_schema_repair_covers_legacy_runtime_columns():
+    statements = share_link_repair_statements(
+        "postgresql",
+        {"id", "presentation_id", "token", "permission"},
+    )
+
+    assert "ALTER TABLE share_links ADD COLUMN screen_access_code_hash VARCHAR(255)" in statements
+    assert "ALTER TABLE share_links ADD COLUMN is_active BOOLEAN DEFAULT TRUE NOT NULL" in statements
+    assert "ALTER TABLE share_links ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE" in statements
+    assert "ALTER TABLE share_links ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP" in statements
+
+
+def test_share_link_schema_repair_uses_sqlite_defaults():
+    statements = share_link_repair_statements(
+        "sqlite",
+        {"id", "presentation_id", "token", "permission", "created_at"},
+    )
+
+    assert "ALTER TABLE share_links ADD COLUMN is_active BOOLEAN DEFAULT 1 NOT NULL" in statements
+    assert "ALTER TABLE share_links ADD COLUMN expires_at DATETIME" in statements
+    assert not any("created_at" in statement for statement in statements)
 
 
 def test_screen_code_is_required_and_verified_for_protected_screen():

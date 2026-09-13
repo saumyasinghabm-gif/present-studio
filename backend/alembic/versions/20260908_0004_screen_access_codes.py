@@ -15,8 +15,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("share_links", sa.Column("screen_access_code_hash", sa.String(length=255), nullable=True))
+    bind = op.get_bind()
+    columns = {column["name"] for column in sa.inspect(bind).get_columns("share_links")}
+    if "screen_access_code_hash" not in columns:
+        op.add_column("share_links", sa.Column("screen_access_code_hash", sa.String(length=255), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("share_links", "screen_access_code_hash")
+    bind = op.get_bind()
+    columns = {column["name"] for column in sa.inspect(bind).get_columns("share_links")}
+    if "screen_access_code_hash" in columns:
+        op.drop_column("share_links", "screen_access_code_hash")

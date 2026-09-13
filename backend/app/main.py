@@ -62,9 +62,29 @@ def repair_share_link_schema() -> None:
     if "share_links" not in inspector.get_table_names():
         return
     share_columns = {column["name"] for column in inspector.get_columns("share_links")}
-    if "screen_access_code_hash" not in share_columns:
-        with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE share_links ADD COLUMN screen_access_code_hash VARCHAR(255)"))
+    statements = share_link_repair_statements(engine.dialect.name, share_columns)
+    if not statements:
+        return
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def share_link_repair_statements(dialect_name: str, columns: set[str]) -> list[str]:
+    """Return ALTER statements needed by older share_links tables."""
+    is_sqlite = dialect_name == "sqlite"
+    bool_default = "1" if is_sqlite else "TRUE"
+    timestamp_type = "DATETIME" if is_sqlite else "TIMESTAMP WITH TIME ZONE"
+    statements: list[str] = []
+    if "screen_access_code_hash" not in columns:
+        statements.append("ALTER TABLE share_links ADD COLUMN screen_access_code_hash VARCHAR(255)")
+    if "is_active" not in columns:
+        statements.append(f"ALTER TABLE share_links ADD COLUMN is_active BOOLEAN DEFAULT {bool_default} NOT NULL")
+    if "expires_at" not in columns:
+        statements.append(f"ALTER TABLE share_links ADD COLUMN expires_at {timestamp_type}")
+    if "created_at" not in columns:
+        statements.append(f"ALTER TABLE share_links ADD COLUMN created_at {timestamp_type} DEFAULT CURRENT_TIMESTAMP")
+    return statements
 
 
 def repair_live_session_schema() -> None:
