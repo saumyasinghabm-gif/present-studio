@@ -5,7 +5,8 @@ import jwt
 from app.database import SessionLocal
 from app.config import get_settings
 from app.main import fastapi_app, live_session_repair_statements, share_link_repair_statements
-from app.models import Presentation, User
+from app.live_state import meeting_control_payload
+from app.models import LiveSession, Presentation, User
 from app.security import hash_password
 
 
@@ -150,14 +151,14 @@ def test_livekit_tokens_publish_without_room_admin():
             create_livekit_join_token("pres_demo", "participant_presenter", "Presenter", "presenter"),
             create_livekit_join_token("pres_demo", "participant_viewer", "Viewer", "viewer"),
         ]
-    for index, token in enumerate(tokens):
+    for token in tokens:
         claims = jwt.decode(token, "test-secret", algorithms=["HS256"], options={"verify_aud": False})
         grants = claims["video"]
         assert grants["roomJoin"] is True
         assert grants["room"] == "pres_demo"
         assert grants["canPublish"] is True
         assert grants["canSubscribe"] is True
-        assert grants["canPublishData"] is (index == 0)
+        assert grants["canPublishData"] is False
         assert grants.get("roomAdmin", False) is False
 
 
@@ -374,6 +375,26 @@ def test_live_session_schema_repair_covers_postgres_media_columns():
     assert "ALTER TABLE live_sessions ADD COLUMN media_playing BOOLEAN DEFAULT FALSE NOT NULL" in statements
     assert "ALTER TABLE live_sessions ADD COLUMN media_muted BOOLEAN DEFAULT FALSE NOT NULL" in statements
     assert "ALTER TABLE live_sessions ADD COLUMN media_updated_at TIMESTAMP WITH TIME ZONE" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN featured_share_identity VARCHAR(128)" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN meeting_muted BOOLEAN DEFAULT FALSE NOT NULL" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN muted_participant_identities TEXT DEFAULT '[]' NOT NULL" in statements
+
+
+def test_meeting_control_payload_restores_persisted_override_state():
+    live = LiveSession(
+        id="live_test",
+        presentation_id="pres_test",
+        featured_share_identity="participant_screen_owner",
+        meeting_muted=True,
+        muted_participant_identities='["participant_one","participant_two"]',
+    )
+
+    assert meeting_control_payload(live, "pres_test") == {
+        "presentationId": "pres_test",
+        "featuredShareIdentity": "participant_screen_owner",
+        "meetingMuted": True,
+        "mutedParticipants": ["participant_one", "participant_two"],
+    }
 
 
 def test_signup_creates_authenticated_user():

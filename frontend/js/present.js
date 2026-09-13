@@ -319,7 +319,7 @@ async function init() {
   $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen();
   applyPresentationState(live, true);
   liveMediaSession = window.SnapKeyLiveMedia?.create({
-    root: $("presentLiveMedia"), presentationId, shareToken, screenAccessCode,
+    root: $("presentLiveMedia"), presentationId, shareToken, authToken, screenAccessCode, socket,
     displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
     onEnableAudio: enablePresentationAudio,
     presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => currentOutputLabel || activeSlide()?.title || presentation.title }

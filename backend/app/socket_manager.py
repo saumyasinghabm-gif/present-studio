@@ -1,6 +1,7 @@
+import json
 import socketio
 from .database import SessionLocal
-from .live_state import apply_controller_state, live_session_payload, utc_now
+from .live_state import apply_controller_state, live_session_payload, meeting_control_payload, utc_now
 from .models import LiveSession, Presentation, Slide
 from .security import can_present_with_credentials, new_id
 
@@ -35,6 +36,8 @@ async def join_presentation(sid, data):
                 {"presentationId": presentation_id, "slideId": live.active_slide_id},
                 room=sid,
             )
+        control_state = meeting_control_payload(live, presentation_id)
+    await sio.emit("meeting_control_state", control_state, room=sid)
     await sio.emit("presence", {"message": "joined", "presentationId": presentation_id}, room=sid)
 
 
@@ -226,6 +229,36 @@ async def annotation_event(sid, data):
 
 
 @sio.event
+async def meeting_control(sid, data):
+    presentation_id = data.get("presentationId")
+    auth_token = data.get("authToken") or ""
+    share_token = data.get("shareToken") or ""
+    if not presentation_id:
+        return
+    raw_featured_identity = data.get("featuredShareIdentity")
+    featured_identity = (raw_featured_identity.strip()[:128] or None) if isinstance(raw_featured_identity, str) else None
+    raw_muted = data.get("mutedParticipants")
+    if not isinstance(raw_muted, list):
+        raw_muted = []
+    muted_identities = list(dict.fromkeys(identity.strip()[:128] for identity in raw_muted if isinstance(identity, str) and identity.strip()))[:100]
+    with SessionLocal() as db:
+        presentation = db.get(Presentation, presentation_id)
+        if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
+            await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+            return
+        live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).first()
+        if not live:
+            live = LiveSession(id=new_id("live"), presentation_id=presentation_id)
+            db.add(live)
+        live.featured_share_identity = featured_identity
+        live.meeting_muted = data.get("meetingMuted") is True
+        live.muted_participant_identities = json.dumps(muted_identities, separators=(",", ":"))
+        db.commit()
+        state = meeting_control_payload(live, presentation_id)
+    await sio.emit("meeting_control_state", state, room=presentation_id)
+
+
+@sio.event
 async def end_session(sid, data):
     presentation_id = data.get("presentationId")
     auth_token = data.get("authToken") or ""
@@ -242,5 +275,8 @@ async def end_session(sid, data):
             live.is_live = False
             live.media_playing = False
             live.media_updated_at = utc_now()
+            live.featured_share_identity = None
+            live.meeting_muted = False
+            live.muted_participant_identities = "[]"
             db.commit()
     await sio.emit("session_ended", {"presentationId": presentation_id}, room=presentation_id)

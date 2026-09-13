@@ -112,6 +112,9 @@ def live_session_repair_statements(dialect_name: str, columns: set[str]) -> list
         "media_playing": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
         "media_muted": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
         "media_updated_at": timestamp_type,
+        "featured_share_identity": "VARCHAR(128)",
+        "meeting_muted": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
+        "muted_participant_identities": "TEXT DEFAULT '[]' NOT NULL",
     }
     return [
         f"ALTER TABLE live_sessions ADD COLUMN {name} {definition}"

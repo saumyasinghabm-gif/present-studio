@@ -960,6 +960,8 @@
       root: $("#controllerLiveMedia"),
       presentationId,
       shareToken,
+      authToken,
+      socket,
       displayName: api.getCachedSession()?.name || "Presenter",
       fullscreenTarget: $("#controllerLiveMedia"),
       fullscreenOnJoin: false,

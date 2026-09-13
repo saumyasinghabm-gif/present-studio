@@ -133,7 +133,7 @@ def create_livekit_join_token(room_name: str, identity: str, name: str, permissi
                 "room": room_name,
                 "canPublish": True,
                 "canSubscribe": True,
-                "canPublishData": permission == "presenter",
+                "canPublishData": False,
             },
         }
         return jwt.encode(payload, settings.livekit_api_secret, algorithm="HS256")
@@ -150,7 +150,7 @@ def create_livekit_join_token(room_name: str, identity: str, name: str, permissi
                 room=room_name,
                 can_publish=True,
                 can_subscribe=True,
-                can_publish_data=permission == "presenter",
+                can_publish_data=False,
             )
         )
         .to_jwt()

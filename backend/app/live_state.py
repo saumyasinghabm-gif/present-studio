@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import json
 from typing import Any
 
 from .models import LiveSession
@@ -31,6 +32,19 @@ def live_session_payload(live: LiveSession | None, presentation_id: str) -> dict
         "muted": bool(live and live.media_muted),
         "isLive": bool(live and live.is_live),
         "serverTime": int(now.timestamp() * 1000),
+    }
+
+
+def meeting_control_payload(live: LiveSession | None, presentation_id: str) -> dict[str, Any]:
+    try:
+        muted = json.loads(live.muted_participant_identities or "[]") if live else []
+    except (TypeError, ValueError):
+        muted = []
+    return {
+        "presentationId": presentation_id,
+        "featuredShareIdentity": live.featured_share_identity if live else None,
+        "meetingMuted": bool(live and live.meeting_muted),
+        "mutedParticipants": [str(identity)[:128] for identity in muted if identity][:100],
     }
 
 

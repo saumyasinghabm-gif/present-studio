@@ -63,24 +63,20 @@
       }
     }
 
-    async function publishControllerState() {
-      if (!room || !isController) return;
-      const message = {
-        presentStudio: "meeting-control-v1",
-        type: "state",
+    function publishControllerState() {
+      if (!isController || !options.socket) return;
+      options.socket.emit("meeting_control", {
+        presentationId: options.presentationId,
+        authToken: options.authToken || "",
+        shareToken: options.shareToken || "",
         featuredShareIdentity: controllerShareIdentity,
         meetingMuted,
         mutedParticipants: [...mutedParticipants]
-      };
-      try {
-        await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(message)), { reliable: true });
-      } catch (error) {
-        setStatus(error.message || "Meeting control could not be sent", "error");
-      }
+      });
     }
 
     function applyControllerState(message) {
-      if (message?.presentStudio !== "meeting-control-v1" || message.type !== "state") return;
+      if (!message || (message.presentationId && message.presentationId !== options.presentationId)) return;
       controllerShareIdentity = String(message.featuredShareIdentity || "");
       meetingMuted = Boolean(message.meetingMuted);
       mutedParticipants = new Set(Array.isArray(message.mutedParticipants) ? message.mutedParticipants.map(String) : []);
@@ -225,6 +221,7 @@
         controllerShareIdentity = "";
         publishControllerState();
       }
+      const controllerOverrideActive = availableIdentities.has(controllerShareIdentity);
       const requestedIdentity = controllerShareIdentity || selectedShareIdentity;
       const featuredIdentity = availableIdentities.has(requestedIdentity) ? requestedIdentity : (activeShares[0]?.participant.identity || "");
       if (!availableIdentities.has(selectedShareIdentity)) selectedShareIdentity = featuredIdentity;
@@ -241,7 +238,7 @@
         if (activeShares.length > 1) {
           const select = document.createElement("button");
           select.type = "button";
-          const controllerLocked = Boolean(controllerShareIdentity && !isController);
+          const controllerLocked = controllerOverrideActive && !isController;
           select.textContent = participant.identity === featuredIdentity ? "Showing" : controllerLocked ? "Controller selected another" : (isController ? "Show for everyone" : "Focus screen");
           select.disabled = participant.identity === featuredIdentity || controllerLocked;
           select.addEventListener("click", () => {
@@ -268,7 +265,7 @@
       root.classList.toggle("has-screen-share", visible);
       screenShareMedia.classList.toggle("has-multiple", activeShares.length > 1);
       if (visible) screenShareLabel.textContent = activeShares.length === 1 ? `${activeShares[0].participant.name || "Guest"} is sharing` : `${activeShares.length} shared screens`;
-      if (screenShareMode) screenShareMode.textContent = controllerShareIdentity
+      if (screenShareMode) screenShareMode.textContent = controllerOverrideActive
         ? "Controller-selected screen"
         : activeShares.length > 1 ? (isController ? "Choose the screen shown to everyone" : "Select a screen to focus") : "";
     }
@@ -361,11 +358,6 @@
         events.TrackPublished, events.TrackUnpublished, events.TrackMuted, events.TrackUnmuted]
         .filter(Boolean).forEach(eventName => room.on(eventName, renderParticipants));
       room.on(events.LocalTrackPublished, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); });
-      room.on(events.ParticipantConnected, () => { if (isController) window.setTimeout(publishControllerState, 250); });
-      if (events.DataReceived) room.on(events.DataReceived, (payload, participant) => {
-        if (!participant || participantRole(participant) !== "presenter") return;
-        try { applyControllerState(JSON.parse(new TextDecoder().decode(payload))); } catch {}
-      });
       room.on(events.LocalTrackUnpublished, publication => {
         const stoppedScreenShare = isSource(publication, "ScreenShare") || isSource(publication, "ScreenShareAudio");
         syncLocalPublishedState(); syncButtons(true); renderParticipants();
@@ -407,7 +399,6 @@
         const audioReady = connectedAudioReady || (gestureUnlocked && !audioPlaybackBlocked && room.canPlayAudio !== false);
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
-        if (isController) publishControllerState();
       } catch (error) {
         room?.disconnect(); room = null; setStatus(error.message || "Could not join audio/video", "error"); syncButtons(false);
       } finally {
@@ -490,6 +481,7 @@
     });
     panelToggle?.addEventListener("click", () => setAudienceSidebarHidden(true, true));
     panelRestore?.addEventListener("click", () => setAudienceSidebarHidden(false, true));
+    options.socket?.on("meeting_control_state", applyControllerState);
     window.addEventListener("pagehide", leaveOnPageHide, { once: true });
     syncButtons(false);
     return { join, leave };
