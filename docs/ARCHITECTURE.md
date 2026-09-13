@@ -92,7 +92,7 @@ The frontend must always trust the backend's resolved `permission` value from `G
 - Keep routers small and module-based.
 - Store slide canvas data as JSON.
 - Keep uploaded media outside the database.
-- Use Socket.IO only for live active-slide events, not for saving slide data.
+- Use Socket.IO for live controller selection/playback state, not for saving slide content.
 - Authorize presenter Socket.IO events with JWT or presenter share token.
 - Every new canvas element type must be serializable in slide JSON.
 - Keep the audience page read-only.

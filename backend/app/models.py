@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -86,6 +86,12 @@ class LiveSession(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     presentation_id: Mapped[str] = mapped_column(ForeignKey("presentations.id"), unique=True, index=True)
     active_slide_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active_media_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    active_media_kind: Mapped[str] = mapped_column(String(16), default="slide", server_default="slide")
+    media_position: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    media_playing: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    media_muted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    media_updated_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
     presenter_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     audience_count: Mapped[int] = mapped_column(Integer, default=0)
     is_live: Mapped[bool] = mapped_column(Boolean, default=False)

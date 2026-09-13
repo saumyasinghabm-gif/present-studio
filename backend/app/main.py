@@ -30,6 +30,7 @@ def startup() -> None:
     Base.metadata.create_all(bind=engine)
     repair_local_sqlite_schema()
     repair_share_link_schema()
+    repair_live_session_schema()
     db = SessionLocal()
     try:
         seed_demo_data(db)
@@ -64,6 +65,28 @@ def repair_share_link_schema() -> None:
     if "screen_access_code_hash" not in share_columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE share_links ADD COLUMN screen_access_code_hash VARCHAR(255)"))
+
+
+def repair_live_session_schema() -> None:
+    """Keep local databases created before media-state persistence usable."""
+    if not settings.database_url.startswith("sqlite"):
+        return
+    inspector = inspect(engine)
+    if "live_sessions" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("live_sessions")}
+    definitions = {
+        "active_media_id": "VARCHAR(128)",
+        "active_media_kind": "VARCHAR(16) DEFAULT 'slide' NOT NULL",
+        "media_position": "FLOAT DEFAULT 0 NOT NULL",
+        "media_playing": "BOOLEAN DEFAULT 0 NOT NULL",
+        "media_muted": "BOOLEAN DEFAULT 0 NOT NULL",
+        "media_updated_at": "DATETIME",
+    }
+    with engine.begin() as connection:
+        for name, definition in definitions.items():
+            if name not in columns:
+                connection.execute(text(f"ALTER TABLE live_sessions ADD COLUMN {name} {definition}"))
 
 
 @fastapi_app.get("/api/health")

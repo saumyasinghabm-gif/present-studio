@@ -20,6 +20,7 @@
   let audioUnlocked = false;
   let activeMedia = null;
   let linkedAudio = null;
+  let currentState = null;
 
   function stopMedia() {
     if (activeMedia?.pause) activeMedia.pause();
@@ -41,10 +42,11 @@
   }
 
   function playLinkedAudio(src, loop = false) {
-    if (!src || !audioUnlocked) return;
+    if (!src) return;
     linkedAudio = new Audio(src);
     linkedAudio.volume = 1;
     linkedAudio.loop = loop;
+    linkedAudio.muted = !audioUnlocked || Boolean(currentState?.muted);
     linkedAudio.hidden = true;
     linkedAudio.dataset.slideMusic = "true";
     mediaLayer.append(linkedAudio);
@@ -52,9 +54,54 @@
     linkedAudio.play().catch(() => {});
   }
 
+  function legacyOutputText(item) {
+    return new fabric.Textbox(item.text || "", {
+      left: (item.x || 0) * 12.8,
+      top: (item.y || 0) * 7.2,
+      width: (item.width || 40) * 12.8,
+      fontSize: item.fontSize || 42,
+      fontWeight: item.fontWeight || "500",
+      fontStyle: item.fontStyle || "normal",
+      fontFamily: item.fontFamily || "Arial",
+      fill: item.color || "#171717",
+      textAlign: item.textAlign || "left",
+      selectable: false,
+      evented: false
+    });
+  }
+
+  function addPositionedOutputMedia(item) {
+    if (!item?.src) return;
+    const node = document.createElement(item.type === "video" ? "video" : "img");
+    node.src = item.src;
+    node.className = "live-output-positioned-video";
+    Object.assign(node.style, {
+      left: `${item.full_bleed ? 0 : Number(item.x || 0)}%`,
+      top: `${item.full_bleed ? 0 : Number(item.y || 0)}%`,
+      width: `${item.full_bleed ? 100 : Number(item.width || 100)}%`,
+      height: `${item.full_bleed ? 100 : Number(item.height || 100)}%`,
+      objectFit: item.fit || (item.full_bleed ? "fill" : "contain")
+    });
+    if (node.tagName === "VIDEO") {
+      Object.assign(node, { autoplay: true, playsInline: true, loop: item.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
+      activeMedia = node;
+      node.play().catch(() => { node.muted = true; node.play().catch(() => {}); });
+    }
+    mediaLayer.append(node);
+  }
+
   function renderDirectMedia(slide, mediaId, kind) {
     if (kind === "audio") {
-      renderSlide(slide);
+      stopMedia();
+      canvasWrap.hidden = true;
+      mediaLayer.replaceChildren();
+      const track = slide.canvas?.audio;
+      if (track?.src) playLinkedAudio(track.src, Boolean(track.loop));
+      stage.dataset.slideId = slide.id;
+      stage.dataset.kind = kind;
+      stage.dataset.mediaId = mediaId || "";
+      stage.dataset.presentationTitle = presentation.title;
+      transition();
       return;
     }
     const object = objectById(slide, mediaId, kind);
@@ -66,7 +113,7 @@
     node.src = object.src;
     node.className = "live-output-item";
     if (kind === "video") {
-      Object.assign(node, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked });
+      Object.assign(node, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
       activeMedia = node;
       node.play().catch(() => { node.muted = true; node.play().catch(() => {}); });
     } else {
@@ -75,6 +122,8 @@
     }
     mediaLayer.append(node);
     stage.dataset.slideId = slide.id;
+    stage.dataset.kind = kind;
+    stage.dataset.mediaId = mediaId || "";
     stage.dataset.presentationTitle = presentation.title;
     transition();
   }
@@ -82,57 +131,52 @@
   function renderSlide(slide) {
     if (!slide) return;
     stage.dataset.slideId = slide.id;
+    stage.dataset.kind = "slide";
+    stage.dataset.mediaId = "";
     stage.dataset.presentationTitle = presentation.title;
     stopMedia();
     mediaLayer.replaceChildren();
     canvasWrap.hidden = false;
     const data = slide.canvas || {};
     canvas.clear();
-    canvas.backgroundColor = data.background || "#000";
+    canvas.backgroundColor = data.background || "#f8f4ea";
     if (data.fabric) {
       const scene = JSON.parse(JSON.stringify(data.fabric));
-      const videos = (scene.objects || []).filter(object => object.mediaType === "video");
-      const firstAudio = (scene.objects || []).find(object => object.mediaType === "image" && object.audioSrc)?.audioSrc;
+      const videos = (scene.objects || []).filter(object => object.mediaType === "video" && object.src);
       scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
       canvas.loadFromJSON(scene, () => { canvas.getObjects().forEach(object => { object.selectable = false; object.evented = false; }); canvas.renderAll(); });
       videos.forEach(object => {
         const video = document.createElement("video");
         video.src = object.src;
         video.className = "live-output-positioned-video";
-        video.style.left = `${((object.left || 0) / 1280) * 100}%`;
-        video.style.top = `${((object.top || 0) / 720) * 100}%`;
-        video.style.width = `${(((object.width || 0) * (object.scaleX || 1)) / 1280) * 100}%`;
-        video.style.height = `${(((object.height || 0) * (object.scaleY || 1)) / 720) * 100}%`;
-        video.style.objectFit = object.fit || "contain";
-        Object.assign(video, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked });
+        video.style.left = `${object.full_bleed ? 0 : ((object.left || 0) / 1280) * 100}%`;
+        video.style.top = `${object.full_bleed ? 0 : ((object.top || 0) / 720) * 100}%`;
+        video.style.width = `${object.full_bleed ? 100 : (((object.width || 0) * (object.scaleX || 1)) / 1280) * 100}%`;
+        video.style.height = `${object.full_bleed ? 100 : (((object.height || 0) * (object.scaleY || 1)) / 720) * 100}%`;
+        video.style.objectFit = object.fit || (object.full_bleed ? "fill" : "contain");
+        Object.assign(video, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
         mediaLayer.append(video);
         activeMedia = video;
         video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
       });
       const slideAudioSrc = data.audio?.src;
-      const audioSrc = slideAudioSrc || (!videos.length ? firstAudio : "");
-      playLinkedAudio(audioSrc);
+      playLinkedAudio(slideAudioSrc);
     } else {
+      const elements = data.elements || [];
+      elements.filter(item => item.type === "text").forEach(item => canvas.add(legacyOutputText(item)));
+      elements.filter(item => ["image", "video"].includes(item.type)).forEach(addPositionedOutputMedia);
+      canvas.renderAll();
       playLinkedAudio(data.audio?.src);
     }
     transition();
-  }
-
-  function handleSelection(event) {
-    if (event.presentationId !== presentationId) return;
-    const slide = slideById(event.slideId);
-    if (!slide) return;
-    if (["image", "video", "audio"].includes(event.kind)) renderDirectMedia(slide, event.mediaId, event.kind);
-    else renderSlide(slide);
   }
 
   function joinRoom() { socket?.emit("join_presentation", { presentationId }); }
 
   function handlePresentationUpdate(event) {
     if (event.presentationId !== presentationId || !event.presentation) return;
-    const previousSlideId = presentation?.slides?.find(slide => slide.id === event.activeSlideId)?.id;
     presentation = event.presentation;
-    renderSlide(slideById(previousSlideId || event.activeSlideId) || presentation.slides[0]);
+    applyPresentationState(event.liveState || currentState || { slideId: event.activeSlideId }, true);
   }
 
   function control(action, position) {
@@ -207,10 +251,8 @@
   document.getElementById("enableScreen").addEventListener("click", async () => {
     audioUnlocked = true;
     audioGate.hidden = true;
+    if (currentState) applyPresentationState(currentState, true);
     try { await document.documentElement.requestFullscreen?.(); } catch {}
-    const slide = slideById(stage.dataset.slideId);
-    if (slide) renderSlide(slide);
-    else if (activeMedia) { activeMedia.muted = false; activeMedia.play?.().catch(() => {}); }
   });
 
   codeInput?.addEventListener("input", () => {
@@ -221,21 +263,18 @@
     const [result, live] = await Promise.all([api.getScreenPresentation(presentationId, shareToken, screenCode), api.getLiveSession(presentationId)]);
     presentation = result.presentation;
     canvas = new fabric.StaticCanvas("outputCanvas", { width: 1280, height: 720, selection: false });
-    if (presentation.slides.length) renderSlide(slideById(live.activeSlideId) || presentation.slides[0]);
+    if (presentation.slides.length) applyPresentationState(live, true);
     socket?.on("connect", joinRoom);
     if (socket?.connected) joinRoom();
-    socket?.on("presentation_media_changed", handleSelection);
-    socket?.on("active_slide_changed", event => { if (event.presentationId !== presentationId) return; const slide = slideById(event.slideId); if (slide) renderSlide(slide); });
+    socket?.on("presentation_state", applyPresentationState);
     socket?.on("presentation_updated", handlePresentationUpdate);
     socket?.on("presentation_deleted", event => { if (event.presentationId === presentationId) control("stop"); });
-    socket?.on("presentation_media_control", event => { if (event.presentationId === presentationId) control(event.action, event.position); });
     socket?.on("presentation_annotation", handleAnnotation);
     socket?.on("session_ended", event => { if (!event?.presentationId || event.presentationId === presentationId) control("stop"); });
     setInterval(async () => {
       try {
         const live = await api.getLiveSession(presentationId);
-        const slide = slideById(live.activeSlideId);
-        if (slide && stage.dataset.slideId !== slide.id) renderSlide(slide);
+        applyPresentationState(live);
       } catch {}
     }, 2000);
   }
@@ -282,5 +321,73 @@
     codeForm.querySelector("button").hidden = true;
     codeForm.querySelector("label").textContent = "Screen unavailable";
     codeStatus.textContent = error?.message || "This screen link is invalid or has expired.";
+  }
+
+  function normalizedLiveState(state = {}) {
+    return { ...state, slideId: state.slideId || state.activeSlideId, kind: state.kind || "slide" };
+  }
+
+  function expectedPosition(state) {
+    const position = Math.max(0, Number(state.position) || 0);
+    if (!state.playing || !Number.isFinite(Number(state.serverTime))) return position;
+    return position + Math.max(0, Date.now() - Number(state.serverTime)) / 1000;
+  }
+
+  function correctMediaDrift(media, state) {
+    const apply = () => {
+      const target = expectedPosition(state);
+      const drift = target - (Number(media.currentTime) || 0);
+      media.muted = !audioUnlocked || Boolean(state.muted);
+      if (!state.playing) {
+        media.pause();
+        media.playbackRate = 1;
+        if (Math.abs(drift) > 0.08) try { media.currentTime = target; } catch {}
+        return;
+      }
+      if (Math.abs(drift) > 0.75) {
+        try { media.currentTime = target; } catch {}
+        media.playbackRate = 1;
+      } else if (Math.abs(drift) > 0.12) {
+        media.playbackRate = drift > 0 ? 1.04 : 0.96;
+      } else {
+        media.playbackRate = 1;
+      }
+      media.play().catch(() => {});
+    };
+    if (media.readyState >= 1) {
+      apply();
+      return;
+    }
+    media._pendingPresentationState = state;
+    if (media.dataset.syncMetadataPending) return;
+    media.dataset.syncMetadataPending = "true";
+    media.addEventListener("loadedmetadata", () => {
+      delete media.dataset.syncMetadataPending;
+      correctMediaDrift(media, media._pendingPresentationState || state);
+    }, { once: true });
+  }
+
+  function applyPresentationState(rawState, forceRender = false) {
+    const state = normalizedLiveState(rawState);
+    if (state.presentationId && state.presentationId !== presentationId) return;
+    const slide = slideById(state.slideId);
+    if (!slide) return;
+    currentState = state;
+    if (state.kind === "blank") {
+      control("stop");
+      stage.dataset.slideId = slide.id;
+      stage.dataset.kind = "blank";
+      stage.dataset.mediaId = "";
+      return;
+    }
+    const selectionChanged = forceRender
+      || stage.dataset.slideId !== slide.id
+      || (stage.dataset.kind || "slide") !== state.kind
+      || String(stage.dataset.mediaId || "") !== String(state.mediaId || "");
+    if (selectionChanged) {
+      if (["image", "video", "audio"].includes(state.kind)) renderDirectMedia(slide, state.mediaId, state.kind);
+      else renderSlide(slide);
+    }
+    [...mediaLayer.querySelectorAll("video,audio")].forEach(media => correctMediaDrift(media, state));
   }
 })();

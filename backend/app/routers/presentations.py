@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
+from ..live_state import apply_controller_state, live_session_payload
 from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
 from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, optional_current_user, resolve_share_permission, verify_password
@@ -14,6 +15,21 @@ from ..socket_manager import sio
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def serialize_live_session(live: LiveSession | None, presentation_id: str) -> LiveSessionOut:
+    state = live_session_payload(live, presentation_id)
+    return LiveSessionOut(
+        presentationId=presentation_id,
+        activeSlideId=state["slideId"],
+        isLive=state["isLive"],
+        kind=state["kind"],
+        mediaId=state["mediaId"],
+        position=state["position"],
+        playing=state["playing"],
+        muted=state["muted"],
+        serverTime=state["serverTime"],
+    )
 
 
 def public_share_base_url(request: Request) -> str:
@@ -203,7 +219,14 @@ async def save_presentation(
     live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation.id).first()
     slide_ids = [slide.id for slide in payload.slides]
     if live and live.active_slide_id not in slide_ids:
-        live.active_slide_id = slide_ids[0] if slide_ids else None
+        if slide_ids:
+            apply_controller_state(live, slide_id=slide_ids[0])
+        else:
+            live.active_slide_id = None
+            live.active_media_id = None
+            live.active_media_kind = "slide"
+            live.media_position = 0
+            live.media_playing = False
     db.commit()
     db.refresh(presentation)
     serialized = serialize_presentation(presentation)
@@ -213,6 +236,7 @@ async def save_presentation(
             "presentationId": presentation.id,
             "presentation": serialized.model_dump(),
             "activeSlideId": live.active_slide_id if live else (slide_ids[0] if slide_ids else None),
+            "liveState": live_session_payload(live, presentation.id),
         },
         room=presentation.id,
     )
@@ -363,8 +387,10 @@ def end_live_session(
         live = LiveSession(id=new_id("live"), presentation_id=presentation_id, presenter_user_id=user.id)
         db.add(live)
     live.is_live = False
+    live.media_playing = False
+    live.media_updated_at = datetime.now(timezone.utc)
     db.commit()
-    return LiveSessionOut(presentationId=presentation_id, activeSlideId=live.active_slide_id, isLive=False)
+    return serialize_live_session(live, presentation_id)
 
 
 @router.post("/{presentation_id}/live/slide")
@@ -392,11 +418,11 @@ async def update_live_slide(
     if not live:
         live = LiveSession(id=new_id("live"), presentation_id=presentation_id, presenter_user_id=user.id if user else None)
         db.add(live)
-    live.active_slide_id = slide.id
-    live.is_live = True
+    apply_controller_state(live, slide_id=slide.id)
     db.commit()
     await sio.emit("active_slide_changed", {"presentationId": presentation_id, "slideId": slide.id}, room=presentation_id)
-    return LiveSessionOut(presentationId=presentation_id, activeSlideId=slide.id, isLive=True)
+    await sio.emit("presentation_state", live_session_payload(live, presentation_id), room=presentation_id)
+    return serialize_live_session(live, presentation_id)
 
 
 @router.get("/{presentation_id}/live")
@@ -409,11 +435,7 @@ def get_live_session(
     if not presentation:
         raise HTTPException(status_code=404, detail="Presentation not found")
     live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).first()
-    return LiveSessionOut(
-        presentationId=presentation_id,
-        activeSlideId=live.active_slide_id if live else None,
-        isLive=bool(live and live.is_live),
-    )
+    return serialize_live_session(live, presentation_id)
 
 
 @router.delete("/{presentation_id}")

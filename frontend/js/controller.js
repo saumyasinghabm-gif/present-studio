@@ -28,6 +28,8 @@
   let notesReturnFocus = null;
   let previewAudioEnabled = true;
   let previewAudioManuallyMuted = false;
+  let restoredMediaState = null;
+  let outputBlanked = false;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -406,8 +408,8 @@
     replayButton.disabled = !media;
     audioButton.disabled = !media;
     pauseButton.querySelector("strong").textContent = media && !media.paused && !media.ended ? "Pause" : "Play";
-    audioButton.querySelector("strong").textContent = previewAudioEnabled ? "Mute Preview" : "Enable Audio";
-    audioButton.querySelector("small").textContent = previewAudioEnabled ? "Presenter can hear media" : "Preview is muted";
+    audioButton.querySelector("strong").textContent = previewAudioEnabled ? "Mute Audio" : "Enable Audio";
+    audioButton.querySelector("small").textContent = previewAudioEnabled ? "Audience and preview audio on" : "Audience and preview muted";
     const timing = $("#previewMediaTiming");
     if (!media) timing.textContent = "No active media";
     else {
@@ -445,6 +447,50 @@
     try { if (Math.abs(media.currentTime - position) > 0.2) media.currentTime = Math.max(0, position); } catch {}
   }
 
+  function projectedMediaPosition(state) {
+    const position = Math.max(0, Number(state?.position) || 0);
+    if (!state?.playing || !Number.isFinite(Number(state.serverTime))) return position;
+    return position + Math.max(0, Date.now() - Number(state.serverTime)) / 1000;
+  }
+
+  function applyRestoredMediaState(state) {
+    restoredMediaState = state;
+    previewAudioEnabled = !state?.muted;
+    previewAudioManuallyMuted = Boolean(state?.muted);
+    const apply = media => {
+      setPreviewMediaPosition(media, projectedMediaPosition(state));
+      media.muted = !previewAudioEnabled;
+      if (state?.playing) media.play().catch(() => {});
+      else media.pause();
+      updatePreviewMediaState();
+    };
+    previewMediaElements().forEach(media => {
+      if (media.readyState >= 1) apply(media);
+      else media.addEventListener("loadedmetadata", () => apply(media), { once: true });
+    });
+  }
+
+  function controllerStatePayload() {
+    const target = targets.find(item => item.id === activeTargetId);
+    if (!target) return null;
+    const media = primaryPreviewMedia();
+    const fallbackPosition = projectedMediaPosition(restoredMediaState);
+    return {
+      ...credentials(),
+      slideId: target.slideId,
+      kind: outputBlanked ? "blank" : target.kind,
+      mediaId: outputBlanked ? null : (target.mediaId || null),
+      position: media && media.readyState >= 1 ? Number(media.currentTime) || 0 : fallbackPosition,
+      playing: !outputBlanked && (media && media.readyState >= 1 ? !media.paused && !media.ended : Boolean(restoredMediaState?.playing)),
+      muted: !previewAudioEnabled
+    };
+  }
+
+  function emitControllerState() {
+    const state = controllerStatePayload();
+    if (state && socket?.connected) socket.emit("controller_state", state);
+  }
+
   function controlPreviewMedia(action, position) {
     const mediaElements = previewMediaElements();
     mediaElements.forEach(media => {
@@ -463,8 +509,15 @@
     const action = requestedAction === "toggle" ? (media && !media.paused && !media.ended ? "pause" : "play") : requestedAction;
     const position = action === "replay" ? 0 : Number(media?.currentTime) || 0;
     if (["play", "replay"].includes(action) && !previewAudioManuallyMuted) previewAudioEnabled = true;
+    restoredMediaState = {
+      position,
+      playing: ["play", "replay"].includes(action),
+      muted: !previewAudioEnabled,
+      serverTime: Date.now()
+    };
     controlPreviewMedia(action, position);
-    socket?.emit("media_control", { ...credentials(), action, position });
+    emitControllerState();
+    socket?.emit("media_control", { ...credentials(), action, position, legacyOnly: true });
   }
 
   function togglePreviewAudio() {
@@ -473,7 +526,10 @@
     previewMediaElements().forEach(media => {
       media.muted = !previewAudioEnabled;
     });
+    if (restoredMediaState) restoredMediaState = { ...restoredMediaState, muted: !previewAudioEnabled };
     updatePreviewMediaState();
+    emitControllerState();
+    socket?.emit("media_control", { ...credentials(), action: "set_audio", muted: !previewAudioEnabled, legacyOnly: true });
   }
 
   function stopPreviewMedia() {
@@ -616,6 +672,16 @@
     return result;
   }
 
+  function targetForLiveState(state) {
+    const slideId = state?.slideId || state?.activeSlideId;
+    if (!slideId) return null;
+    if (state?.kind && !["slide", "blank"].includes(state.kind)) {
+      const mediaTarget = targets.find(target => target.slideId === slideId && target.kind === state.kind && String(target.mediaId) === String(state.mediaId));
+      if (mediaTarget) return mediaTarget;
+    }
+    return targets.find(target => target.kind === "slide" && target.slideId === slideId) || null;
+  }
+
   function cardMarkup(target) {
     const visual = target.kind === "slide"
       ? `<canvas width="320" height="180" data-slide-thumbnail="${escapeHtml(target.slideId)}" aria-label="Preview of ${escapeHtml(target.title)}"></canvas>`
@@ -706,12 +772,19 @@
   function selectTarget(target) {
     if (!target) return;
     activeTargetId = target.id;
-    if (target.kind === "slide") socket?.emit("slide_changed", { ...credentials(), slideId: target.slideId });
-    else socket?.emit("media_selected", { ...credentials(), slideId: target.slideId, mediaId: target.mediaId, kind: target.kind });
-    persistSlide(target);
+    restoredMediaState = null;
+    outputBlanked = false;
     document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
     renderTeachingBackdrop(target);
     renderTargetPreview(target);
+    restoredMediaState = {
+      position: 0,
+      playing: Boolean(previewMediaElements().length),
+      muted: !previewAudioEnabled,
+      serverTime: Date.now()
+    };
+    if (socket?.connected) setTimeout(emitControllerState, 0);
+    else persistSlide(target);
   }
 
   function selectAdjacentSlide(direction) {
@@ -893,11 +966,17 @@
     });
     previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
-    const initialSlide = slideById(live.activeSlideId) || presentation.slides[0];
-    if (initialSlide) activeTargetId = `slide:${initialSlide.id}`;
     renderControllerTargets();
-    const initialTarget = targets.find(target => target.id === activeTargetId);
-    if (initialTarget) { renderTargetPreview(initialTarget); renderTeachingBackdrop(initialTarget); }
+    const initialTarget = targetForLiveState(live) || targets.find(target => target.kind === "slide");
+    if (initialTarget) {
+      activeTargetId = initialTarget.id;
+      document.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.classList.add("active");
+      outputBlanked = live.kind === "blank";
+      renderTargetPreview(initialTarget);
+      renderTeachingBackdrop(initialTarget);
+      if (outputBlanked) showPreviewPlaceholder("Black screen");
+      else applyRestoredMediaState({ ...live, slideId: live.activeSlideId });
+    }
     bindTeachingMode();
     $("#startImageLoop").onclick = () => startLoop("image", "#imageLoopList");
     $("#startVideoLoop").onclick = () => startLoop("video", "#videoLoopList");
@@ -905,7 +984,15 @@
     $("#pauseMedia").onclick = () => sendMediaControl("toggle");
     $("#previewAudio").onclick = togglePreviewAudio;
     $("#replayMedia").onclick = () => sendMediaControl("replay");
-    $("#stopMedia").onclick = () => { stopLoop(); sendMediaControl("stop"); $("#previewTitle").textContent = "Screen cleared"; showPreviewPlaceholder("Black screen"); };
+    $("#stopMedia").onclick = () => {
+      stopLoop();
+      outputBlanked = true;
+      restoredMediaState = null;
+      $("#previewTitle").textContent = "Screen cleared";
+      showPreviewPlaceholder("Black screen");
+      emitControllerState();
+      socket?.emit("media_control", { ...credentials(), action: "stop", position: 0, legacyOnly: true });
+    };
     $("#openScreen").onclick = async () => {
       if (shareToken) {
         window.open(secureAppUrl(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`), "_blank", "noopener");
@@ -931,21 +1018,20 @@
     socket?.on("connect_error", () => setConnectionStatus("Sync backup"));
     socket?.on("disconnect", () => setConnectionStatus("Sync backup"));
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
-    socket?.on("active_slide_changed", event => {
-      const target = targets.find(item => item.kind === "slide" && item.slideId === event.slideId);
-      if (!target) return;
-      activeTargetId = target.id;
-      document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
-      renderTeachingBackdrop(target);
-      renderTargetPreview(target);
-    });
     socket?.on("presentation_updated", event => {
       if (event.presentationId !== presentationId || !event.presentation) return;
+      const previousState = controllerStatePayload();
       presentation = event.presentation;
-      if (event.activeSlideId) activeTargetId = `slide:${event.activeSlideId}`;
       renderControllerTargets();
-      const currentTarget = targets.find(target => target.id === activeTargetId) || targets.find(target => target.kind === "slide");
-      if (currentTarget) { renderTargetPreview(currentTarget); renderTeachingBackdrop(currentTarget); }
+      const currentTarget = targets.find(target => target.id === activeTargetId) || targetForLiveState(previousState) || targets.find(target => target.kind === "slide");
+      if (currentTarget) {
+        activeTargetId = currentTarget.id;
+        renderTargetPreview(currentTarget);
+        renderTeachingBackdrop(currentTarget);
+        if (outputBlanked) showPreviewPlaceholder("Black screen");
+        else if (previousState) applyRestoredMediaState({ ...previousState, serverTime: Date.now() });
+        emitControllerState();
+      }
     });
     socket?.on("presentation_deleted", event => {
       if (event.presentationId !== presentationId) return;
@@ -955,6 +1041,7 @@
       showPreviewPlaceholder("This presentation is no longer available.");
       document.querySelectorAll("button").forEach(button => { if (button.id !== "backToEditor") button.disabled = true; });
     });
+    setInterval(emitControllerState, 1000);
   } catch (error) {
     $("#controllerTitle").textContent = "Controller unavailable";
     showPreviewPlaceholder(error.message);

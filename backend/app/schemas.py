@@ -129,3 +129,9 @@ class LiveSessionOut(BaseModel):
     presentationId: str
     activeSlideId: str | None = None
     isLive: bool
+    kind: str = "slide"
+    mediaId: str | None = None
+    position: float = 0.0
+    playing: bool = False
+    muted: bool = False
+    serverTime: int | None = None
