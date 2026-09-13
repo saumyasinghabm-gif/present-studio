@@ -29,14 +29,19 @@ def test_login_and_list_presentations():
 
 
 def test_create_presentation_creates_its_live_session():
+    email = f"presentation-owner-{uuid4().hex}@example.com"
     with TestClient(fastapi_app) as client:
-        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
-        token = login.json()["accessToken"]
+        signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Presentation Owner", "email": email, "password": "securepass123"},
+        )
+        token = signup.json()["accessToken"]
         response = client.post(
             "/api/presentations",
             json={"title": "Builder test presentation"},
             headers={"Authorization": f"Bearer {token}"},
         )
+    assert signup.status_code == 200
     assert response.status_code == 200
     assert response.json()["presentation"]["title"] == "Builder test presentation"
 

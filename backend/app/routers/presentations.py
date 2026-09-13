@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from urllib.parse import urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, HTTPException, Request
+import jwt
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..config import get_settings
@@ -102,17 +103,35 @@ def serialize_presentation(presentation: Presentation) -> PresentationOut:
 def create_livekit_join_token(room_name: str, identity: str, name: str, permission: str) -> str:
     """Create a short-lived LiveKit join token without exposing server credentials."""
     settings = get_settings()
+    ttl_seconds = max(1, settings.livekit_token_minutes) * 60
+    metadata = json.dumps({"role": permission}, separators=(",", ":"))
     try:
         from livekit import api
-    except ImportError as exc:  # Keeps the rest of the application usable if the optional integration is absent.
-        raise HTTPException(status_code=503, detail="Interactive audio/video is not installed") from exc
+    except ImportError:
+        now = datetime.now(timezone.utc)
+        payload = {
+            "iss": settings.livekit_api_key,
+            "sub": identity,
+            "name": name,
+            "metadata": metadata,
+            "nbf": int(now.timestamp()),
+            "exp": int((now + timedelta(seconds=ttl_seconds)).timestamp()),
+            "video": {
+                "roomJoin": True,
+                "room": room_name,
+                "canPublish": True,
+                "canSubscribe": True,
+                "canPublishData": False,
+            },
+        }
+        return jwt.encode(payload, settings.livekit_api_secret, algorithm="HS256")
 
     return (
         api.AccessToken(settings.livekit_api_key, settings.livekit_api_secret)
         .with_identity(identity)
         .with_name(name)
-        .with_metadata(json.dumps({"role": permission}, separators=(",", ":")))
-        .with_ttl(timedelta(minutes=max(1, settings.livekit_token_minutes)))
+        .with_metadata(metadata)
+        .with_ttl(timedelta(seconds=ttl_seconds))
         .with_grants(
             api.VideoGrants(
                 room_join=True,
