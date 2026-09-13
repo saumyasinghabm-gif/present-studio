@@ -4,7 +4,7 @@ from uuid import uuid4
 import jwt
 from app.database import SessionLocal
 from app.config import get_settings
-from app.main import fastapi_app, share_link_repair_statements
+from app.main import fastapi_app, live_session_repair_statements, share_link_repair_statements
 from app.models import Presentation, User
 from app.security import hash_password
 
@@ -338,6 +338,42 @@ def test_saving_presentation_emits_live_update():
         assert event["presentationId"] == "pres_demo"
         assert event["presentation"]["slides"]
         assert emit.await_args.kwargs["room"] == "pres_demo"
+
+
+def test_saving_presentation_normalizes_duplicate_slide_ids():
+    email = f"duplicate-slide-owner-{uuid4().hex}@example.com"
+    with TestClient(fastapi_app) as client:
+        signup = client.post(
+            "/api/auth/signup",
+            json={"name": "Duplicate Slide Owner", "email": email, "password": "securepass123"},
+        )
+        headers = {"Authorization": f"Bearer {signup.json()['accessToken']}"}
+        created = client.post("/api/presentations", json={"title": "Duplicate slide save"}, headers=headers).json()["presentation"]
+        duplicate_id = created["slides"][0]["id"]
+        created["slides"] = [
+            {**created["slides"][0], "id": duplicate_id, "order": 1, "title": "First"},
+            {**created["slides"][0], "id": duplicate_id, "order": 2, "title": "Second"},
+        ]
+        response = client.put(f"/api/presentations/{created['id']}", json=created, headers=headers)
+
+    assert response.status_code == 200
+    slide_ids = [slide["id"] for slide in response.json()["presentation"]["slides"]]
+    assert len(slide_ids) == 2
+    assert len(set(slide_ids)) == 2
+
+
+def test_live_session_schema_repair_covers_postgres_media_columns():
+    statements = live_session_repair_statements(
+        "postgresql",
+        {"id", "presentation_id", "active_slide_id", "presenter_user_id", "audience_count", "is_live", "updated_at"},
+    )
+
+    assert "ALTER TABLE live_sessions ADD COLUMN active_media_id VARCHAR(128)" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN active_media_kind VARCHAR(16) DEFAULT 'slide' NOT NULL" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN media_position FLOAT DEFAULT 0 NOT NULL" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN media_playing BOOLEAN DEFAULT FALSE NOT NULL" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN media_muted BOOLEAN DEFAULT FALSE NOT NULL" in statements
+    assert "ALTER TABLE live_sessions ADD COLUMN media_updated_at TIMESTAMP WITH TIME ZONE" in statements
 
 
 def test_signup_creates_authenticated_user():

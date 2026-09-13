@@ -100,6 +100,18 @@ def serialize_presentation(presentation: Presentation) -> PresentationOut:
     )
 
 
+def unique_slide_id(slide_id: str, used_ids: set[str]) -> str:
+    clean_id = (slide_id or "").strip()[:64]
+    if clean_id and clean_id not in used_ids:
+        used_ids.add(clean_id)
+        return clean_id
+    while True:
+        candidate = new_id("slide")
+        if candidate not in used_ids:
+            used_ids.add(candidate)
+            return candidate
+
+
 def create_livekit_join_token(room_name: str, identity: str, name: str, permission: str) -> str:
     """Create a short-lived LiveKit join token without exposing server credentials."""
     settings = get_settings()
@@ -233,13 +245,24 @@ async def save_presentation(
 
     presentation.title = payload.title.strip() or "Untitled presentation"
     db.query(Slide).filter(Slide.presentation_id == presentation.id).delete()
+    used_slide_ids: set[str] = set()
+    saved_slide_ids: list[str] = []
     for slide in payload.slides:
-        db.add(Slide(id=slide.id, presentation_id=presentation.id, order=slide.order, title=slide.title, canvas=slide.canvas))
+        slide_id = unique_slide_id(slide.id, used_slide_ids)
+        saved_slide_ids.append(slide_id)
+        db.add(
+            Slide(
+                id=slide_id,
+                presentation_id=presentation.id,
+                order=slide.order,
+                title=slide.title.strip()[:255] or "Untitled Slide",
+                canvas=slide.canvas,
+            )
+        )
     live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation.id).first()
-    slide_ids = [slide.id for slide in payload.slides]
-    if live and live.active_slide_id not in slide_ids:
-        if slide_ids:
-            apply_controller_state(live, slide_id=slide_ids[0])
+    if live and live.active_slide_id not in saved_slide_ids:
+        if saved_slide_ids:
+            apply_controller_state(live, slide_id=saved_slide_ids[0])
         else:
             live.active_slide_id = None
             live.active_media_id = None
@@ -254,7 +277,7 @@ async def save_presentation(
         {
             "presentationId": presentation.id,
             "presentation": serialized.model_dump(),
-            "activeSlideId": live.active_slide_id if live else (slide_ids[0] if slide_ids else None),
+            "activeSlideId": live.active_slide_id if live else (saved_slide_ids[0] if saved_slide_ids else None),
             "liveState": live_session_payload(live, presentation.id),
         },
         room=presentation.id,

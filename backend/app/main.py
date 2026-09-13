@@ -88,25 +88,36 @@ def share_link_repair_statements(dialect_name: str, columns: set[str]) -> list[s
 
 
 def repair_live_session_schema() -> None:
-    """Keep local databases created before media-state persistence usable."""
-    if not settings.database_url.startswith("sqlite"):
-        return
+    """Keep databases created before media-state persistence usable."""
     inspector = inspect(engine)
     if "live_sessions" not in inspector.get_table_names():
         return
     columns = {column["name"] for column in inspector.get_columns("live_sessions")}
+    statements = live_session_repair_statements(engine.dialect.name, columns)
+    if not statements:
+        return
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def live_session_repair_statements(dialect_name: str, columns: set[str]) -> list[str]:
+    is_sqlite = dialect_name == "sqlite"
+    bool_default = "0" if is_sqlite else "FALSE"
+    timestamp_type = "DATETIME" if is_sqlite else "TIMESTAMP WITH TIME ZONE"
     definitions = {
         "active_media_id": "VARCHAR(128)",
         "active_media_kind": "VARCHAR(16) DEFAULT 'slide' NOT NULL",
         "media_position": "FLOAT DEFAULT 0 NOT NULL",
-        "media_playing": "BOOLEAN DEFAULT 0 NOT NULL",
-        "media_muted": "BOOLEAN DEFAULT 0 NOT NULL",
-        "media_updated_at": "DATETIME",
+        "media_playing": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
+        "media_muted": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
+        "media_updated_at": timestamp_type,
     }
-    with engine.begin() as connection:
-        for name, definition in definitions.items():
-            if name not in columns:
-                connection.execute(text(f"ALTER TABLE live_sessions ADD COLUMN {name} {definition}"))
+    return [
+        f"ALTER TABLE live_sessions ADD COLUMN {name} {definition}"
+        for name, definition in definitions.items()
+        if name not in columns
+    ]
 
 
 @fastapi_app.get("/api/health")

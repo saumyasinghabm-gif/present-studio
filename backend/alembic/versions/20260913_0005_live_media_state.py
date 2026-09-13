@@ -15,18 +15,25 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("live_sessions", sa.Column("active_media_id", sa.String(length=128), nullable=True))
-    op.add_column("live_sessions", sa.Column("active_media_kind", sa.String(length=16), server_default="slide", nullable=False))
-    op.add_column("live_sessions", sa.Column("media_position", sa.Float(), server_default="0", nullable=False))
-    op.add_column("live_sessions", sa.Column("media_playing", sa.Boolean(), server_default=sa.false(), nullable=False))
-    op.add_column("live_sessions", sa.Column("media_muted", sa.Boolean(), server_default=sa.false(), nullable=False))
-    op.add_column("live_sessions", sa.Column("media_updated_at", sa.DateTime(timezone=True), nullable=True))
+    bind = op.get_bind()
+    columns = {column["name"] for column in sa.inspect(bind).get_columns("live_sessions")}
+    if "active_media_id" not in columns:
+        op.add_column("live_sessions", sa.Column("active_media_id", sa.String(length=128), nullable=True))
+    if "active_media_kind" not in columns:
+        op.add_column("live_sessions", sa.Column("active_media_kind", sa.String(length=16), server_default="slide", nullable=False))
+    if "media_position" not in columns:
+        op.add_column("live_sessions", sa.Column("media_position", sa.Float(), server_default="0", nullable=False))
+    if "media_playing" not in columns:
+        op.add_column("live_sessions", sa.Column("media_playing", sa.Boolean(), server_default=sa.false(), nullable=False))
+    if "media_muted" not in columns:
+        op.add_column("live_sessions", sa.Column("media_muted", sa.Boolean(), server_default=sa.false(), nullable=False))
+    if "media_updated_at" not in columns:
+        op.add_column("live_sessions", sa.Column("media_updated_at", sa.DateTime(timezone=True), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("live_sessions", "media_updated_at")
-    op.drop_column("live_sessions", "media_muted")
-    op.drop_column("live_sessions", "media_playing")
-    op.drop_column("live_sessions", "media_position")
-    op.drop_column("live_sessions", "active_media_kind")
-    op.drop_column("live_sessions", "active_media_id")
+    bind = op.get_bind()
+    columns = {column["name"] for column in sa.inspect(bind).get_columns("live_sessions")}
+    for name in ("media_updated_at", "media_muted", "media_playing", "media_position", "active_media_kind", "active_media_id"):
+        if name in columns:
+            op.drop_column("live_sessions", name)
