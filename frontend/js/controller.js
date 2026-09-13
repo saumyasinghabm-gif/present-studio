@@ -342,7 +342,7 @@
     if (!slide) return toast("Slide notes are unavailable.");
     const panel = $("#controllerNotesPanel");
     const notes = String(slide.canvas?.notes || "").trim();
-    notesReturnFocus = trigger || notesReturnFocus || document.activeElement;
+    if (trigger) notesReturnFocus = trigger;
     panel.dataset.slideId = slide.id;
     $("#controllerNotesTitle").textContent = slide.title || "Untitled slide";
     $("#controllerNotesContent").textContent = notes || "No presenter notes have been added for this slide yet.";
@@ -353,26 +353,27 @@
     if (trigger) $("#controllerNotesContent").focus();
   }
 
-  function closeSlideNotes() {
+  function closeSlideNotes(restoreFocus = true) {
     const panel = $("#controllerNotesPanel");
     if (panel.hidden) return;
     panel.hidden = true;
     delete panel.dataset.slideId;
     panel.closest(".controller-preview-body")?.classList.remove("has-inline-notes");
     $("#previewNotes").setAttribute("aria-pressed", "false");
-    notesReturnFocus?.focus?.();
+    if (restoreFocus) notesReturnFocus?.focus?.();
     notesReturnFocus = null;
   }
 
   function updatePreviewNotesButton(target) {
     const button = $("#previewNotes");
-    const isSlide = target?.kind === "slide" && Boolean(slideById(target.slideId));
+    const slide = target?.kind === "slide" ? slideById(target.slideId) : null;
+    const isSlide = Boolean(slide);
+    const hasNotes = Boolean(String(slide?.canvas?.notes || "").trim());
     button.disabled = !isSlide;
     button.dataset.slideId = isSlide ? target.slideId : "";
     button.title = isSlide ? `Open notes for ${target.title}` : "Select a slide to view notes";
-    const panel = $("#controllerNotesPanel");
-    if (!panel.hidden && isSlide && panel.dataset.slideId !== target.slideId) openSlideNotes(target.slideId);
-    if (!panel.hidden && !isSlide) closeSlideNotes();
+    if (hasNotes) openSlideNotes(target.slideId);
+    else closeSlideNotes(false);
   }
 
   function bindControllerNotes() {
