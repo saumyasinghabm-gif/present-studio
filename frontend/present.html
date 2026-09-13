@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio - Present</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260912-audience-sidebar">
+    <link rel="stylesheet" href="/css/styles.css?v=20260913-screen-moderation">
   </head>
   <body class="present-page">
     <div class="present-loading" id="presentLoading">
@@ -25,7 +25,7 @@
         <button id="fullscreenToggle" type="button" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
       </div>
       <div class="present-mode-badge" id="presenterBadge">Presenter Mode</div>
-      <div class="canvas-frame present-frame" id="presentFrame"><div class="present-media-layer" id="presentMedia" aria-hidden="true"></div><canvas id="presentCanvas" width="1280" height="720" aria-label="Presentation slide"></canvas></div>
+      <div class="canvas-frame present-frame" id="presentFrame"><div class="present-media-layer" id="presentMedia" aria-hidden="true"></div><canvas id="presentCanvas" width="1280" height="720" aria-label="Presentation slide"></canvas><div class="audience-annotation-layer" data-audience-annotation-layer aria-hidden="true"><canvas data-audience-annotation-canvas width="1280" height="720"></canvas><div data-audience-annotation-text></div></div></div>
       <nav class="present-controls" id="presentControls">
         <button id="previousSlide" type="button">‹ Previous</button>
         <span id="slideCounter">1 / 1</span>
@@ -41,9 +41,9 @@
           <button class="audience-sidebar-restore" data-live-panel-restore type="button" aria-label="Show participants and meeting controls" title="Show participants and meeting controls" hidden><span aria-hidden="true">‹</span><span>Show controls</span></button>
           <section class="live-presentation-feed audience-presentation-feed" data-live-presentation-viewer aria-label="Current live presentation">
             <div class="live-presentation-feed-heading"><strong>Live presentation</strong><span data-live-presentation-label>Waiting for the current slide</span></div>
-            <div class="live-presentation-feed-frame"><canvas data-live-presentation-canvas width="1280" height="720" aria-label="Current presentation output"></canvas><div class="live-presentation-feed-media" data-live-presentation-media aria-hidden="true"></div><span class="live-presentation-feed-empty" data-live-presentation-empty>Waiting for the current slide</span></div>
+            <div class="live-presentation-feed-frame"><canvas data-live-presentation-canvas width="1280" height="720" aria-label="Current presentation output"></canvas><div class="live-presentation-feed-media" data-live-presentation-media aria-hidden="true"></div><span class="live-presentation-feed-empty" data-live-presentation-empty>Waiting for the current slide</span><div class="audience-annotation-layer" data-audience-annotation-layer aria-hidden="true"><canvas data-audience-annotation-canvas width="1280" height="720"></canvas><div data-audience-annotation-text></div></div></div>
           </section>
-          <section class="live-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
+          <section class="live-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong><span data-live-screen-share-mode>Select a screen to focus</span></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
         </div>
         <aside class="audience-meeting-sidebar live-meeting-sidebar" aria-label="Participants and meeting controls">
           <header class="audience-meeting-sidebar-header"><div><strong>Participants</strong><span data-live-count>0 connected</span></div><div><button class="live-media-toggle" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="live-media-toggle" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
@@ -57,7 +57,7 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260913-audience-audio"></script>
-    <script src="/js/present.js?v=20260913-audience-audio"></script>
+    <script src="/js/live-media.js?v=20260913-screen-moderation"></script>
+    <script src="/js/present.js?v=20260913-audience-annotations"></script>
   </body>
 </html>

@@ -63,15 +63,71 @@ function renderMedia(slide) {
   syncAudioButton();
 }
 function syncAudioButton() { const button = $("audioToggle"); if (!button) return; button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio"; button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio"); }
-function enablePresentationAudio() {
+async function enablePresentationAudio() {
   audioEnabled = true;
-  document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => {
+  const attempts = [...document.querySelectorAll("#presentMedia video, #presentMedia audio")].map(media => {
     media.muted = mediaMuted(media.dataset.authoredMuted === "true");
-    media.play().catch(() => {});
+    return media.play();
   });
   syncAudioButton();
+  const results = await Promise.allSettled(attempts);
+  return results.every(result => result.status === "fulfilled");
 }
 function toggleAudio() { audioEnabled = !audioEnabled; document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = mediaMuted(media.dataset.authoredMuted === "true"); if (audioEnabled) media.play().catch(() => { audioEnabled = false; media.muted = true; syncAudioButton(); }); }); syncAudioButton(); }
+function annotationCanvases() { return [...document.querySelectorAll("[data-audience-annotation-canvas]")]; }
+function annotationTextLayers() { return [...document.querySelectorAll("[data-audience-annotation-text]")]; }
+function drawAudienceAnnotation(points = [], color = "#ffd54a", size = 7) {
+  if (points.length < 2) return;
+  annotationCanvases().forEach(target => {
+    const context = target.getContext("2d");
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = Number(size) || 7;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    points.forEach((point, index) => {
+      const x = Math.max(0, Math.min(1, Number(point.x) || 0)) * target.width;
+      const y = Math.max(0, Math.min(1, Number(point.y) || 0)) * target.height;
+      if (index) context.lineTo(x, y); else context.moveTo(x, y);
+    });
+    context.stroke();
+    context.restore();
+  });
+}
+function addAudienceAnnotationText(payload = {}) {
+  if (!payload.text) return;
+  annotationTextLayers().forEach(target => {
+    const label = document.createElement("span");
+    label.textContent = String(payload.text).slice(0, 180);
+    label.style.left = `${Math.max(0, Math.min(1, Number(payload.point?.x) || 0)) * 100}%`;
+    label.style.top = `${Math.max(0, Math.min(1, Number(payload.point?.y) || 0)) * 100}%`;
+    label.style.setProperty("--annotation-color", payload.color || "#ffd54a");
+    label.style.setProperty("--annotation-size", `${Math.max(18, (Number(payload.size) || 7) * 3.8)}px`);
+    target.append(label);
+  });
+}
+function clearAudienceAnnotations() {
+  annotationCanvases().forEach(target => target.getContext("2d").clearRect(0, 0, target.width, target.height));
+  annotationTextLayers().forEach(target => target.replaceChildren());
+}
+function applyAudienceViewport(payload = {}) {
+  const zoom = Math.max(.5, Math.min(3, Number(payload.zoom) || 1));
+  const x = Math.max(-1200, Math.min(1200, Number(payload.x) || 0));
+  const y = Math.max(-900, Math.min(900, Number(payload.y) || 0));
+  document.querySelectorAll("#presentFrame, .live-presentation-feed-frame").forEach(view => {
+    view.style.setProperty("--audience-zoom", String(zoom));
+    view.style.setProperty("--audience-pan-x", `${x}px`);
+    view.style.setProperty("--audience-pan-y", `${y}px`);
+  });
+}
+function handleAudienceAnnotation(event = {}) {
+  if (event.presentationId !== presentation?.id) return;
+  if (event.type === "draw") drawAudienceAnnotation(event.payload?.points, event.payload?.color, event.payload?.size);
+  if (event.type === "text") addAudienceAnnotationText(event.payload);
+  if (event.type === "clear") clearAudienceAnnotations();
+  if (event.type === "viewport") applyAudienceViewport(event.payload);
+}
 function animate(slide) { const frame = $("presentFrame"); const config = slide.canvas?.transition || { type: "fade", duration_ms: 500 }; frame.style.setProperty("--transition-duration", `${config.duration_ms || 500}ms`); frame.classList.remove("transition-fade", "transition-fade-left", "transition-fade-right", "transition-fade-up", "transition-fade-down", "transition-slide", "transition-push-left", "transition-push-right", "transition-push-up", "transition-push-down", "transition-morph", "transition-morph-left", "transition-morph-right", "transition-morph-up", "transition-morph-down", "transition-zoom"); if (config.type && config.type !== "none") requestAnimationFrame(() => { frame.classList.add(`transition-${config.type}`); setTimeout(() => frame.classList.remove(`transition-${config.type}`), config.duration_ms || 500); }); }
 function animateObjects() { canvas.getObjects().forEach(object => { const type = object.animation || "none"; if (type === "none") return; const duration = Math.max(100, Math.min(5000, Number(object.animationDuration) || 600)); const delay = Math.max(0, Math.min(5000, Number(object.animationDelay) || 0)); const finalState = { opacity: object.opacity ?? 1, left: object.left || 0, top: object.top || 0, scaleX: object.scaleX || 1, scaleY: object.scaleY || 1 }; const startState = {}; if (type === "fade") Object.assign(startState, { opacity: 0 }); if (type === "zoom") Object.assign(startState, { opacity: 0, scaleX: finalState.scaleX * 0.78, scaleY: finalState.scaleY * 0.78 }); if (type === "fly") Object.assign(startState, { opacity: 0, left: finalState.left - 140 }); if (type === "rise") Object.assign(startState, { opacity: 0, top: finalState.top + 90 }); if (type === "wipe") Object.assign(startState, { opacity: 0, scaleX: finalState.scaleX * 0.08 }); object.set(startState); setTimeout(() => { Object.entries(finalState).forEach(([key, value]) => object.animate(key, value, { duration, easing: fabric.util.ease.easeOutCubic, onChange: canvas.renderAll.bind(canvas), onComplete: () => { object.set(finalState); canvas.requestRenderAll(); } })); }, delay); }); }
 function setMediaCycle() { clearInterval(mediaTimer); mediaIndex = 0; if (permission !== "presenter") return; const config = playback(); if (["sequential", "random"].includes(config.media_cycle) && mediaItems(activeSlide()).length > 1) mediaTimer = setInterval(() => { mediaIndex += 1; renderMedia(activeSlide()); }, Number(config.media_interval_ms) || 5000); }
@@ -217,6 +273,7 @@ function setupSocket() {
   const joinRoom = () => socket.emit("join_presentation", { presentationId: presentation.id });
   socket.on("connect", joinRoom);
   socket.on("presentation_state", applyPresentationState);
+  socket.on("presentation_annotation", handleAudienceAnnotation);
   socket.on("presentation_updated", event => {
     if (event.presentationId !== presentation.id || !event.presentation) return;
     presentation = event.presentation;

@@ -150,14 +150,14 @@ def test_livekit_tokens_publish_without_room_admin():
             create_livekit_join_token("pres_demo", "participant_presenter", "Presenter", "presenter"),
             create_livekit_join_token("pres_demo", "participant_viewer", "Viewer", "viewer"),
         ]
-    for token in tokens:
+    for index, token in enumerate(tokens):
         claims = jwt.decode(token, "test-secret", algorithms=["HS256"], options={"verify_aud": False})
         grants = claims["video"]
         assert grants["roomJoin"] is True
         assert grants["room"] == "pres_demo"
         assert grants["canPublish"] is True
         assert grants["canSubscribe"] is True
-        assert grants["canPublishData"] is False
+        assert grants["canPublishData"] is (index == 0)
         assert grants.get("roomAdmin", False) is False
 
 

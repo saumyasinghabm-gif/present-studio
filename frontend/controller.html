@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260912-controller-meeting-sidebar">
+    <link rel="stylesheet" href="/css/styles.css?v=20260913-screen-moderation">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -103,12 +103,12 @@
             <div class="live-presentation-feed-heading"><strong>Live presentation</strong><span data-live-presentation-label>Waiting for the current slide</span></div>
             <div class="live-presentation-feed-frame"><canvas data-live-presentation-canvas width="1280" height="720" aria-label="Current presentation output"></canvas><div class="live-presentation-feed-media" data-live-presentation-media aria-hidden="true"></div><span class="live-presentation-feed-empty" data-live-presentation-empty>Waiting for the current slide</span></div>
           </section>
-          <section class="live-screen-share interactive-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
+          <section class="live-screen-share interactive-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong><span data-live-screen-share-mode>Choose the screen shown to everyone</span></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
         </div>
         <aside class="interactive-session-sidebar live-meeting-sidebar" aria-label="Participants and meeting controls">
           <header class="interactive-session-sidebar-header"><div><strong>Interactive audience</strong><span data-live-count>0 connected</span></div><div><button class="interactive-header-button" data-controller-mode-target="control" type="button" aria-label="Return to controller" title="Return to controller">Control</button><button class="interactive-header-button" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
           <div class="interactive-session-card interactive-session-setup"><p class="eyebrow">Session setup</p><div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div><p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p></div>
-          <div class="live-media-actions interactive-control-dock" aria-label="Meeting controls"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
+          <div class="live-media-actions interactive-control-dock" aria-label="Meeting controls"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-mute-all disabled aria-pressed="false">Mute meeting</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
           <div class="live-media-tiles interactive-participant-grid" data-live-tiles aria-live="polite"></div>
         </aside>
       </section>
@@ -141,7 +141,7 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260913-audience-audio"></script>
-    <script src="/js/controller.js?v=20260913-audience-audio"></script>
+    <script src="/js/live-media.js?v=20260913-screen-moderation"></script>
+    <script src="/js/controller.js?v=20260913-screen-moderation"></script>
   </body>
 </html>

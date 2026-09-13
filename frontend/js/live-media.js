@@ -11,6 +11,7 @@
     const microphoneButton = root.querySelector("[data-live-microphone]");
     const cameraButton = root.querySelector("[data-live-camera]");
     const screenShareButton = root.querySelector("[data-live-screen-share]");
+    const muteAllButton = root.querySelector("[data-live-mute-all]");
     const enableAudioButton = root.querySelector("[data-live-enable-audio]");
     const leaveButton = root.querySelector("[data-live-leave]");
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
@@ -23,12 +24,14 @@
     const screenShareViewer = root.querySelector("[data-live-screen-share-viewer]");
     const screenShareMedia = root.querySelector("[data-live-screen-share-media]");
     const screenShareLabel = root.querySelector("[data-live-screen-share-label]");
+    const screenShareMode = root.querySelector("[data-live-screen-share-mode]");
     const presentationViewer = root.querySelector("[data-live-presentation-viewer]");
     const presentationCanvas = root.querySelector("[data-live-presentation-canvas]");
     const presentationMedia = root.querySelector("[data-live-presentation-media]");
     const presentationLabel = root.querySelector("[data-live-presentation-label]");
     const presentationEmpty = root.querySelector("[data-live-presentation-empty]");
     const presentationSource = options.presentationSource || {};
+    const isController = options.controller === true;
     let room = null;
     let microphoneEnabled = false;
     let cameraEnabled = false;
@@ -36,6 +39,11 @@
     let joining = false;
     let mountedTracks = [];
     let presentationMediaSignature = "";
+    let selectedShareIdentity = "";
+    let controllerShareIdentity = "";
+    let meetingMuted = false;
+    let mutedParticipants = new Set();
+    let audioPlaybackBlocked = false;
 
     nameInput.value = options.displayName || "";
     const setStatus = (message, kind = "") => { status.textContent = message; status.dataset.kind = kind; };
@@ -43,6 +51,42 @@
     function publications(participant) { return participant?.trackPublications ? [...participant.trackPublications.values()] : []; }
     function isSource(publication, name) { return publication?.source === livekit.Track?.Source?.[name]; }
     function detachMountedTracks() { mountedTracks.forEach(track => track.detach?.()); mountedTracks = []; }
+    function participantAudioMuted(identity) { return meetingMuted || mutedParticipants.has(identity); }
+
+    function applyRemoteAudioState() {
+      root.querySelectorAll("audio[data-live-audio-participant]").forEach(audio => {
+        audio.muted = participantAudioMuted(audio.dataset.liveAudioParticipant);
+      });
+      if (muteAllButton) {
+        muteAllButton.textContent = meetingMuted ? "Unmute meeting" : "Mute meeting";
+        muteAllButton.setAttribute("aria-pressed", String(meetingMuted));
+      }
+    }
+
+    async function publishControllerState() {
+      if (!room || !isController) return;
+      const message = {
+        presentStudio: "meeting-control-v1",
+        type: "state",
+        featuredShareIdentity: controllerShareIdentity,
+        meetingMuted,
+        mutedParticipants: [...mutedParticipants]
+      };
+      try {
+        await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(message)), { reliable: true });
+      } catch (error) {
+        setStatus(error.message || "Meeting control could not be sent", "error");
+      }
+    }
+
+    function applyControllerState(message) {
+      if (message?.presentStudio !== "meeting-control-v1" || message.type !== "state") return;
+      controllerShareIdentity = String(message.featuredShareIdentity || "");
+      meetingMuted = Boolean(message.meetingMuted);
+      mutedParticipants = new Set(Array.isArray(message.mutedParticipants) ? message.mutedParticipants.map(String) : []);
+      applyRemoteAudioState();
+      renderParticipants();
+    }
 
     function presentationSourceLabel() {
       const value = typeof presentationSource.label === "function" ? presentationSource.label() : presentationSource.label;
@@ -126,9 +170,16 @@
       }
       if (!isLocal) publications(participant).filter(publication => (isSource(publication, "Microphone") || isSource(publication, "ScreenShareAudio")) && publication.track).forEach(publication => {
         const audio = publication.track.attach();
-        Object.assign(audio, { autoplay: true, hidden: true });
+        Object.assign(audio, { autoplay: true, hidden: true, muted: participantAudioMuted(participant.identity) });
+        audio.dataset.liveAudioParticipant = participant.identity;
         tile.append(audio);
         mountedTracks.push(publication.track);
+        audio.play?.().catch(error => {
+          if (error?.name !== "NotAllowedError") return;
+          audioPlaybackBlocked = true;
+          syncAudioRecovery();
+          setStatus("Browser blocked meeting audio. Select Enable Audio.", "error");
+        });
       });
       const caption = document.createElement("footer");
       const label = document.createElement("strong");
@@ -137,6 +188,22 @@
       const micOn = publications(participant).some(publication => isSource(publication, "Microphone") && !publication.isMuted);
       state.textContent = `${participantRole(participant) === "presenter" ? "Presenter" : "Audience"} · ${micOn ? "Mic on" : "Muted"}`;
       caption.append(label, state);
+      if (isController && !isLocal) {
+        const mute = document.createElement("button");
+        const muted = mutedParticipants.has(participant.identity);
+        mute.type = "button";
+        mute.className = "live-participant-mute";
+        mute.textContent = muted ? "Unmute for everyone" : "Mute for everyone";
+        mute.setAttribute("aria-pressed", String(muted));
+        mute.addEventListener("click", event => {
+          event.stopPropagation();
+          if (muted) mutedParticipants.delete(participant.identity); else mutedParticipants.add(participant.identity);
+          applyRemoteAudioState();
+          renderParticipants();
+          publishControllerState();
+        });
+        caption.append(mute);
+      }
       tile.append(media, caption);
       tiles.append(tile);
     }
@@ -153,26 +220,71 @@
       sharers.forEach(participant => publications(participant)
         .filter(publication => isSource(publication, "ScreenShare") && publication.track && !publication.isMuted)
         .forEach(publication => activeShares.push({ participant, track: publication.track })));
+      const availableIdentities = new Set(activeShares.map(item => item.participant.identity));
+      if (isController && controllerShareIdentity && !availableIdentities.has(controllerShareIdentity)) {
+        controllerShareIdentity = "";
+        publishControllerState();
+      }
+      const requestedIdentity = controllerShareIdentity || selectedShareIdentity;
+      const featuredIdentity = availableIdentities.has(requestedIdentity) ? requestedIdentity : (activeShares[0]?.participant.identity || "");
+      if (!availableIdentities.has(selectedShareIdentity)) selectedShareIdentity = featuredIdentity;
       activeShares.forEach(({ participant, track }) => {
         const figure = document.createElement("figure");
+        figure.dataset.participantIdentity = participant.identity;
+        figure.classList.toggle("is-featured", participant.identity === featuredIdentity);
         const video = track.attach();
         Object.assign(video, { autoplay: true, playsInline: true, muted: participant === room.localParticipant });
         const caption = document.createElement("figcaption");
         caption.textContent = `${participant.name || "Guest"}${participant === room.localParticipant ? " (You)" : ""}`;
-        figure.append(video, caption);
+        const actions = document.createElement("div");
+        actions.className = "live-screen-share-actions";
+        if (activeShares.length > 1) {
+          const select = document.createElement("button");
+          select.type = "button";
+          const controllerLocked = Boolean(controllerShareIdentity && !isController);
+          select.textContent = participant.identity === featuredIdentity ? "Showing" : controllerLocked ? "Controller selected another" : (isController ? "Show for everyone" : "Focus screen");
+          select.disabled = participant.identity === featuredIdentity || controllerLocked;
+          select.addEventListener("click", () => {
+            selectedShareIdentity = participant.identity;
+            if (isController) {
+              controllerShareIdentity = participant.identity;
+              publishControllerState();
+            }
+            renderParticipants();
+          });
+          actions.append(select);
+        }
+        const fullscreen = document.createElement("button");
+        fullscreen.type = "button";
+        fullscreen.textContent = "Fullscreen";
+        fullscreen.addEventListener("click", () => figure.requestFullscreen?.().catch(() => {}));
+        actions.append(fullscreen);
+        figure.append(video, caption, actions);
         screenShareMedia.append(figure);
         mountedTracks.push(track);
       });
       const visible = activeShares.length > 0;
       screenShareViewer.hidden = !visible;
       root.classList.toggle("has-screen-share", visible);
+      screenShareMedia.classList.toggle("has-multiple", activeShares.length > 1);
       if (visible) screenShareLabel.textContent = activeShares.length === 1 ? `${activeShares[0].participant.name || "Guest"} is sharing` : `${activeShares.length} shared screens`;
+      if (screenShareMode) screenShareMode.textContent = controllerShareIdentity
+        ? "Controller-selected screen"
+        : activeShares.length > 1 ? (isController ? "Choose the screen shown to everyone" : "Select a screen to focus") : "";
     }
 
     function renderParticipants() {
       detachMountedTracks();
       tiles.replaceChildren();
       if (!room) { count.textContent = "0 connected"; return; }
+      if (isController && mutedParticipants.size) {
+        const connectedIdentities = new Set([room.localParticipant.identity, ...[...room.remoteParticipants.values()].map(participant => participant.identity)]);
+        const activeMuted = new Set([...mutedParticipants].filter(identity => connectedIdentities.has(identity)));
+        if (activeMuted.size !== mutedParticipants.size) {
+          mutedParticipants = activeMuted;
+          publishControllerState();
+        }
+      }
       addParticipantTile(room.localParticipant, true);
       room.remoteParticipants.forEach(participant => addParticipantTile(participant));
       renderScreenShares();
@@ -193,6 +305,7 @@
       microphoneButton.disabled = !connected;
       cameraButton.disabled = !connected;
       screenShareButton.disabled = !connected;
+      if (muteAllButton) muteAllButton.disabled = !connected;
       leaveButton.disabled = !connected;
       microphoneButton.textContent = microphoneEnabled ? "Mute microphone" : "Unmute microphone";
       cameraButton.textContent = cameraEnabled ? "Turn camera off" : "Turn camera on";
@@ -200,6 +313,7 @@
       microphoneButton.setAttribute("aria-pressed", String(microphoneEnabled));
       cameraButton.setAttribute("aria-pressed", String(cameraEnabled));
       screenShareButton.setAttribute("aria-pressed", String(screenShareEnabled));
+      applyRemoteAudioState();
     }
 
     function setAudienceSidebarHidden(hidden, moveFocus = false) {
@@ -219,16 +333,21 @@
     }
 
     function syncAudioRecovery() {
-      enableAudioButton.hidden = !room || room.canPlayAudio !== false;
+      enableAudioButton.hidden = !room || (!audioPlaybackBlocked && room.canPlayAudio !== false);
     }
 
     async function enableAudio(showSuccess = true) {
       if (!room) return false;
       try {
+        let presentationAudioReady = true;
+        try { presentationAudioReady = (await options.onEnableAudio?.()) !== false; } catch { presentationAudioReady = false; }
         await room.startAudio();
+        const audioResults = await Promise.allSettled([...root.querySelectorAll("audio[data-live-audio-participant]")].map(audio => audio.play()));
+        audioPlaybackBlocked = !presentationAudioReady || audioResults.some(result => result.status === "rejected");
         syncAudioRecovery();
-        if (showSuccess) setStatus("Audio enabled", "success");
-        return room.canPlayAudio !== false;
+        const ready = !audioPlaybackBlocked && room.canPlayAudio !== false;
+        if (showSuccess) setStatus(ready ? "Audio enabled" : "Audio is still blocked. Check this tab's sound permission.", ready ? "success" : "error");
+        return ready;
       } catch (error) {
         enableAudioButton.hidden = false;
         setStatus(error.message || "Browser blocked audio. Select Enable Audio.", "error");
@@ -242,6 +361,11 @@
         events.TrackPublished, events.TrackUnpublished, events.TrackMuted, events.TrackUnmuted]
         .filter(Boolean).forEach(eventName => room.on(eventName, renderParticipants));
       room.on(events.LocalTrackPublished, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); });
+      room.on(events.ParticipantConnected, () => { if (isController) window.setTimeout(publishControllerState, 250); });
+      if (events.DataReceived) room.on(events.DataReceived, (payload, participant) => {
+        if (!participant || participantRole(participant) !== "presenter") return;
+        try { applyControllerState(JSON.parse(new TextDecoder().decode(payload))); } catch {}
+      });
       room.on(events.LocalTrackUnpublished, publication => {
         const stoppedScreenShare = isSource(publication, "ScreenShare") || isSource(publication, "ScreenShareAudio");
         syncLocalPublishedState(); syncButtons(true); renderParticipants();
@@ -252,7 +376,7 @@
       room.on(events.Reconnecting, () => setStatus("Reconnecting…"));
       room.on(events.Reconnected, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); syncAudioRecovery(); setStatus("Connected", "success"); });
       room.on(events.Disconnected, () => {
-        microphoneEnabled = false; cameraEnabled = false; screenShareEnabled = false; detachMountedTracks(); room = null;
+        microphoneEnabled = false; cameraEnabled = false; screenShareEnabled = false; audioPlaybackBlocked = false; detachMountedTracks(); room = null;
         tiles.replaceChildren(); screenShareMedia.replaceChildren(); screenShareViewer.hidden = true; enableAudioButton.hidden = true;
         root.classList.remove("has-screen-share"); count.textContent = "0 connected"; setStatus("Left the live room"); syncButtons(false);
       });
@@ -278,9 +402,12 @@
           displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.screenAccessCode || undefined
         });
         await room.connect(credentials.url, credentials.token, { autoSubscribe: true });
-        const audioReady = await audioUnlock || await enableAudio(false);
+        const gestureUnlocked = await audioUnlock;
+        const connectedAudioReady = await enableAudio(false);
+        const audioReady = connectedAudioReady || (gestureUnlocked && !audioPlaybackBlocked && room.canPlayAudio !== false);
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
+        if (isController) publishControllerState();
       } catch (error) {
         room?.disconnect(); room = null; setStatus(error.message || "Could not join audio/video", "error"); syncButtons(false);
       } finally {
@@ -343,6 +470,11 @@
     microphoneButton.addEventListener("click", toggleMicrophone);
     cameraButton.addEventListener("click", toggleCamera);
     screenShareButton.addEventListener("click", toggleScreenShare);
+    muteAllButton?.addEventListener("click", () => {
+      meetingMuted = !meetingMuted;
+      applyRemoteAudioState();
+      publishControllerState();
+    });
     enableAudioButton.addEventListener("click", () => enableAudio(true));
     leaveButton.addEventListener("click", leave);
     fullscreenButton?.addEventListener("click", () => {

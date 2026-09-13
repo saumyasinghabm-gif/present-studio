@@ -963,6 +963,7 @@
       displayName: api.getCachedSession()?.name || "Presenter",
       fullscreenTarget: $("#controllerLiveMedia"),
       fullscreenOnJoin: false,
+      controller: true,
       presentationSource: {
         canvas: $("#controllerPreviewCanvas"),
         media: $("#controllerPreviewMedia"),
