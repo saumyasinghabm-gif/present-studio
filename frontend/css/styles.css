@@ -1787,3 +1787,42 @@ button.present-back {
 @media (max-height: 700px) {
   .interactive-workspace .controller-people-panel { grid-template-rows: minmax(120px, 3fr) minmax(72px, 2fr); }
 }
+
+/* Camera background picker shared by presenter and audience. */
+.live-icon-control-dock .live-control-button.is-background.has-effect .live-control-icon { border-color: #d3aa0d; color: #ffd54a; }
+.live-background-dialog {
+  width: min(620px, calc(100vw - 28px));
+  max-height: min(720px, calc(100dvh - 28px));
+  overflow-y: auto;
+  border: 1px solid #4b493f;
+  border-radius: 14px;
+  padding: 18px;
+  background: #1b1b18;
+  color: #f7f6f1;
+  box-shadow: 0 28px 90px rgba(0,0,0,.62);
+}
+.live-background-dialog::backdrop { background: rgba(0,0,0,.68); backdrop-filter: blur(5px); }
+.live-background-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.live-background-dialog-header > div { display: grid; gap: 3px; }
+.live-background-dialog-header small { color: #ffd54a; font: 800 .58rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.live-background-dialog-header strong { color: #fff; font-size: 1.15rem; }
+.live-media-panel .live-background-dialog-header button { width: 34px; min-width: 34px; min-height: 34px; border-color: #494941; border-radius: 50%; padding: 0; background: #292925; color: #fff; font-size: 1.1rem; }
+.live-background-dialog > p { margin: 10px 0 16px; color: #aaa8a1; font-size: .75rem; line-height: 1.5; }
+.live-background-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.live-media-panel .live-background-options button { min-width: 0; min-height: 0; display: grid; gap: 7px; border: 1px solid #3f3f39; border-radius: 9px; padding: 7px; background: #242420; color: #e9e7df; text-align: left; }
+.live-media-panel .live-background-options button:hover { border-color: #8d782b; background: #2b2921; }
+.live-media-panel .live-background-options button.is-selected { border-color: #ffd54a; box-shadow: 0 0 0 2px rgba(255,213,74,.14); }
+.live-background-options button b { overflow: hidden; padding: 0 2px 2px; font: 700 .6rem var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.live-background-preview { height: 88px; display: grid; place-items: center; overflow: hidden; border-radius: 6px; background-position: center; background-size: cover; color: #a4a198; font: 800 .6rem var(--mono); }
+.live-background-preview.is-none { border: 1px dashed #55544d; background: #161614; }
+.live-background-preview.is-blur { background: radial-gradient(circle at 30% 35%, #c2ab6d, transparent 22%), linear-gradient(135deg, #3f4b51, #75634f); filter: blur(1.5px); }
+.live-background-preview.is-studio { background-image: url('/assets/meeting-backgrounds/studio.svg'); }
+.live-background-preview.is-office { background-image: url('/assets/meeting-backgrounds/office.svg'); }
+.live-background-preview.is-warm { background-image: url('/assets/meeting-backgrounds/warm.svg'); }
+.live-background-support { min-height: 18px; display: block; margin-top: 12px; color: #aaa8a1; font-size: .68rem; }
+
+@media (max-width: 520px) {
+  .live-background-dialog { padding: 15px; }
+  .live-background-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .live-background-preview { height: 76px; }
+}

@@ -11,6 +11,11 @@
     const microphoneButton = root.querySelector("[data-live-microphone]");
     const cameraButton = root.querySelector("[data-live-camera]");
     const screenShareButton = root.querySelector("[data-live-screen-share]");
+    const backgroundButton = root.querySelector("[data-live-background]");
+    const backgroundDialog = root.querySelector("[data-live-background-dialog]");
+    const backgroundCloseButton = root.querySelector("[data-live-background-close]");
+    const backgroundOptions = [...root.querySelectorAll("[data-live-background-option]")];
+    const backgroundSupport = root.querySelector("[data-live-background-support]");
     const muteAllButton = root.querySelector("[data-live-mute-all]");
     const enableAudioButton = root.querySelector("[data-live-enable-audio]");
     const leaveButton = root.querySelector("[data-live-leave]");
@@ -56,8 +61,10 @@
     let cameraEnabled = false;
     let screenShareEnabled = false;
     let joining = false;
-    let mountedTracks = [];
+    let mountedTracks = new Set();
     let presentationMediaSignature = "";
+    let screenShareRenderSignature = "";
+    let participantRenderTimer = 0;
     let selectedShareIdentity = "";
     let controllerShareIdentity = "";
     let meetingMuted = false;
@@ -72,6 +79,11 @@
     let screenShareRequestPending = false;
     let screenShareApproved = false;
     let participantRegistry = new Map();
+    let backgroundProcessor = null;
+    let backgroundProcessorTrack = null;
+    let backgroundProcessorModule = null;
+    let selectedBackground = localStorage.getItem("presentStudio.cameraBackground") || "none";
+    if (!["none", "blur", "studio", "office", "warm"].includes(selectedBackground)) selectedBackground = "none";
     const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     const reactionMeta = {
@@ -85,7 +97,17 @@
     function participantRole(participant) { try { return JSON.parse(participant.metadata || "{}").role || "viewer"; } catch { return "viewer"; } }
     function publications(participant) { return participant?.trackPublications ? [...participant.trackPublications.values()] : []; }
     function isSource(publication, name) { return publication?.source === livekit.Track?.Source?.[name]; }
-    function detachMountedTracks() { mountedTracks.forEach(track => track.detach?.()); mountedTracks = []; }
+    function detachMountedTracks() { mountedTracks.forEach(track => track.detach?.()); mountedTracks.clear(); screenShareRenderSignature = ""; }
+    function rememberAttachedTrack(track, element) {
+      if (!track || !element) return;
+      element._liveTrack = track;
+      mountedTracks.add(track);
+    }
+    function detachNodeTracks(node) {
+      node?.querySelectorAll("video, audio").forEach(element => {
+        try { element._liveTrack?.detach?.(element); } catch {}
+      });
+    }
     function participantAudioMuted(identity) { return meetingMuted || mutedParticipants.has(identity); }
 
     function currentIdentity() { return String(room?.localParticipant?.identity || ""); }
@@ -378,6 +400,80 @@
       screenShareEnabled = Boolean(room?.localParticipant?.isScreenShareEnabled);
     }
 
+    const backgroundPresets = {
+      studio: "/assets/meeting-backgrounds/studio.svg",
+      office: "/assets/meeting-backgrounds/office.svg",
+      warm: "/assets/meeting-backgrounds/warm.svg"
+    };
+
+    function syncBackgroundOptions() {
+      backgroundOptions.forEach(button => {
+        const active = button.dataset.liveBackgroundOption === selectedBackground;
+        button.classList.toggle("is-selected", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+      backgroundButton?.classList.toggle("has-effect", selectedBackground !== "none");
+      backgroundButton?.setAttribute("aria-pressed", String(selectedBackground !== "none"));
+    }
+
+    function localCameraTrack() {
+      return publications(room?.localParticipant).find(publication => isSource(publication, "Camera") && publication.track && !publication.isMuted)?.track || null;
+    }
+
+    async function loadBackgroundProcessorModule() {
+      if (backgroundProcessorModule) return backgroundProcessorModule;
+      backgroundProcessorModule = await import("https://cdn.jsdelivr.net/npm/@livekit/track-processors@0.7.2/+esm");
+      if (typeof backgroundProcessorModule.supportsBackgroundProcessors === "function" && !backgroundProcessorModule.supportsBackgroundProcessors()) {
+        throw new Error("Camera backgrounds are not supported by this browser");
+      }
+      return backgroundProcessorModule;
+    }
+
+    async function applySelectedCameraBackground(announce = false) {
+      syncBackgroundOptions();
+      const cameraTrack = localCameraTrack();
+      if (!cameraTrack) {
+        if (backgroundSupport) backgroundSupport.textContent = selectedBackground === "none" ? "No camera effect selected." : "Your effect will apply when you turn on the camera.";
+        return;
+      }
+      try {
+        if (backgroundSupport) backgroundSupport.textContent = selectedBackground === "none" ? "Removing camera effect…" : "Applying camera effect…";
+        if (!backgroundProcessor || backgroundProcessorTrack !== cameraTrack) {
+          const processors = await loadBackgroundProcessorModule();
+          backgroundProcessor = processors.BackgroundProcessor({ mode: "disabled" });
+          await cameraTrack.setProcessor(backgroundProcessor, true);
+          backgroundProcessorTrack = cameraTrack;
+        }
+        if (selectedBackground === "none") await backgroundProcessor.switchTo({ mode: "disabled" });
+        else if (selectedBackground === "blur") await backgroundProcessor.switchTo({ mode: "background-blur", blurRadius: 12 });
+        else await backgroundProcessor.switchTo({ mode: "virtual-background", imagePath: new URL(backgroundPresets[selectedBackground], location.origin).href });
+        if (backgroundSupport) backgroundSupport.textContent = selectedBackground === "none" ? "Camera effect is off." : "Camera effect applied.";
+        if (announce) setStatus(selectedBackground === "none" ? "Camera background removed" : "Camera background updated", "success");
+      } catch (error) {
+        backgroundProcessor = null;
+        backgroundProcessorTrack = null;
+        if (backgroundSupport) backgroundSupport.textContent = error.message || "This camera effect could not be applied.";
+        if (announce) setStatus(error.message || "Camera background could not be applied", "error");
+      }
+    }
+
+    function openBackgroundDialog() {
+      syncBackgroundOptions();
+      if (backgroundSupport) backgroundSupport.textContent = cameraEnabled ? "Choose an effect to preview it on your camera." : "Choose an effect now; it will apply when your camera starts.";
+      backgroundButton?.setAttribute("aria-expanded", "true");
+      if (typeof backgroundDialog?.showModal === "function") backgroundDialog.showModal();
+      else backgroundDialog?.setAttribute("open", "");
+    }
+
+    function closeBackgroundDialog() {
+      backgroundButton?.setAttribute("aria-expanded", "false");
+      if (typeof backgroundDialog?.close === "function") backgroundDialog.close();
+      else backgroundDialog?.removeAttribute("open");
+      backgroundButton?.focus();
+    }
+
+    syncBackgroundOptions();
+
     function addParticipantTile(participant, isLocal = false) {
       const tile = document.createElement("article");
       tile.className = "live-media-tile";
@@ -389,7 +485,7 @@
         const video = videoPublication.track.attach();
         Object.assign(video, { autoplay: true, playsInline: true, muted: isLocal });
         media.append(video);
-        mountedTracks.push(videoPublication.track);
+        rememberAttachedTrack(videoPublication.track, video);
       } else {
         const avatar = document.createElement("span");
         avatar.className = "live-media-avatar";
@@ -401,7 +497,7 @@
         Object.assign(audio, { autoplay: true, hidden: true, muted: participantAudioMuted(participant.identity) });
         audio.dataset.liveAudioParticipant = participant.identity;
         tile.append(audio);
-        mountedTracks.push(publication.track);
+        rememberAttachedTrack(publication.track, audio);
         audio.play?.().catch(error => {
           if (error?.name !== "NotAllowedError") return;
           audioPlaybackBlocked = true;
@@ -463,12 +559,14 @@
         caption.append(participantActions);
       }
       tile.append(media, caption);
-      tiles.append(tile);
+      return tile;
     }
 
     function renderScreenShares() {
-      screenShareMedia.replaceChildren();
       if (!room) {
+        detachNodeTracks(screenShareMedia);
+        screenShareMedia.replaceChildren();
+        screenShareRenderSignature = "";
         screenShareViewer.hidden = true;
         root.classList.remove("has-screen-share");
         return;
@@ -487,12 +585,26 @@
       const requestedIdentity = controllerShareIdentity || selectedShareIdentity;
       const featuredIdentity = availableIdentities.has(requestedIdentity) ? requestedIdentity : (activeShares[0]?.participant.identity || "");
       if (!availableIdentities.has(selectedShareIdentity)) selectedShareIdentity = featuredIdentity;
+      const renderSignature = `${activeShares.map(({ participant, track }) => `${participant.identity}:${track.sid || track.mediaStreamTrack?.id || "share"}`).join("|")}::${featuredIdentity}::${controllerShareIdentity}`;
+      const visible = activeShares.length > 0;
+      screenShareViewer.hidden = !visible;
+      root.classList.toggle("has-screen-share", visible);
+      screenShareMedia.classList.toggle("has-multiple", activeShares.length > 1);
+      if (visible) screenShareLabel.textContent = activeShares.length === 1 ? `${activeShares[0].participant.name || "Guest"} is sharing` : `${activeShares.length} shared screens`;
+      if (screenShareMode) screenShareMode.textContent = controllerOverrideActive
+        ? "Controller-selected screen"
+        : activeShares.length > 1 ? (isController ? "Choose the screen shown to everyone" : "Select a screen to focus") : "";
+      if (renderSignature === screenShareRenderSignature) return;
+      screenShareRenderSignature = renderSignature;
+      detachNodeTracks(screenShareMedia);
+      screenShareMedia.replaceChildren();
       activeShares.forEach(({ participant, track }) => {
         const figure = document.createElement("figure");
         figure.dataset.participantIdentity = participant.identity;
         figure.classList.toggle("is-featured", participant.identity === featuredIdentity);
         const video = track.attach();
         Object.assign(video, { autoplay: true, playsInline: true, muted: participant === room.localParticipant });
+        rememberAttachedTrack(track, video);
         const caption = document.createElement("figcaption");
         caption.textContent = `${participant.name || "Guest"}${participant === room.localParticipant ? " (You)" : ""}`;
         const actions = document.createElement("div");
@@ -530,21 +642,22 @@
         }
         figure.append(video, caption, actions);
         screenShareMedia.append(figure);
-        mountedTracks.push(track);
       });
-      const visible = activeShares.length > 0;
-      screenShareViewer.hidden = !visible;
-      root.classList.toggle("has-screen-share", visible);
-      screenShareMedia.classList.toggle("has-multiple", activeShares.length > 1);
-      if (visible) screenShareLabel.textContent = activeShares.length === 1 ? `${activeShares[0].participant.name || "Guest"} is sharing` : `${activeShares.length} shared screens`;
-      if (screenShareMode) screenShareMode.textContent = controllerOverrideActive
-        ? "Controller-selected screen"
-        : activeShares.length > 1 ? (isController ? "Choose the screen shown to everyone" : "Select a screen to focus") : "";
+    }
+
+    function participantRenderSignature(participant, isLocal) {
+      const publicationState = publications(participant).map(publication => [
+        publication.trackSid || publication.sid || publication.track?.sid || publication.track?.mediaStreamTrack?.id || "track",
+        publication.source || "",
+        publication.isMuted ? "muted" : "live",
+        publication.track ? "attached" : "pending"
+      ].join(":")).sort().join("|");
+      const registryItem = participantRegistry.get(String(participant.identity));
+      return [participant.identity, participant.name, participant.metadata, isLocal, publicationState,
+        raisedHands.has(participant.identity), meetingMuted, mutedParticipants.has(participant.identity), registryItem?.clientId || ""].join("::");
     }
 
     function renderParticipants() {
-      detachMountedTracks();
-      tiles.replaceChildren();
       if (!room) { count.textContent = "0 connected"; return; }
       if (isController && mutedParticipants.size) {
         const connectedIdentities = new Set([room.localParticipant.identity, ...[...room.remoteParticipants.values()].map(participant => participant.identity)]);
@@ -554,12 +667,41 @@
           publishControllerState();
         }
       }
-      addParticipantTile(room.localParticipant, true);
-      room.remoteParticipants.forEach(participant => addParticipantTile(participant));
+      const participants = [{ participant: room.localParticipant, isLocal: true }, ...[...room.remoteParticipants.values()].map(participant => ({ participant, isLocal: false }))];
+      const existingTiles = new Map([...tiles.querySelectorAll("[data-participant-identity]")].map(tile => [tile.dataset.participantIdentity, tile]));
+      const activeIdentities = new Set();
+      participants.forEach(({ participant, isLocal }, index) => {
+        const identity = String(participant.identity);
+        const signature = participantRenderSignature(participant, isLocal);
+        let tile = existingTiles.get(identity);
+        if (!tile || tile.dataset.renderSignature !== signature) {
+          const replacement = addParticipantTile(participant, isLocal);
+          replacement.dataset.renderSignature = signature;
+          if (tile) { detachNodeTracks(tile); tile.replaceWith(replacement); }
+          else tiles.append(replacement);
+          tile = replacement;
+        }
+        const currentAtIndex = tiles.children[index];
+        if (currentAtIndex !== tile) tiles.insertBefore(tile, currentAtIndex || null);
+        activeIdentities.add(identity);
+      });
+      existingTiles.forEach((tile, identity) => {
+        if (activeIdentities.has(identity)) return;
+        detachNodeTracks(tile);
+        tile.remove();
+      });
       renderScreenShares();
       const total = room.remoteParticipants.size + 1;
       count.textContent = `${total} connected`;
       if (peopleBadge) peopleBadge.textContent = String(total);
+    }
+
+    function scheduleParticipantRender() {
+      if (participantRenderTimer) return;
+      participantRenderTimer = window.setTimeout(() => {
+        participantRenderTimer = 0;
+        renderParticipants();
+      }, 60);
     }
 
     function highlightSpeakers(speakers) {
@@ -577,6 +719,7 @@
       microphoneButton.disabled = !connected;
       cameraButton.disabled = !connected;
       screenShareButton.disabled = !connected;
+      if (backgroundButton) backgroundButton.disabled = !connected;
       if (muteAllButton) muteAllButton.disabled = !connected;
       if (handButton) handButton.disabled = !connected;
       reactionButtons.forEach(button => { button.disabled = !connected; });
@@ -639,11 +782,12 @@
       const events = livekit.RoomEvent;
       [events.ParticipantConnected, events.ParticipantDisconnected, events.TrackSubscribed, events.TrackUnsubscribed,
         events.TrackPublished, events.TrackUnpublished, events.TrackMuted, events.TrackUnmuted]
-        .filter(Boolean).forEach(eventName => room.on(eventName, renderParticipants));
-      room.on(events.LocalTrackPublished, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); });
+        .filter(Boolean).forEach(eventName => room.on(eventName, scheduleParticipantRender));
+      room.on(events.LocalTrackPublished, () => { syncLocalPublishedState(); syncButtons(true); scheduleParticipantRender(); });
       room.on(events.LocalTrackUnpublished, publication => {
         const stoppedScreenShare = isSource(publication, "ScreenShare") || isSource(publication, "ScreenShareAudio");
-        syncLocalPublishedState(); syncButtons(true); renderParticipants();
+        if (isSource(publication, "Camera")) { backgroundProcessor = null; backgroundProcessorTrack = null; }
+        syncLocalPublishedState(); syncButtons(true); scheduleParticipantRender();
         if (stoppedScreenShare && !screenShareEnabled) setStatus("Screen sharing stopped");
       });
       room.on(events.ActiveSpeakersChanged, highlightSpeakers);
@@ -652,6 +796,7 @@
       room.on(events.Reconnected, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); syncAudioRecovery(); setStatus("Connected", "success"); });
       room.on(events.Disconnected, () => {
         microphoneEnabled = false; cameraEnabled = false; screenShareEnabled = false; audioPlaybackBlocked = false; detachMountedTracks(); room = null;
+        backgroundProcessor = null; backgroundProcessorTrack = null;
         tiles.replaceChildren(); screenShareMedia.replaceChildren(); screenShareViewer.hidden = true; enableAudioButton.hidden = true;
         root.classList.remove("has-screen-share"); count.textContent = "0 connected"; setStatus("Left the live room"); syncButtons(false);
       });
@@ -725,7 +870,12 @@
     async function toggleCamera() {
       if (!room) return;
       cameraButton.disabled = true;
-      try { await room.localParticipant.setCameraEnabled(!cameraEnabled); syncLocalPublishedState(); syncButtons(true); renderParticipants(); }
+      try {
+        await room.localParticipant.setCameraEnabled(!cameraEnabled);
+        syncLocalPublishedState();
+        if (cameraEnabled && selectedBackground !== "none") await applySelectedCameraBackground(false);
+        syncButtons(true); renderParticipants();
+      }
       catch (error) { syncLocalPublishedState(); setStatus(error.message || "Camera permission was not granted", "error"); syncButtons(true); }
     }
 
@@ -791,6 +941,16 @@
     microphoneButton.addEventListener("click", toggleMicrophone);
     cameraButton.addEventListener("click", toggleCamera);
     screenShareButton.addEventListener("click", toggleScreenShare);
+    backgroundButton?.addEventListener("click", openBackgroundDialog);
+    backgroundCloseButton?.addEventListener("click", closeBackgroundDialog);
+    backgroundDialog?.addEventListener("close", () => backgroundButton?.setAttribute("aria-expanded", "false"));
+    backgroundDialog?.addEventListener("click", event => { if (event.target === backgroundDialog) closeBackgroundDialog(); });
+    backgroundOptions.forEach(button => button.addEventListener("click", async () => {
+      selectedBackground = button.dataset.liveBackgroundOption || "none";
+      localStorage.setItem("presentStudio.cameraBackground", selectedBackground);
+      syncBackgroundOptions();
+      await applySelectedCameraBackground(true);
+    }));
     muteAllButton?.addEventListener("click", () => {
       meetingMuted = !meetingMuted;
       applyRemoteAudioState();
