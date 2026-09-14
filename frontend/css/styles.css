@@ -1626,3 +1626,132 @@ button.present-back {
   .audience-live-view .present-live-media.is-connected .audience-meeting-controls.live-icon-control-dock .live-control-button { min-width: 50px; min-height: 60px; }
   .live-icon-control-dock .live-control-icon { width: 40px; height: 40px; flex-basis: 40px; }
 }
+
+/* Audience pre-join welcome experience. */
+.audience-live-view .present-live-media:not(.is-connected) {
+  z-index: 100;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  padding: clamp(24px, 5vw, 64px);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,213,74,.13), transparent 28%),
+    radial-gradient(circle at 82% 78%, rgba(255,213,74,.07), transparent 24%),
+    #10100e;
+  box-shadow: none;
+  color: #fff;
+}
+.audience-live-view .present-live-media:not(.is-connected)::before {
+  content: "";
+  position: fixed;
+  inset: 18px;
+  border: 1px solid rgba(255,255,255,.07);
+  pointer-events: none;
+}
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-heading,
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form,
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-status {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  margin-right: auto;
+  margin-left: auto;
+}
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-heading {
+  display: grid;
+  gap: clamp(22px, 4vh, 34px);
+  margin-bottom: 0;
+}
+.audience-welcome-brand { display: flex; align-items: center; gap: 11px; }
+.audience-welcome-mark {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #ffd54a;
+  color: #171713 !important;
+  font: 900 1.15rem var(--sans) !important;
+  box-shadow: 0 8px 26px rgba(211,170,13,.18);
+}
+.audience-welcome-brand > span:last-child { display: grid; gap: 2px; }
+.present-live-media .audience-welcome-brand small { color: #ffd54a; font: 800 .58rem var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+.present-live-media .audience-welcome-brand strong { color: #f7f6f1; font-size: .82rem; }
+.audience-welcome-copy .eyebrow { display: block; margin-bottom: 10px; color: #ffd54a !important; font: 800 .62rem var(--mono) !important; letter-spacing: .12em; text-transform: uppercase; }
+.audience-welcome-copy h1 { margin: 0; color: #fff; font-size: clamp(2.25rem, 6vw, 4.15rem); line-height: .98; letter-spacing: -.045em; }
+.audience-welcome-copy p { max-width: 500px; margin: 16px 0 0; color: #aaa8a1; font-size: clamp(.92rem, 2vw, 1.05rem); line-height: 1.6; }
+.audience-welcome-notes { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.audience-welcome-notes span { display: inline-flex; align-items: center; gap: 6px; color: #c7c5bd !important; font-size: .7rem !important; }
+.audience-welcome-notes b { width: 17px; height: 17px; display: grid; place-items: center; border: 1px solid rgba(255,213,74,.45); border-radius: 50%; color: #ffd54a; font-size: .55rem; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: clamp(26px, 5vh, 42px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 13px;
+  padding: 10px;
+  background: rgba(35,35,30,.86);
+  box-shadow: 0 22px 70px rgba(0,0,0,.3);
+  backdrop-filter: blur(14px);
+}
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form label { display: grid; gap: 7px; color: #d9d7cf; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form label > span { padding-left: 3px; color: #aaa8a1; font: 800 .58rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form input {
+  min-width: 0;
+  min-height: 52px;
+  border: 1px solid #55544d;
+  border-radius: 8px;
+  padding: 0 15px;
+  background: #121210;
+  color: #fff;
+  font: 600 1rem var(--sans);
+  caret-color: #ffd54a;
+}
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form input::placeholder { color: #77756e; opacity: 1; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form input:focus { outline: 3px solid rgba(255,213,74,.2); border-color: #ffd54a; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form button {
+  min-width: 154px;
+  min-height: 52px;
+  border-color: #d3aa0d;
+  border-radius: 8px;
+  padding: 0 18px;
+  background: #ffd54a;
+  color: #171713;
+  font-size: .68rem;
+}
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form button:hover:not(:disabled) { border-color: #ffd54a; background: #ffe171; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-status { min-height: 20px; margin-top: 12px; margin-bottom: 0; color: #929088; font-size: .72rem; line-height: 1.5; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-status[data-kind="error"] { color: #ffaaa3; }
+.audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-status[data-kind="success"] { color: #7fd59f; }
+
+@media (max-width: 600px) {
+  .audience-live-view .present-live-media:not(.is-connected) {
+    justify-content: flex-start;
+    padding: max(30px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  }
+  .audience-live-view .present-live-media:not(.is-connected)::before { inset: 8px; }
+  .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-heading { gap: 22px; }
+  .audience-welcome-copy h1 { font-size: clamp(2.1rem, 12vw, 3.15rem); }
+  .audience-welcome-copy p { margin-top: 12px; }
+  .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form { grid-template-columns: minmax(0, 1fr); margin-top: 28px; }
+  .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form input,
+  .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form button { width: 100%; min-height: 54px; }
+}
+
+@media (max-height: 650px) and (min-width: 601px) {
+  .audience-live-view .present-live-media:not(.is-connected) { justify-content: flex-start; padding-top: 28px; padding-bottom: 28px; }
+  .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-heading { gap: 16px; }
+  .audience-welcome-copy h1 { font-size: 2.55rem; }
+  .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form { margin-top: 22px; }
+}

@@ -139,6 +139,12 @@ fastapi_app.include_router(admin.router)
 def admin_dashboard(_: User = Depends(admin_user)) -> FileResponse:
     return FileResponse(settings.frontend_dir / "admin.html")
 
+
+@fastapi_app.get("/join/{token}", include_in_schema=False)
+def audience_join(token: str) -> FileResponse:
+    """Serve the audience app at a concise, branded URL."""
+    return FileResponse(settings.frontend_dir / "present.html")
+
 fastapi_app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")
 
 app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)

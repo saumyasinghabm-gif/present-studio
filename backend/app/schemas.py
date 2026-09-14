@@ -87,6 +87,10 @@ class ShareLinkOut(BaseModel):
     audienceUrl: str | None = None
 
 
+class ShareLinkResolveOut(BaseModel):
+    presentationId: str
+
+
 class LiveMediaTokenRequest(BaseModel):
     displayName: str | None = Field(default=None, max_length=80)
     shareToken: str = Field(default="", max_length=200)

@@ -9,8 +9,8 @@ from ..config import get_settings
 from ..database import get_db
 from ..live_state import apply_controller_state, live_session_payload
 from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
-from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, SlideOut
-from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, optional_current_user, resolve_share_permission, verify_password
+from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, ShareLinkResolveOut, SlideOut
+from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, new_share_token, optional_current_user, resolve_share_permission, verify_password
 from ..socket_manager import meeting_admission_required, meeting_client_is_admitted, sio
 
 
@@ -166,6 +166,20 @@ def list_presentations(
     return {"presentations": [serialize_presentation(item) for item in presentations]}
 
 
+@router.get("/shared/{token}", response_model=ShareLinkResolveOut)
+def resolve_shared_presentation(token: str, db: Session = Depends(get_db)) -> ShareLinkResolveOut:
+    share = db.query(ShareLink).filter(
+        ShareLink.token == token,
+        ShareLink.is_active == True,  # noqa: E712
+    ).first()
+    expires_at = share.expires_at if share else None
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if not share or (expires_at and expires_at <= datetime.now(timezone.utc)):
+        raise HTTPException(status_code=404, detail="This audience link is invalid or has expired")
+    return ShareLinkResolveOut(presentationId=share.presentation_id)
+
+
 @router.post("")
 def create_presentation(
     payload: PresentationCreate,
@@ -302,7 +316,7 @@ def create_share_link(
     share = ShareLink(
         id=new_id("share"),
         presentation_id=presentation.id,
-        token=new_id("token"),
+        token=new_share_token(),
         permission=payload.permission,
         screen_access_code_hash=hash_password(payload.screenAccessCode),
     )
@@ -312,7 +326,7 @@ def create_share_link(
         screen_share = ShareLink(
             id=new_id("share"),
             presentation_id=presentation.id,
-            token=new_id("token"),
+            token=new_share_token(),
             permission="viewer",
             screen_access_code_hash=hash_password(payload.screenAccessCode),
         )
@@ -327,7 +341,7 @@ def create_share_link(
         requiresScreenCode=True,
         screenUrl=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}" if screen_share else None,
         screenToken=screen_share.token if screen_share else None,
-        audienceUrl=f"{base}/present.html?id={presentation_id}&token={(screen_share or share).token}",
+        audienceUrl=f"{base}/join/{(screen_share or share).token}",
     )
 
 

@@ -783,6 +783,11 @@
       activeRoom.disconnect();
     }
     joinButton.addEventListener("click", join);
+    nameInput.addEventListener("keydown", event => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      joinButton.click();
+    });
     microphoneButton.addEventListener("click", toggleMicrophone);
     cameraButton.addEventListener("click", toggleCamera);
     screenShareButton.addEventListener("click", toggleScreenShare);

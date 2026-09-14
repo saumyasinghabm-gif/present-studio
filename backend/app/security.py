@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import secrets
 from uuid import uuid4
 import jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -14,6 +15,11 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 def new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
+
+
+def new_share_token() -> str:
+    """Return a compact, URL-safe token with 96 bits of entropy."""
+    return secrets.token_urlsafe(12)
 
 
 def hash_password(password: str) -> str:

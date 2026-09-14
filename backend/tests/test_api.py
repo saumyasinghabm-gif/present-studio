@@ -86,7 +86,16 @@ def test_share_link_permissions_are_returned_to_frontend():
         assert "/controller.html?" in presenter_link.json()["url"]
         assert "/screen.html?" in presenter_link.json()["screenUrl"]
         assert presenter_link.json()["screenToken"]
-        assert "/present.html?" in presenter_link.json()["audienceUrl"]
+        assert "/join/" in presenter_link.json()["audienceUrl"]
+        assert "?" not in presenter_link.json()["audienceUrl"]
+
+        resolved_audience = client.get(f"/api/presentations/shared/{presenter_link.json()['screenToken']}")
+        assert resolved_audience.status_code == 200
+        assert resolved_audience.json()["presentationId"] == "pres_demo"
+
+        audience_page = client.get(presenter_link.json()["audienceUrl"])
+        assert audience_page.status_code == 200
+        assert "Welcome to the presentation" in audience_page.text
 
         presenter_payload = client.get(f"/api/presentations/pres_demo?token={presenter_link.json()['token']}")
         assert presenter_payload.status_code == 200

@@ -1,7 +1,8 @@
 const api = window.PresentStudioApi;
 const params = new URLSearchParams(location.search);
-const presentationId = params.get("id") || "pres_demo";
-const shareToken = params.get("token") || "";
+const shortJoinMatch = location.pathname.match(/^\/join\/([^/]+)\/?$/);
+let presentationId = params.get("id") || "";
+const shareToken = params.get("token") || (shortJoinMatch ? decodeURIComponent(shortJoinMatch[1]) : "");
 const authToken = localStorage.getItem("presentStudio.accessToken") || "";
 const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 let canvas;
@@ -287,6 +288,11 @@ function setupSocket() {
   if (socket.connected) joinRoom();
 }
 async function loadPresentationAccess() {
+  if (!presentationId && shareToken) {
+    const resolved = await api.resolveShareLink(shareToken);
+    presentationId = resolved.presentationId;
+  }
+  if (!presentationId) presentationId = "pres_demo";
   if (!shareToken) return api.getPresentation(presentationId);
   const access = await api.getScreenAccessRequirements(presentationId, shareToken);
   if (!access.requiresCode) return api.getPresentation(presentationId, shareToken);
@@ -307,6 +313,9 @@ async function init() {
   const presenter = permission === "presenter";
   audioEnabled = presenter;
   document.body.classList.toggle("audience-live-view", !presenter);
+  document.title = presenter ? `${presentation.title} — Presenter` : `${presentation.title} — Live presentation`;
+  const welcomePresentation = document.querySelector("[data-live-welcome-presentation]");
+  if (welcomePresentation) welcomePresentation.textContent = `You’re joining “${presentation.title}”. Enter your name and the presenter will let you in.`;
   setVisible($("presentControls"), presenter);
   $("presenterBadge").textContent = presenter ? "Presenter Mode" : "Audience View";
   setVisible($("presenterBadge"), presenter);

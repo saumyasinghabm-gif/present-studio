@@ -82,6 +82,17 @@ async function init(){
   socket?.emit("join_presentation",{presentationId:presentation.id});
 }
 
+const audienceLaunchButton = $("#openAudience");
+if (audienceLaunchButton) audienceLaunchButton.onclick = async () => {
+  const screenCode = requestScreenAccessCode();
+  if (screenCode === null) return;
+  try {
+    await save();
+    const result = await api.createShareLink(presentation.id, "viewer", screenCode);
+    window.open(result.audienceUrl || result.url, "_blank", "noopener");
+  } catch (error) { toast(error.message); }
+};
+
 init().catch(e=>{
   $("#modeLabel").textContent="Error";
   toast(e.message);
