@@ -8,6 +8,65 @@ from .security import can_present_with_credentials, new_id
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 
+# Ephemeral meeting moderation state. Live media itself remains in LiveKit;
+# these maps coordinate the waiting room and presenter approvals.
+controller_sids = {}
+waiting_participants = {}
+active_participants = {}
+screen_share_requests = {}
+
+
+def _presenter_allowed(data):
+    presentation_id = data.get("presentationId")
+    if not presentation_id:
+        return False
+    with SessionLocal() as db:
+        presentation = db.get(Presentation, presentation_id)
+        return bool(presentation and can_present_with_credentials(
+            db,
+            presentation,
+            auth_token=data.get("authToken") or "",
+            share_token=data.get("shareToken") or "",
+        ))
+
+
+def _lobby_payload(presentation_id):
+    pending = waiting_participants.get(presentation_id, {})
+    active = active_participants.get(presentation_id, {})
+    shares = screen_share_requests.get(presentation_id, {})
+    return {
+        "presentationId": presentation_id,
+        "pending": [{"clientId": item["clientId"], "name": item["name"]} for item in pending.values()],
+        "active": [
+            {"clientId": item["clientId"], "identity": item.get("identity", ""), "name": item["name"]}
+            for item in active.values()
+        ],
+        "screenShareRequests": [
+            {"clientId": item["clientId"], "identity": item.get("identity", ""), "name": item["name"]}
+            for item in shares.values()
+        ],
+    }
+
+
+def _sid_is_admitted(presentation_id, sid):
+    if sid in controller_sids.get(presentation_id, set()):
+        return True
+    return any(item.get("sid") == sid for item in active_participants.get(presentation_id, {}).values())
+
+
+def meeting_admission_required(presentation_id):
+    return bool(controller_sids.get(presentation_id))
+
+
+def meeting_client_is_admitted(presentation_id, client_id):
+    return bool(client_id and client_id in active_participants.get(presentation_id, {}))
+
+
+async def _emit_lobby_state(presentation_id):
+    payload = _lobby_payload(presentation_id)
+    for controller_sid in tuple(controller_sids.get(presentation_id, set())):
+        await sio.emit("meeting_lobby_state", payload, room=controller_sid)
+
 
 @sio.event
 async def connect(sid, environ):
@@ -16,6 +75,22 @@ async def connect(sid, environ):
 
 @sio.event
 async def disconnect(sid):
+    affected = set()
+    for presentation_id, sids in list(controller_sids.items()):
+        if sid in sids:
+            sids.discard(sid)
+            if not sids:
+                controller_sids.pop(presentation_id, None)
+    for registry in (waiting_participants, active_participants, screen_share_requests):
+        for presentation_id, entries in list(registry.items()):
+            removed = [client_id for client_id, item in entries.items() if item.get("sid") == sid]
+            for client_id in removed:
+                entries.pop(client_id, None)
+                affected.add(presentation_id)
+            if not entries:
+                registry.pop(presentation_id, None)
+    for presentation_id in affected:
+        await _emit_lobby_state(presentation_id)
     print("socket-disconnected", sid)
 
 
@@ -293,7 +368,7 @@ def _clean_meeting_identity(data):
 async def meeting_chat(sid, data):
     presentation_id = data.get("presentationId")
     text = data.get("text")
-    if not presentation_id or presentation_id not in sio.rooms(sid) or not isinstance(text, str) or not text.strip():
+    if not presentation_id or not _sid_is_admitted(presentation_id, sid) or not isinstance(text, str) or not text.strip():
         return
     with SessionLocal() as db:
         if not db.get(Presentation, presentation_id):
@@ -316,7 +391,7 @@ async def meeting_chat(sid, data):
 async def meeting_reaction(sid, data):
     presentation_id = data.get("presentationId")
     reaction = data.get("reaction")
-    if not presentation_id or presentation_id not in sio.rooms(sid) or reaction not in {"clap", "party", "heart"}:
+    if not presentation_id or not _sid_is_admitted(presentation_id, sid) or reaction not in {"clap", "party", "heart"}:
         return
     identity, name = _clean_meeting_identity(data)
     await sio.emit(
@@ -329,7 +404,7 @@ async def meeting_reaction(sid, data):
 @sio.event
 async def meeting_hand(sid, data):
     presentation_id = data.get("presentationId")
-    if not presentation_id or presentation_id not in sio.rooms(sid):
+    if not presentation_id or not _sid_is_admitted(presentation_id, sid):
         return
     identity, name = _clean_meeting_identity(data)
     if not identity:
@@ -337,6 +412,161 @@ async def meeting_hand(sid, data):
     await sio.emit(
         "meeting_hand_state",
         {"presentationId": presentation_id, "identity": identity, "name": name, "raised": data.get("raised") is True},
+        room=presentation_id,
+    )
+
+
+@sio.event
+async def meeting_controller_register(sid, data):
+    presentation_id = data.get("presentationId")
+    if not presentation_id or not _presenter_allowed(data):
+        await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+        return
+    controller_sids.setdefault(presentation_id, set()).add(sid)
+    await sio.emit("meeting_lobby_state", _lobby_payload(presentation_id), room=sid)
+
+
+@sio.event
+async def meeting_admission_request(sid, data):
+    presentation_id = data.get("presentationId")
+    client_id = str(data.get("clientId") or "").strip()[:128]
+    _, name = _clean_meeting_identity(data)
+    if not presentation_id or not client_id or presentation_id not in sio.rooms(sid):
+        return
+    with SessionLocal() as db:
+        if not db.get(Presentation, presentation_id):
+            return
+    active = active_participants.get(presentation_id, {}).get(client_id)
+    if active and active.get("sid") == sid:
+        await sio.emit("meeting_admission_decision", {"presentationId": presentation_id, "clientId": client_id, "accepted": True}, room=sid)
+        return
+    if not controller_sids.get(presentation_id):
+        active_participants.setdefault(presentation_id, {})[client_id] = {
+            "clientId": client_id, "sid": sid, "name": name,
+        }
+        await sio.emit("meeting_admission_decision", {"presentationId": presentation_id, "clientId": client_id, "accepted": True}, room=sid)
+        return
+    waiting_participants.setdefault(presentation_id, {})[client_id] = {
+        "clientId": client_id, "sid": sid, "name": name,
+    }
+    await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_admission_decide(sid, data):
+    presentation_id = data.get("presentationId")
+    if not presentation_id or not _presenter_allowed(data):
+        await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+        return
+    raw_ids = data.get("clientIds")
+    client_ids = raw_ids if isinstance(raw_ids, list) else [data.get("clientId")]
+    pending = waiting_participants.setdefault(presentation_id, {})
+    active = active_participants.setdefault(presentation_id, {})
+    accepted = data.get("accepted") is True
+    for raw_client_id in client_ids[:100]:
+        client_id = str(raw_client_id or "").strip()[:128]
+        item = pending.pop(client_id, None)
+        if not item:
+            continue
+        if accepted:
+            active[client_id] = item
+        await sio.emit(
+            "meeting_admission_decision",
+            {"presentationId": presentation_id, "clientId": client_id, "accepted": accepted},
+            room=item["sid"],
+        )
+    await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_participant_joined(sid, data):
+    presentation_id = data.get("presentationId")
+    client_id = str(data.get("clientId") or "").strip()[:128]
+    identity, name = _clean_meeting_identity(data)
+    item = active_participants.get(presentation_id, {}).get(client_id) if presentation_id else None
+    if not item or item.get("sid") != sid or not identity:
+        return
+    item.update({"identity": identity, "name": name})
+    await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_participant_left(sid, data):
+    presentation_id = data.get("presentationId")
+    client_id = str(data.get("clientId") or "").strip()[:128]
+    if not presentation_id or not client_id:
+        return
+    item = active_participants.get(presentation_id, {}).get(client_id)
+    if item and item.get("sid") == sid:
+        active_participants[presentation_id].pop(client_id, None)
+        screen_share_requests.get(presentation_id, {}).pop(client_id, None)
+        await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_remove_participant(sid, data):
+    presentation_id = data.get("presentationId")
+    client_id = str(data.get("clientId") or "").strip()[:128]
+    if not presentation_id or not client_id or not _presenter_allowed(data):
+        await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+        return
+    item = active_participants.get(presentation_id, {}).pop(client_id, None)
+    if not item:
+        return
+    item.pop("identity", None)
+    waiting_participants.setdefault(presentation_id, {})[client_id] = item
+    screen_share_requests.get(presentation_id, {}).pop(client_id, None)
+    await sio.emit("meeting_removed_by_controller", {"presentationId": presentation_id, "clientId": client_id}, room=item["sid"])
+    await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_screen_share_request(sid, data):
+    presentation_id = data.get("presentationId")
+    client_id = str(data.get("clientId") or "").strip()[:128]
+    active = active_participants.get(presentation_id, {}).get(client_id) if presentation_id else None
+    if not active or active.get("sid") != sid:
+        return
+    identity, name = _clean_meeting_identity(data)
+    screen_share_requests.setdefault(presentation_id, {})[client_id] = {
+        "clientId": client_id, "sid": sid, "identity": identity, "name": name,
+    }
+    await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_screen_share_decide(sid, data):
+    presentation_id = data.get("presentationId")
+    if not presentation_id or not _presenter_allowed(data):
+        await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+        return
+    raw_ids = data.get("clientIds")
+    client_ids = raw_ids if isinstance(raw_ids, list) else [data.get("clientId")]
+    requests = screen_share_requests.setdefault(presentation_id, {})
+    accepted = data.get("accepted") is True
+    for raw_client_id in client_ids[:100]:
+        client_id = str(raw_client_id or "").strip()[:128]
+        item = requests.pop(client_id, None)
+        if not item:
+            continue
+        await sio.emit(
+            "meeting_screen_share_decision",
+            {"presentationId": presentation_id, "clientId": client_id, "accepted": accepted},
+            room=item["sid"],
+        )
+    await _emit_lobby_state(presentation_id)
+
+
+@sio.event
+async def meeting_screen_share_revoke(sid, data):
+    presentation_id = data.get("presentationId")
+    target_identity = str(data.get("targetIdentity") or "").strip()[:128]
+    if not presentation_id or not target_identity or not _presenter_allowed(data):
+        await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+        return
+    await sio.emit(
+        "meeting_screen_share_revoke_command",
+        {"presentationId": presentation_id, "targetIdentity": target_identity},
         room=presentation_id,
     )
 
@@ -362,4 +592,7 @@ async def end_session(sid, data):
             live.meeting_muted = False
             live.muted_participant_identities = "[]"
             db.commit()
+    waiting_participants.pop(presentation_id, None)
+    active_participants.pop(presentation_id, None)
+    screen_share_requests.pop(presentation_id, None)
     await sio.emit("session_ended", {"presentationId": presentation_id}, room=presentation_id)

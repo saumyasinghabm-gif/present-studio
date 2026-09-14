@@ -91,6 +91,7 @@ class LiveMediaTokenRequest(BaseModel):
     displayName: str | None = Field(default=None, max_length=80)
     shareToken: str = Field(default="", max_length=200)
     screenAccessCode: str | None = Field(default=None, pattern=r"^\d{4}$")
+    clientId: str = Field(default="", max_length=128)
 
 
 class LiveMediaTokenOut(BaseModel):

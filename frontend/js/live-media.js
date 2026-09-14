@@ -41,6 +41,14 @@
     const chatForm = root.querySelector("[data-live-chat-form]");
     const chatInput = root.querySelector("[data-live-chat-input]");
     const chatSubmit = chatForm?.querySelector("button[type='submit']");
+    const lobby = root.querySelector("[data-live-lobby]");
+    const waitingList = root.querySelector("[data-live-waiting-list]");
+    const waitingCount = root.querySelector("[data-live-waiting-count]");
+    const admitAllButton = root.querySelector("[data-live-admit-all]");
+    const shareRequestHeading = root.querySelector("[data-live-share-heading]");
+    const shareRequestList = root.querySelector("[data-live-share-list]");
+    const shareRequestCount = root.querySelector("[data-live-share-count]");
+    const approveSharesButton = root.querySelector("[data-live-approve-shares]");
     const presentationSource = options.presentationSource || {};
     const isController = options.controller === true;
     let room = null;
@@ -60,6 +68,11 @@
     let unreadMessages = 0;
     let raisedHands = new Map();
     let soundContext = null;
+    let admissionState = isController ? "approved" : "idle";
+    let screenShareRequestPending = false;
+    let screenShareApproved = false;
+    let participantRegistry = new Map();
+    const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     const reactionMeta = {
       clap: { emoji: "👏", label: "applauded" },
@@ -77,6 +90,65 @@
 
     function currentIdentity() { return String(room?.localParticipant?.identity || ""); }
     function currentName() { return String(room?.localParticipant?.name || nameInput.value.trim() || (isController ? "Presenter" : "Guest")).slice(0, 80); }
+    function moderationCredentials() {
+      return { presentationId: options.presentationId, authToken: options.authToken || "", shareToken: options.shareToken || "" };
+    }
+
+    function registerController() {
+      if (isController) options.socket?.emit("meeting_controller_register", moderationCredentials());
+    }
+
+    function renderLobby(message) {
+      if (!isController || !lobby || message?.presentationId !== options.presentationId) return;
+      const pending = Array.isArray(message.pending) ? message.pending : [];
+      const active = Array.isArray(message.active) ? message.active : [];
+      const shareRequests = Array.isArray(message.screenShareRequests) ? message.screenShareRequests : [];
+      participantRegistry = new Map(active.filter(item => item.identity).map(item => [String(item.identity), item]));
+      const peopleTab = sidebarTabs.find(button => button.dataset.liveTab === "people");
+      peopleTab?.classList.toggle("has-pending", pending.length > 0 || shareRequests.length > 0);
+      if (peopleTab) peopleTab.title = pending.length || shareRequests.length ? `${pending.length} waiting, ${shareRequests.length} screen share requests` : "";
+      lobby.hidden = pending.length === 0 && shareRequests.length === 0;
+      waitingCount.textContent = String(pending.length);
+      admitAllButton.hidden = pending.length === 0;
+      admitAllButton.onclick = () => options.socket?.emit("meeting_admission_decide", {
+        ...moderationCredentials(), clientIds: pending.map(item => item.clientId), accepted: true
+      });
+      waitingList.replaceChildren(...pending.map(item => {
+        const row = document.createElement("div");
+        row.className = "live-lobby-person";
+        const name = document.createElement("span");
+        name.textContent = item.name || "Guest";
+        const actions = document.createElement("div");
+        const deny = document.createElement("button");
+        deny.type = "button"; deny.textContent = "Deny"; deny.className = "is-secondary";
+        deny.onclick = () => options.socket?.emit("meeting_admission_decide", { ...moderationCredentials(), clientId: item.clientId, accepted: false });
+        const admit = document.createElement("button");
+        admit.type = "button"; admit.textContent = "Admit";
+        admit.onclick = () => options.socket?.emit("meeting_admission_decide", { ...moderationCredentials(), clientId: item.clientId, accepted: true });
+        actions.append(deny, admit); row.append(name, actions); return row;
+      }));
+      shareRequestHeading.hidden = shareRequests.length === 0;
+      approveSharesButton.hidden = shareRequests.length === 0;
+      approveSharesButton.onclick = () => options.socket?.emit("meeting_screen_share_decide", {
+        ...moderationCredentials(), clientIds: shareRequests.map(item => item.clientId), accepted: true
+      });
+      shareRequestCount.textContent = String(shareRequests.length);
+      shareRequestList.replaceChildren(...shareRequests.map(item => {
+        const row = document.createElement("div");
+        row.className = "live-lobby-person";
+        const name = document.createElement("span");
+        name.textContent = item.name || "Guest";
+        const actions = document.createElement("div");
+        const deny = document.createElement("button");
+        deny.type = "button"; deny.textContent = "Deny"; deny.className = "is-secondary";
+        deny.onclick = () => options.socket?.emit("meeting_screen_share_decide", { ...moderationCredentials(), clientId: item.clientId, accepted: false });
+        const allow = document.createElement("button");
+        allow.type = "button"; allow.textContent = "Allow";
+        allow.onclick = () => options.socket?.emit("meeting_screen_share_decide", { ...moderationCredentials(), clientId: item.clientId, accepted: true });
+        actions.append(deny, allow); row.append(name, actions); return row;
+      }));
+      renderParticipants();
+    }
 
     function setSidebarTab(tab) {
       activeSidebarTab = tab === "chat" ? "chat" : "people";
@@ -191,6 +263,7 @@
     async function applyParticipantAudioCommand(message) {
       if (!room || !message || message.presentationId !== options.presentationId) return;
       const target = String(message.targetIdentity || "");
+      if (target === "*" && isController) return;
       if (target !== "*" && target !== currentIdentity()) return;
       const enabled = message.muted !== true;
       try {
@@ -343,11 +416,13 @@
         tile.classList.add("has-raised-hand");
       }
       if (isController && !isLocal) {
+        const participantActions = document.createElement("div");
+        participantActions.className = "live-participant-actions";
         const mute = document.createElement("button");
         const muted = meetingMuted || mutedParticipants.has(participant.identity) || !micOn;
         mute.type = "button";
         mute.className = "live-participant-mute";
-        mute.textContent = meetingMuted ? "Unmute everyone first" : (muted ? "Unmute for everyone" : "Mute for everyone");
+        mute.textContent = meetingMuted ? "Unmute all first" : (muted ? "Unmute person" : "Mute person");
         mute.disabled = meetingMuted;
         if (meetingMuted) mute.title = "Turn off Mute everyone before changing one participant";
         mute.setAttribute("aria-pressed", String(muted));
@@ -362,7 +437,21 @@
             targetIdentity: participant.identity, muted: !muted
           });
         });
-        caption.append(mute);
+        participantActions.append(mute);
+        const registryItem = participantRegistry.get(String(participant.identity));
+        if (registryItem?.clientId) {
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "live-participant-remove";
+          remove.textContent = "Remove";
+          remove.title = "Remove this person and return them to the waiting room";
+          remove.addEventListener("click", event => {
+            event.stopPropagation();
+            options.socket?.emit("meeting_remove_participant", { ...moderationCredentials(), clientId: registryItem.clientId });
+          });
+          participantActions.append(remove);
+        }
+        caption.append(participantActions);
       }
       tile.append(media, caption);
       tiles.append(tile);
@@ -420,6 +509,16 @@
         fullscreen.textContent = "Fullscreen";
         fullscreen.addEventListener("click", () => figure.requestFullscreen?.().catch(() => {}));
         actions.append(fullscreen);
+        if (isController && participant !== room.localParticipant) {
+          const revoke = document.createElement("button");
+          revoke.type = "button";
+          revoke.className = "is-danger";
+          revoke.textContent = "Stop share";
+          revoke.addEventListener("click", () => options.socket?.emit("meeting_screen_share_revoke", {
+            ...moderationCredentials(), targetIdentity: participant.identity
+          }));
+          actions.append(revoke);
+        }
         figure.append(video, caption, actions);
         screenShareMedia.append(figure);
         mountedTracks.push(track);
@@ -463,7 +562,9 @@
       root.classList.toggle("is-connected", connected);
       if (!connected) setAudienceSidebarHidden(false);
       joinButton.hidden = connected;
-      nameInput.disabled = connected || joining;
+      joinButton.disabled = joining || (!isController && admissionState === "waiting");
+      joinButton.textContent = !isController && admissionState === "waiting" ? "Waiting for presenter…" : (isController ? "Join audio/video" : "Ask to join meeting");
+      nameInput.disabled = connected || joining || (!isController && admissionState === "waiting");
       microphoneButton.disabled = !connected;
       cameraButton.disabled = !connected;
       screenShareButton.disabled = !connected;
@@ -475,7 +576,8 @@
       leaveButton.disabled = !connected;
       microphoneButton.textContent = microphoneEnabled ? "Mute microphone" : "Unmute microphone";
       cameraButton.textContent = cameraEnabled ? "Turn camera off" : "Turn camera on";
-      screenShareButton.textContent = screenShareEnabled ? "Stop Sharing" : "Share Screen";
+      screenShareButton.textContent = screenShareEnabled ? "Stop Sharing" : (screenShareRequestPending ? "Share request pending" : (screenShareApproved ? "Start Approved Share" : (isController ? "Share Screen" : "Request Screen Share")));
+      screenShareButton.disabled = !connected || screenShareRequestPending;
       microphoneButton.setAttribute("aria-pressed", String(microphoneEnabled));
       cameraButton.setAttribute("aria-pressed", String(cameraEnabled));
       screenShareButton.setAttribute("aria-pressed", String(screenShareEnabled));
@@ -543,7 +645,24 @@
       });
     }
 
-    async function join() {
+    function requestAdmission() {
+      if (joining || room || admissionState === "waiting") return;
+      const name = nameInput.value.trim();
+      if (!name) { setStatus("Enter your name before asking to join", "error"); nameInput.focus(); return; }
+      admissionState = "waiting";
+      setStatus("Waiting for the presenter to admit you…");
+      syncButtons(false);
+      emitAdmissionRequest();
+    }
+
+    function emitAdmissionRequest() {
+      options.socket?.emit("meeting_admission_request", {
+        presentationId: options.presentationId, clientId: meetingClientId, name: nameInput.value.trim()
+      });
+    }
+
+    async function join(approved = false) {
+      if (!isController && approved !== true) { requestAdmission(); return; }
       if (joining || room) return;
       if (!livekit?.Room) { setStatus("Audio/video library could not be loaded", "error"); return; }
       if (!api?.getLiveMediaToken) { setStatus("This page is out of date. Refresh it and try again.", "error"); return; }
@@ -561,18 +680,26 @@
         let audioUnlock = Promise.resolve(false);
         try { audioUnlock = Promise.resolve(room.startAudio()).then(() => true).catch(() => false); } catch {}
         const credentials = await api.getLiveMediaToken(options.presentationId, {
-          displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.screenAccessCode || undefined
+          displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.screenAccessCode || undefined,
+          clientId: meetingClientId
         });
         await room.connect(credentials.url, credentials.token, { autoSubscribe: true });
         const gestureUnlocked = await audioUnlock;
         const connectedAudioReady = await enableAudio(false);
         const audioReady = connectedAudioReady || (gestureUnlocked && !audioPlaybackBlocked && room.canPlayAudio !== false);
+        admissionState = "approved";
+        if (!isController) options.socket?.emit("meeting_participant_joined", {
+          presentationId: options.presentationId, clientId: meetingClientId,
+          identity: room.localParticipant.identity, name: credentials.participantName
+        });
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
       } catch (error) {
-        room?.disconnect(); room = null; setStatus(error.message || "Could not join audio/video", "error"); syncButtons(false);
+        room?.disconnect(); room = null;
+        if (!isController) admissionState = "idle";
+        setStatus(error.message || "Could not join audio/video", "error"); syncButtons(false);
       } finally {
-        joining = false; joinButton.disabled = false; if (!room) nameInput.disabled = false;
+        joining = false; syncButtons(Boolean(room));
       }
     }
 
@@ -593,21 +720,35 @@
     async function toggleScreenShare() {
       if (!room) return;
       const enable = !screenShareEnabled;
+      if (enable && !isController && !screenShareApproved) {
+        screenShareRequestPending = true;
+        setStatus("Waiting for the presenter to allow screen sharing…");
+        syncButtons(true);
+        options.socket?.emit("meeting_screen_share_request", {
+          presentationId: options.presentationId, clientId: meetingClientId,
+          identity: currentIdentity(), name: currentName()
+        });
+        return;
+      }
+      if (enable) screenShareApproved = false;
       screenShareButton.disabled = true;
       try {
         await room.localParticipant.setScreenShareEnabled(enable);
+        screenShareRequestPending = false;
         syncLocalPublishedState(); syncButtons(true); renderParticipants();
         setStatus(screenShareEnabled ? "Screen sharing started" : "Screen sharing stopped", "success");
       } catch (error) {
+        screenShareRequestPending = false;
         syncLocalPublishedState(); syncButtons(true);
         const cancelled = error?.name === "NotAllowedError" || /cancel|permission|denied/i.test(error?.message || "");
         setStatus(cancelled ? "Screen sharing was cancelled or blocked by browser permission" : (error.message || "Screen sharing could not start"), "error");
       }
     }
 
-    async function leave() {
+    async function leave({ requeue = false } = {}) {
       const activeRoom = room;
       if (!activeRoom) return;
+      if (!isController && !requeue) options.socket?.emit("meeting_participant_left", { presentationId: options.presentationId, clientId: meetingClientId });
       if (handRaised) options.socket?.emit("meeting_hand", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), raised: false });
       await Promise.allSettled([
         activeRoom.localParticipant.setMicrophoneEnabled(false),
@@ -687,6 +828,52 @@
       if (message.raised) raisedHands.set(String(message.identity), String(message.name || "Guest")); else raisedHands.delete(String(message.identity));
       renderParticipants();
     });
+    options.socket?.on("meeting_lobby_state", renderLobby);
+    options.socket?.on("meeting_admission_decision", message => {
+      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
+      if (message.accepted) {
+        admissionState = "approved";
+        setStatus("The presenter admitted you. Joining…", "success");
+        join(true);
+      } else {
+        admissionState = "idle";
+        setStatus("The presenter did not admit this request. You can ask again.", "error");
+        syncButtons(false);
+      }
+    });
+    options.socket?.on("meeting_removed_by_controller", async message => {
+      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
+      admissionState = "waiting";
+      screenShareRequestPending = false;
+      screenShareApproved = false;
+      await leave({ requeue: true });
+      setStatus("The presenter moved you to the waiting room.");
+      syncButtons(false);
+    });
+    options.socket?.on("meeting_screen_share_decision", message => {
+      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
+      screenShareRequestPending = false;
+      if (message.accepted) {
+        screenShareApproved = true;
+        setStatus("Screen sharing approved. Select Start Approved Share.", "success");
+        syncButtons(true);
+      } else {
+        setStatus("The presenter declined the screen sharing request.", "error");
+        syncButtons(true);
+      }
+    });
+    options.socket?.on("meeting_screen_share_revoke_command", async message => {
+      if (!room || message?.presentationId !== options.presentationId || message.targetIdentity !== currentIdentity()) return;
+      screenShareApproved = false;
+      if (room.localParticipant.isScreenShareEnabled) await room.localParticipant.setScreenShareEnabled(false).catch(() => {});
+      syncLocalPublishedState(); syncButtons(true); renderParticipants();
+      setStatus("The presenter stopped your screen share.");
+    });
+    options.socket?.on("connect", () => {
+      if (isController) registerController();
+      else if (admissionState === "waiting") emitAdmissionRequest();
+    });
+    if (options.socket?.connected) registerController();
     window.addEventListener("pagehide", leaveOnPageHide, { once: true });
     syncButtons(false);
     setSidebarTab("people");

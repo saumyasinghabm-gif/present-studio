@@ -1425,6 +1425,7 @@ button.present-back {
 .live-media-panel .live-sidebar-tabs button.is-active { border-bottom-color: #ffd54a; color: #fff; }
 .live-sidebar-tabs button span { min-width: 18px; display: inline-grid; place-items: center; margin-left: 4px; border-radius: 999px; padding: 2px 5px; background: #33332e; color: #d9d7cf; font-size: .52rem; }
 .live-sidebar-tabs [data-live-chat-badge] { background: #ffd54a; color: #171713; }
+.live-sidebar-tabs button.has-pending [data-live-people-badge] { background: #ffd54a; color: #171713; }
 .live-sidebar-tabs [data-live-chat-badge][hidden] { display: none; }
 .live-sidebar-panels { min-width: 0; min-height: 0; display: grid; overflow: hidden; background: #11110f; }
 .live-sidebar-panel { min-width: 0; min-height: 0; overflow: hidden; }
@@ -1447,6 +1448,27 @@ button.present-back {
 .live-media-tile.has-raised-hand { border-color: #ffd54a; box-shadow: 0 0 0 2px rgba(255,213,74,.15), 0 5px 16px rgba(0,0,0,.18) !important; }
 .live-media-tile footer .live-raised-hand { order: -1; width: max-content; border-radius: 999px; padding: 3px 6px; background: #ffd54a; color: #171713; font-size: .54rem; font-weight: 800; }
 .live-participant-mute { width: 100%; justify-self: stretch; }
+.live-participant-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; margin-top: 4px; }
+.live-participant-actions .live-participant-mute { min-width: 0; margin-top: 0; }
+.live-participant-remove { min-height: 26px; border: 1px solid rgba(213,80,69,.5); border-radius: 5px; padding: 3px 7px; background: #2b2b27; color: #ffaaa3; font-size: .58rem; }
+.live-participant-remove:hover { border-color: #ffaaa3; background: #3a2421; }
+.controller-people-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.live-lobby { max-height: 42%; overflow-y: auto; border-bottom: 1px solid rgba(255,255,255,.12); padding: 8px; background: #1b1b18; scrollbar-width: thin; }
+.live-lobby[hidden] { display: none; }
+.live-lobby-heading { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.live-lobby-heading + .live-lobby-list { margin-top: 5px; }
+.live-lobby-list + .live-lobby-heading { margin-top: 9px; border-top: 1px solid rgba(255,255,255,.1); padding-top: 7px; }
+.live-lobby-heading strong { color: #f3f1ea; font-size: .64rem; }
+.live-lobby-heading strong span { display: inline-grid; min-width: 18px; place-items: center; margin-left: 3px; border-radius: 999px; padding: 2px 5px; background: #ffd54a; color: #171713; font-size: .52rem; }
+.live-media-panel .live-lobby-heading button { min-height: 27px; border-color: #d3aa0d; padding: 3px 8px; background: #ffd54a; color: #171713; font-size: .54rem; }
+.live-lobby-list { display: grid; gap: 5px; }
+.live-lobby-list:empty { display: none; }
+.live-lobby-person { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #3b3b35; border-radius: 6px; padding: 6px 7px; background: #242420; }
+.live-lobby-person > span { min-width: 0; overflow: hidden; color: #e7e5de; font-size: .63rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.live-lobby-person > div { flex: 0 0 auto; display: flex; gap: 4px; }
+.live-media-panel .live-lobby-person button { min-height: 26px; border-color: #d3aa0d; padding: 3px 7px; background: #ffd54a; color: #171713; font-size: .52rem; }
+.live-media-panel .live-lobby-person button.is-secondary { border-color: #4a4a43; background: transparent; color: #bbb9b2; }
+.live-screen-share-actions button.is-danger { border-color: rgba(213,80,69,.7); color: #ffaaa3; }
 .live-reaction-layer { position: fixed; z-index: 200; right: clamp(18px, 4vw, 54px); bottom: max(88px, calc(env(safe-area-inset-bottom) + 70px)); width: min(340px, calc(100vw - 28px)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
 .live-reaction-bubble { display: flex; align-items: center; gap: 9px; max-width: 100%; border: 1px solid rgba(255,213,74,.55); border-radius: 999px; padding: 7px 12px 7px 8px; background: rgba(25,25,21,.94); color: #fff; box-shadow: 0 10px 32px rgba(0,0,0,.32); animation: live-reaction-rise 3.4s ease both; backdrop-filter: blur(10px); }
 .live-reaction-bubble span { font-size: 1.35rem; }
