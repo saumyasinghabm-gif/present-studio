@@ -276,12 +276,21 @@
       }
     }
 
+    function setControlLabel(button, label, accessibleLabel = label) {
+      if (!button) return;
+      const labelNode = button.querySelector("[data-live-control-label]");
+      if (labelNode) labelNode.textContent = label;
+      else button.textContent = label;
+      button.setAttribute("aria-label", accessibleLabel);
+      button.title = accessibleLabel;
+    }
+
     function applyRemoteAudioState() {
       root.querySelectorAll("audio[data-live-audio-participant]").forEach(audio => {
         audio.muted = participantAudioMuted(audio.dataset.liveAudioParticipant);
       });
       if (muteAllButton) {
-        muteAllButton.textContent = meetingMuted ? "Unmute everyone" : "Mute everyone";
+        setControlLabel(muteAllButton, meetingMuted ? "Unmute all" : "Mute all", meetingMuted ? "Unmute everyone" : "Mute everyone");
         muteAllButton.setAttribute("aria-pressed", String(meetingMuted));
       }
     }
@@ -574,9 +583,12 @@
       if (chatInput) chatInput.disabled = !connected;
       if (chatSubmit) chatSubmit.disabled = !connected;
       leaveButton.disabled = !connected;
-      microphoneButton.textContent = microphoneEnabled ? "Mute microphone" : "Unmute microphone";
-      cameraButton.textContent = cameraEnabled ? "Turn camera off" : "Turn camera on";
-      screenShareButton.textContent = screenShareEnabled ? "Stop Sharing" : (screenShareRequestPending ? "Share request pending" : (screenShareApproved ? "Start Approved Share" : (isController ? "Share Screen" : "Request Screen Share")));
+      setControlLabel(microphoneButton, microphoneEnabled ? "Mute" : "Unmute", microphoneEnabled ? "Mute microphone" : "Unmute microphone");
+      setControlLabel(cameraButton, cameraEnabled ? "Camera off" : "Camera on", cameraEnabled ? "Turn camera off" : "Turn camera on");
+      if (screenShareEnabled) setControlLabel(screenShareButton, "Stop share", "Stop sharing your screen");
+      else if (screenShareRequestPending) setControlLabel(screenShareButton, "Pending", "Screen share request pending");
+      else if (screenShareApproved) setControlLabel(screenShareButton, "Start share", "Start approved screen share");
+      else setControlLabel(screenShareButton, "Share", isController ? "Share screen" : "Request screen share");
       screenShareButton.disabled = !connected || screenShareRequestPending;
       microphoneButton.setAttribute("aria-pressed", String(microphoneEnabled));
       cameraButton.setAttribute("aria-pressed", String(cameraEnabled));
