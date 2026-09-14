@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260914-meeting-tools">
+    <link rel="stylesheet" href="/css/styles.css?v=20260914-control-ribbon">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
@@ -65,9 +65,14 @@
           <aside class="controller-console-sidebar" id="controllerConsoleSidebar" aria-label="Presenter controls and content library">
             <section class="controller-sidebar-controls" aria-labelledby="presenterControlsTitle">
               <header class="controller-sidebar-controls-header"><div><p class="eyebrow">Live controls</p><h2 id="presenterControlsTitle">Presenter controls</h2></div><button type="button" id="controllerSidebarHide" aria-label="Hide presenter controls" title="Hide presenter controls"><span aria-hidden="true">›</span><span>Hide</span></button></header>
-              <div class="controller-preview-controls controller-console-actions" aria-label="Live presentation controls">
-                <section class="controller-preview-control-group" aria-labelledby="playbackControlLabel"><span class="controller-preview-control-label" id="playbackControlLabel">Playback</span><div class="controller-preview-control-grid controller-preview-control-grid-four"><button type="button" id="pauseMedia" disabled><strong>Play</strong><small id="previewMediaTiming">No active media</small></button><button type="button" id="previewAudio" disabled><strong>Audio</strong><small>Audience and preview</small></button><button type="button" id="replayMedia" disabled><strong>Replay</strong><small>Restart and sync</small></button><button type="button" id="stopMedia" class="is-danger"><strong>Black Screen</strong><small>Clear output</small></button></div></section>
-                <section class="controller-preview-control-group" aria-labelledby="outputControlLabel"><span class="controller-preview-control-label" id="outputControlLabel">Presentation</span><div class="controller-preview-control-grid"><button type="button" id="openScreen"><strong>Open Screen</strong><small>Launch audience output</small></button><button type="button" id="teachMode"><strong>Teach Live</strong><small>Annotate and zoom</small></button></div></section>
+              <div class="controller-console-actions" aria-label="Live presentation controls">
+                <div class="controller-control-ribbon" role="toolbar" aria-label="Playback and presentation">
+                  <button type="button" id="pauseMedia" disabled><span class="controller-control-icon" data-control-icon aria-hidden="true">▶</span><strong>Play</strong><small class="sr-only" id="previewMediaTiming">No active media</small></button>
+                  <button type="button" id="previewAudio" disabled><span class="controller-control-icon" data-control-icon aria-hidden="true">🔊</span><strong>Enable Audio</strong><small class="sr-only">Audience and preview</small></button>
+                  <button type="button" id="replayMedia" disabled><span class="controller-control-icon" aria-hidden="true">↻</span><strong>Replay</strong><small class="sr-only">Restart and sync</small></button>
+                  <button type="button" id="stopMedia" class="is-danger"><span class="controller-control-icon" aria-hidden="true">■</span><strong>Black Screen</strong><small class="sr-only">Clear output</small></button>
+                  <button type="button" id="openScreen"><span class="controller-control-icon" aria-hidden="true">▣</span><strong>Open Screen</strong><small class="sr-only">Launch audience output</small></button>
+                </div>
               </div>
             </section>
 
@@ -118,28 +123,6 @@
         </aside>
       </section>
     </main>
-    <section class="teaching-remote" id="teachingRemote" hidden>
-      <div class="teaching-toolbar">
-        <button type="button" data-teach-tool="pen" class="is-active">Pen</button>
-        <button type="button" data-teach-tool="text">Text</button>
-        <button type="button" data-teach-tool="pan">Grab</button>
-        <label>Color <input id="teachColor" type="color" value="#ffd54a"></label>
-        <label>Size <input id="teachSize" type="range" min="2" max="26" value="7"></label>
-        <button type="button" id="teachZoomOut">-</button>
-        <span id="teachZoomValue">100%</span>
-        <button type="button" id="teachZoomIn">+</button>
-        <button type="button" id="teachResetView">Reset</button>
-        <button type="button" id="teachClear">Clear</button>
-        <button type="button" id="teachClose">Close</button>
-      </div>
-      <div class="teaching-stage-wrap" id="teachingStageWrap">
-        <div class="teaching-stage" id="teachingStage">
-          <div class="teaching-backdrop" id="teachingBackdrop"><span>Choose a slide or media item to teach over</span></div>
-          <canvas id="teachingCanvas" width="1280" height="720"></canvas>
-          <div class="teaching-text-layer" id="teachingTextLayer"></div>
-        </div>
-      </div>
-    </section>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
@@ -147,6 +130,6 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260914-meeting-tools"></script>
-    <script src="/js/controller.js?v=20260914-meeting-tools"></script>
+    <script src="/js/controller.js?v=20260914-control-ribbon"></script>
   </body>
 </html>

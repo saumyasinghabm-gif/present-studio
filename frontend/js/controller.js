@@ -14,10 +14,6 @@
   let previewRenderVersion = 0;
   let slideThumbnailCanvases = [];
   let slideThumbnailRenderVersion = 0;
-  let teachTool = "pen";
-  let teachZoom = 1;
-  let teachPan = { x: 0, y: 0 };
-  let teachPointer = null;
   let previewTool = "highlighter";
   let previewToolZoom = 1;
   let previewToolPan = { x: 0, y: 0 };
@@ -42,7 +38,7 @@
     status.dataset.state = state;
     status.innerHTML = `<i></i> ${label}`;
   }
-  function teachPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
+  function annotationPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
 
   function setControllerMode(mode, remember = true) {
     const nextMode = mode === "interactive" ? "interactive" : "control";
@@ -234,7 +230,7 @@
     const canvas = $("#previewAnnotationCanvas");
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     $("#previewAnnotationText").replaceChildren();
-    if (send) teachPayload("clear");
+    if (send) annotationPayload("clear");
   }
 
   function applyPreviewToolViewport(send = true) {
@@ -243,7 +239,7 @@
     visual.style.setProperty("--preview-pan-x", `${previewToolPan.x}px`);
     visual.style.setProperty("--preview-pan-y", `${previewToolPan.y}px`);
     $("#previewZoomValue").textContent = `${Math.round(previewToolZoom * 100)}%`;
-    if (send) teachPayload("viewport", { zoom: previewToolZoom, x: previewToolPan.x, y: previewToolPan.y });
+    if (send) annotationPayload("viewport", { zoom: previewToolZoom, x: previewToolPan.x, y: previewToolPan.y });
   }
 
   function setPreviewTool(tool) {
@@ -286,7 +282,7 @@
       if (!value || !previewTextPoint) return;
       const payload = { text: value.slice(0, 180), point: previewTextPoint, color: color(), size: size() };
       addPreviewToolText(payload.text, payload.point, payload.color, payload.size);
-      teachPayload("text", payload);
+      annotationPayload("text", payload);
       closePreviewTextEditor();
     };
     toolbar.addEventListener("pointerenter", showPreviewToolbar);
@@ -327,7 +323,7 @@
     const finishPointer = event => {
       if (!previewToolPointer || previewToolPointer.id !== event.pointerId) return;
       if (previewTool === "highlighter" && previewToolPointer.points.length > 1) {
-        teachPayload("draw", { points: previewToolPointer.points, color: previewHighlighterColor(), size: size() });
+        annotationPayload("draw", { points: previewToolPointer.points, color: previewHighlighterColor(), size: size() });
       }
       previewToolPointer = null;
       stage.classList.remove("is-preview-grabbing");
@@ -408,8 +404,15 @@
     pauseButton.disabled = !media;
     replayButton.disabled = !media;
     audioButton.disabled = !media;
-    pauseButton.querySelector("strong").textContent = media && !media.paused && !media.ended ? "Pause" : "Play";
+    const playing = Boolean(media && !media.paused && !media.ended);
+    pauseButton.querySelector("strong").textContent = playing ? "Pause" : "Play";
+    pauseButton.querySelector("[data-control-icon]").textContent = playing ? "Ⅱ" : "▶";
+    pauseButton.classList.toggle("is-active", playing);
+    pauseButton.setAttribute("aria-pressed", String(playing));
     audioButton.querySelector("strong").textContent = audienceAudioMuted ? "Enable Audio" : "Mute Audio";
+    audioButton.querySelector("[data-control-icon]").textContent = audienceAudioMuted ? "🔇" : "🔊";
+    audioButton.classList.toggle("is-active", Boolean(media && !audienceAudioMuted));
+    audioButton.setAttribute("aria-pressed", String(Boolean(media && !audienceAudioMuted)));
     audioButton.querySelector("small").textContent = audienceAudioMuted
       ? "Audience and preview muted"
       : previewAudioEnabled ? "Audience and preview audio on" : "Audience audio on · preview muted";
@@ -780,7 +783,6 @@
     restoredMediaState = null;
     outputBlanked = false;
     document.querySelectorAll(".controller-target-card").forEach(card => card.classList.toggle("active", card.dataset.targetId === target.id));
-    renderTeachingBackdrop(target);
     renderTargetPreview(target);
     restoredMediaState = {
       position: 0,
@@ -817,132 +819,6 @@
   }
 
   function stopLoop() { clearInterval(loopTimer); loopTimer = null; $("#loopStatus").textContent = "No loop running"; }
-
-  function teachingCanvasPoint(event) {
-    const stage = $("#teachingStage");
-    const bounds = stage.getBoundingClientRect();
-    return {
-      x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
-      y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
-    };
-  }
-
-  function drawTeachingPath(points, color, size) {
-    if (points.length < 2) return;
-    const canvas = $("#teachingCanvas");
-    const context = canvas.getContext("2d");
-    context.save();
-    context.strokeStyle = color;
-    context.lineWidth = size;
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.beginPath();
-    points.forEach((point, index) => {
-      const x = point.x * canvas.width;
-      const y = point.y * canvas.height;
-      if (index) context.lineTo(x, y);
-      else context.moveTo(x, y);
-    });
-    context.stroke();
-    context.restore();
-  }
-
-  function addTeachingText(text, point, color, size) {
-    const label = document.createElement("span");
-    label.textContent = text;
-    label.style.left = `${point.x * 100}%`;
-    label.style.top = `${point.y * 100}%`;
-    label.style.setProperty("--annotation-color", color);
-    label.style.setProperty("--annotation-size", `${Math.max(18, size * 3.8)}px`);
-    $("#teachingTextLayer").append(label);
-  }
-
-  function renderTeachingBackdrop(target) {
-    const backdrop = $("#teachingBackdrop");
-    if (!backdrop || !target) return;
-    if (target.kind === "video" && target.src) backdrop.innerHTML = `<video src="${escapeHtml(target.src)}" muted autoplay loop playsinline></video>`;
-    else if (target.src) backdrop.innerHTML = `<img src="${escapeHtml(target.src)}" alt="">`;
-    else backdrop.innerHTML = `<span>${escapeHtml(target.title || "Live screen")}</span>`;
-  }
-
-  function clearTeachingAnnotations(send = true) {
-    $("#teachingCanvas").getContext("2d").clearRect(0, 0, 1280, 720);
-    $("#teachingTextLayer").replaceChildren();
-    if (send) teachPayload("clear");
-  }
-
-  function applyTeachingViewport(send = true) {
-    const stage = $("#teachingStage");
-    stage.style.transform = `translate(${teachPan.x}px, ${teachPan.y}px) scale(${teachZoom})`;
-    $("#teachZoomValue").textContent = `${Math.round(teachZoom * 100)}%`;
-    if (send) teachPayload("viewport", { zoom: teachZoom, x: teachPan.x, y: teachPan.y });
-  }
-
-  function setTeachTool(tool) {
-    teachTool = tool;
-    document.querySelectorAll("[data-teach-tool]").forEach(button => button.classList.toggle("is-active", button.dataset.teachTool === tool));
-    $("#teachingStageWrap").classList.toggle("is-panning", tool === "pan");
-  }
-
-  function openTeachingMode() {
-    $("#teachingRemote").hidden = false;
-    applyTeachingViewport(false);
-    $("#teachingRemote").requestFullscreen?.().catch(() => {});
-  }
-
-  function closeTeachingMode() {
-    if (document.fullscreenElement === $("#teachingRemote")) document.exitFullscreen().catch(() => {});
-    $("#teachingRemote").hidden = true;
-  }
-
-  function bindTeachingMode() {
-    const stageWrap = $("#teachingStageWrap");
-    const color = () => $("#teachColor").value || "#ffd54a";
-    const size = () => Number($("#teachSize").value) || 7;
-    document.querySelectorAll("[data-teach-tool]").forEach(button => button.onclick = () => setTeachTool(button.dataset.teachTool));
-    $("#teachMode").onclick = openTeachingMode;
-    $("#teachClose").onclick = closeTeachingMode;
-    $("#teachClear").onclick = () => clearTeachingAnnotations(true);
-    $("#teachZoomOut").onclick = () => { teachZoom = Math.max(0.5, teachZoom - 0.1); applyTeachingViewport(); };
-    $("#teachZoomIn").onclick = () => { teachZoom = Math.min(3, teachZoom + 0.1); applyTeachingViewport(); };
-    $("#teachResetView").onclick = () => { teachZoom = 1; teachPan = { x: 0, y: 0 }; applyTeachingViewport(); };
-    stageWrap.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      const point = teachingCanvasPoint(event);
-      if (teachTool === "text") {
-        const value = prompt("Text to show on the live screen");
-        if (!value?.trim()) return;
-        const payload = { text: value.trim().slice(0, 180), point, color: color(), size: size() };
-        addTeachingText(payload.text, payload.point, payload.color, payload.size);
-        teachPayload("text", payload);
-        return;
-      }
-      teachPointer = { id: event.pointerId, startX: event.clientX, startY: event.clientY, pan: { ...teachPan }, points: [point] };
-      stageWrap.setPointerCapture(event.pointerId);
-      stageWrap.classList.toggle("is-grabbing", teachTool === "pan");
-      event.preventDefault();
-    });
-    stageWrap.addEventListener("pointermove", (event) => {
-      if (!teachPointer || teachPointer.id !== event.pointerId) return;
-      if (teachTool === "pan") {
-        teachPan = { x: teachPointer.pan.x + event.clientX - teachPointer.startX, y: teachPointer.pan.y + event.clientY - teachPointer.startY };
-        applyTeachingViewport();
-        return;
-      }
-      const point = teachingCanvasPoint(event);
-      const previous = teachPointer.points.at(-1);
-      teachPointer.points.push(point);
-      drawTeachingPath([previous, point], color(), size());
-    });
-    const finishPointer = (event) => {
-      if (!teachPointer || teachPointer.id !== event.pointerId) return;
-      if (teachTool === "pen" && teachPointer.points.length > 1) teachPayload("draw", { points: teachPointer.points, color: color(), size: size() });
-      teachPointer = null;
-      stageWrap.classList.remove("is-grabbing");
-    };
-    stageWrap.addEventListener("pointerup", finishPointer);
-    stageWrap.addEventListener("pointercancel", finishPointer);
-  }
 
   bindControllerConsole();
   bindPreviewDock();
@@ -981,11 +857,9 @@
       document.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.classList.add("active");
       outputBlanked = live.kind === "blank";
       renderTargetPreview(initialTarget);
-      renderTeachingBackdrop(initialTarget);
       if (outputBlanked) showPreviewPlaceholder("Black screen");
       else applyRestoredMediaState({ ...live, slideId: live.activeSlideId });
     }
-    bindTeachingMode();
     $("#startImageLoop").onclick = () => startLoop("image", "#imageLoopList");
     $("#startVideoLoop").onclick = () => startLoop("video", "#videoLoopList");
     $("#stopLoop").onclick = stopLoop;
@@ -1035,7 +909,6 @@
       if (currentTarget) {
         activeTargetId = currentTarget.id;
         renderTargetPreview(currentTarget);
-        renderTeachingBackdrop(currentTarget);
         if (outputBlanked) showPreviewPlaceholder("Black screen");
         else if (previousState) applyRestoredMediaState({ ...previousState, serverTime: Date.now() });
         emitControllerState();
