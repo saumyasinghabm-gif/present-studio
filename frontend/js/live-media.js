@@ -30,6 +30,17 @@
     const presentationMedia = root.querySelector("[data-live-presentation-media]");
     const presentationLabel = root.querySelector("[data-live-presentation-label]");
     const presentationEmpty = root.querySelector("[data-live-presentation-empty]");
+    const handButton = root.querySelector("[data-live-hand]");
+    const reactionButtons = [...root.querySelectorAll("[data-live-reaction]")];
+    const sidebarTabs = [...root.querySelectorAll("[data-live-tab]")];
+    const sidebarPanels = [...root.querySelectorAll("[data-live-panel]")];
+    const peopleBadge = root.querySelector("[data-live-people-badge]");
+    const chatBadge = root.querySelector("[data-live-chat-badge]");
+    const chatMessages = root.querySelector("[data-live-chat-messages]");
+    const chatEmpty = root.querySelector("[data-live-chat-empty]");
+    const chatForm = root.querySelector("[data-live-chat-form]");
+    const chatInput = root.querySelector("[data-live-chat-input]");
+    const chatSubmit = chatForm?.querySelector("button[type='submit']");
     const presentationSource = options.presentationSource || {};
     const isController = options.controller === true;
     let room = null;
@@ -44,6 +55,17 @@
     let meetingMuted = false;
     let mutedParticipants = new Set();
     let audioPlaybackBlocked = false;
+    let handRaised = false;
+    let activeSidebarTab = "people";
+    let unreadMessages = 0;
+    let raisedHands = new Map();
+    let soundContext = null;
+
+    const reactionMeta = {
+      clap: { emoji: "👏", label: "applauded" },
+      party: { emoji: "🥳", label: "celebrated" },
+      heart: { emoji: "❤️", label: "sent some love" }
+    };
 
     nameInput.value = options.displayName || "";
     const setStatus = (message, kind = "") => { status.textContent = message; status.dataset.kind = kind; };
@@ -53,12 +75,140 @@
     function detachMountedTracks() { mountedTracks.forEach(track => track.detach?.()); mountedTracks = []; }
     function participantAudioMuted(identity) { return meetingMuted || mutedParticipants.has(identity); }
 
+    function currentIdentity() { return String(room?.localParticipant?.identity || ""); }
+    function currentName() { return String(room?.localParticipant?.name || nameInput.value.trim() || (isController ? "Presenter" : "Guest")).slice(0, 80); }
+
+    function setSidebarTab(tab) {
+      activeSidebarTab = tab === "chat" ? "chat" : "people";
+      sidebarTabs.forEach(button => {
+        const active = button.dataset.liveTab === activeSidebarTab;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-selected", String(active));
+      });
+      sidebarPanels.forEach(panel => {
+        const active = panel.dataset.livePanel === activeSidebarTab;
+        panel.hidden = !active;
+        panel.classList.toggle("is-active", active);
+      });
+      if (activeSidebarTab === "chat") {
+        unreadMessages = 0;
+        if (chatBadge) chatBadge.hidden = true;
+        requestAnimationFrame(() => { if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight; });
+      }
+    }
+
+    function appendChatMessage(message) {
+      if (!chatMessages || !message?.text) return;
+      chatEmpty?.remove();
+      const item = document.createElement("article");
+      item.className = "live-chat-message";
+      const own = message.identity && message.identity === currentIdentity();
+      item.classList.toggle("is-own", Boolean(own));
+      const heading = document.createElement("header");
+      const author = document.createElement("strong");
+      author.textContent = own ? "You" : String(message.name || "Guest").slice(0, 80);
+      const time = document.createElement("time");
+      const sentAt = new Date(Number(message.sentAt) || Date.now());
+      time.dateTime = sentAt.toISOString();
+      time.textContent = sentAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      heading.append(author, time);
+      const body = document.createElement("p");
+      body.textContent = String(message.text).slice(0, 500);
+      item.append(heading, body);
+      chatMessages.append(item);
+      while (chatMessages.children.length > 101) chatMessages.children[0].remove();
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      if (activeSidebarTab !== "chat" && !own) {
+        unreadMessages += 1;
+        if (chatBadge) { chatBadge.textContent = unreadMessages > 99 ? "99+" : String(unreadMessages); chatBadge.hidden = false; }
+      }
+    }
+
+    function reactionLayer() {
+      let layer = root.querySelector("[data-live-reaction-layer]");
+      if (!layer) {
+        layer = document.createElement("div");
+        layer.className = "live-reaction-layer";
+        layer.dataset.liveReactionLayer = "";
+        layer.setAttribute("aria-live", "polite");
+        root.append(layer);
+      }
+      return layer;
+    }
+
+    function playReactionSound(type) {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        soundContext ||= new AudioContextClass();
+        soundContext.resume?.();
+        const now = soundContext.currentTime;
+        const gain = soundContext.createGain();
+        gain.connect(soundContext.destination);
+        gain.gain.setValueAtTime(.0001, now);
+        if (type === "clap") {
+          const buffer = soundContext.createBuffer(1, Math.floor(soundContext.sampleRate * .22), soundContext.sampleRate);
+          const values = buffer.getChannelData(0);
+          for (let i = 0; i < values.length; i += 1) values[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / values.length, 2);
+          const source = soundContext.createBufferSource();
+          source.buffer = buffer; source.connect(gain);
+          gain.gain.exponentialRampToValueAtTime(.18, now + .01);
+          gain.gain.exponentialRampToValueAtTime(.0001, now + .22);
+          source.start(now);
+        } else if (type === "party") {
+          const oscillator = soundContext.createOscillator();
+          oscillator.type = "sawtooth"; oscillator.connect(gain);
+          oscillator.frequency.setValueAtTime(330, now);
+          oscillator.frequency.exponentialRampToValueAtTime(740, now + .35);
+          gain.gain.exponentialRampToValueAtTime(.13, now + .02);
+          gain.gain.exponentialRampToValueAtTime(.0001, now + .45);
+          oscillator.start(now); oscillator.stop(now + .46);
+        }
+      } catch {}
+    }
+
+    function unlockReactionAudio() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        soundContext ||= new AudioContextClass();
+        soundContext.resume?.();
+      } catch {}
+    }
+
+    function showReaction(message) {
+      const meta = reactionMeta[message?.reaction];
+      if (!meta) return;
+      const bubble = document.createElement("div");
+      bubble.className = "live-reaction-bubble";
+      bubble.innerHTML = `<span aria-hidden="true">${meta.emoji}</span><small></small>`;
+      bubble.querySelector("small").textContent = `${String(message.name || "Someone").slice(0, 80)} ${meta.label}`;
+      reactionLayer().append(bubble);
+      playReactionSound(message.reaction);
+      window.setTimeout(() => bubble.remove(), 3400);
+    }
+
+    async function applyParticipantAudioCommand(message) {
+      if (!room || !message || message.presentationId !== options.presentationId) return;
+      const target = String(message.targetIdentity || "");
+      if (target !== "*" && target !== currentIdentity()) return;
+      const enabled = message.muted !== true;
+      try {
+        await room.localParticipant.setMicrophoneEnabled(enabled);
+        syncLocalPublishedState(); syncButtons(true); renderParticipants();
+        setStatus(enabled ? "The presenter unmuted your microphone" : "The presenter muted your microphone", "success");
+      } catch (error) {
+        syncLocalPublishedState(); syncButtons(true);
+        setStatus(enabled ? "The presenter requested microphone access. Select Unmute to approve it." : (error.message || "Microphone control failed"), "error");
+      }
+    }
+
     function applyRemoteAudioState() {
       root.querySelectorAll("audio[data-live-audio-participant]").forEach(audio => {
         audio.muted = participantAudioMuted(audio.dataset.liveAudioParticipant);
       });
       if (muteAllButton) {
-        muteAllButton.textContent = meetingMuted ? "Unmute meeting" : "Mute meeting";
+        muteAllButton.textContent = meetingMuted ? "Unmute everyone" : "Mute everyone";
         muteAllButton.setAttribute("aria-pressed", String(meetingMuted));
       }
     }
@@ -184,12 +334,22 @@
       const micOn = publications(participant).some(publication => isSource(publication, "Microphone") && !publication.isMuted);
       state.textContent = `${participantRole(participant) === "presenter" ? "Presenter" : "Audience"} · ${micOn ? "Mic on" : "Muted"}`;
       caption.append(label, state);
+      const raised = raisedHands.get(participant.identity);
+      if (raised) {
+        const hand = document.createElement("span");
+        hand.className = "live-raised-hand";
+        hand.textContent = "✋ Hand raised";
+        caption.append(hand);
+        tile.classList.add("has-raised-hand");
+      }
       if (isController && !isLocal) {
         const mute = document.createElement("button");
-        const muted = mutedParticipants.has(participant.identity);
+        const muted = meetingMuted || mutedParticipants.has(participant.identity) || !micOn;
         mute.type = "button";
         mute.className = "live-participant-mute";
-        mute.textContent = muted ? "Unmute for everyone" : "Mute for everyone";
+        mute.textContent = meetingMuted ? "Unmute everyone first" : (muted ? "Unmute for everyone" : "Mute for everyone");
+        mute.disabled = meetingMuted;
+        if (meetingMuted) mute.title = "Turn off Mute everyone before changing one participant";
         mute.setAttribute("aria-pressed", String(muted));
         mute.addEventListener("click", event => {
           event.stopPropagation();
@@ -197,6 +357,10 @@
           applyRemoteAudioState();
           renderParticipants();
           publishControllerState();
+          options.socket?.emit("meeting_participant_audio", {
+            presentationId: options.presentationId, authToken: options.authToken || "", shareToken: options.shareToken || "",
+            targetIdentity: participant.identity, muted: !muted
+          });
         });
         caption.append(mute);
       }
@@ -287,6 +451,7 @@
       renderScreenShares();
       const total = room.remoteParticipants.size + 1;
       count.textContent = `${total} connected`;
+      if (peopleBadge) peopleBadge.textContent = String(total);
     }
 
     function highlightSpeakers(speakers) {
@@ -303,6 +468,10 @@
       cameraButton.disabled = !connected;
       screenShareButton.disabled = !connected;
       if (muteAllButton) muteAllButton.disabled = !connected;
+      if (handButton) handButton.disabled = !connected;
+      reactionButtons.forEach(button => { button.disabled = !connected; });
+      if (chatInput) chatInput.disabled = !connected;
+      if (chatSubmit) chatSubmit.disabled = !connected;
       leaveButton.disabled = !connected;
       microphoneButton.textContent = microphoneEnabled ? "Mute microphone" : "Unmute microphone";
       cameraButton.textContent = cameraEnabled ? "Turn camera off" : "Turn camera on";
@@ -381,6 +550,7 @@
       // Run presentation audio playback directly inside the user gesture. This
       // also unlocks the document's audio playback before the async room join.
       try { options.onEnableAudio?.(); } catch {}
+      unlockReactionAudio();
       if (options.fullscreenTarget && options.fullscreenOnJoin !== false && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
       joining = true; joinButton.disabled = true; nameInput.disabled = true; setStatus("Joining…");
       try {
@@ -438,6 +608,7 @@
     async function leave() {
       const activeRoom = room;
       if (!activeRoom) return;
+      if (handRaised) options.socket?.emit("meeting_hand", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), raised: false });
       await Promise.allSettled([
         activeRoom.localParticipant.setMicrophoneEnabled(false),
         activeRoom.localParticipant.setCameraEnabled(false),
@@ -451,6 +622,7 @@
       if (presentationSyncTimer) window.clearInterval(presentationSyncTimer);
       const activeRoom = room;
       if (!activeRoom) return;
+      if (handRaised) options.socket?.emit("meeting_hand", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), raised: false });
       activeRoom.localParticipant.setMicrophoneEnabled(false).catch(() => {});
       activeRoom.localParticipant.setCameraEnabled(false).catch(() => {});
       activeRoom.localParticipant.setScreenShareEnabled(false).catch(() => {});
@@ -465,6 +637,31 @@
       meetingMuted = !meetingMuted;
       applyRemoteAudioState();
       publishControllerState();
+      options.socket?.emit("meeting_participant_audio", {
+        presentationId: options.presentationId, authToken: options.authToken || "", shareToken: options.shareToken || "",
+        targetIdentity: "*", muted: meetingMuted
+      });
+    });
+    handButton?.addEventListener("click", () => {
+      if (!room) return;
+      handRaised = !handRaised;
+      handButton.setAttribute("aria-pressed", String(handRaised));
+      handButton.lastElementChild.textContent = handRaised ? "Lower hand" : "Raise hand";
+      options.socket?.emit("meeting_hand", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), raised: handRaised });
+    });
+    reactionButtons.forEach(button => button.addEventListener("click", () => {
+      if (!room) return;
+      unlockReactionAudio();
+      options.socket?.emit("meeting_reaction", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), reaction: button.dataset.liveReaction });
+    }));
+    sidebarTabs.forEach(button => button.addEventListener("click", () => setSidebarTab(button.dataset.liveTab)));
+    chatForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      const text = chatInput.value.trim();
+      if (!room || !text) return;
+      options.socket?.emit("meeting_chat", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), text });
+      chatInput.value = "";
+      chatInput.focus();
     });
     enableAudioButton.addEventListener("click", () => enableAudio(true));
     leaveButton.addEventListener("click", leave);
@@ -482,8 +679,17 @@
     panelToggle?.addEventListener("click", () => setAudienceSidebarHidden(true, true));
     panelRestore?.addEventListener("click", () => setAudienceSidebarHidden(false, true));
     options.socket?.on("meeting_control_state", applyControllerState);
+    options.socket?.on("meeting_participant_audio_command", applyParticipantAudioCommand);
+    options.socket?.on("meeting_chat_message", message => { if (message?.presentationId === options.presentationId) appendChatMessage(message); });
+    options.socket?.on("meeting_reaction_event", message => { if (message?.presentationId === options.presentationId) showReaction(message); });
+    options.socket?.on("meeting_hand_state", message => {
+      if (message?.presentationId !== options.presentationId || !message.identity) return;
+      if (message.raised) raisedHands.set(String(message.identity), String(message.name || "Guest")); else raisedHands.delete(String(message.identity));
+      renderParticipants();
+    });
     window.addEventListener("pagehide", leaveOnPageHide, { once: true });
     syncButtons(false);
+    setSidebarTab("people");
     return { join, leave };
   }
 

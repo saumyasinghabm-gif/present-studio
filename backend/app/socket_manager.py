@@ -259,6 +259,89 @@ async def meeting_control(sid, data):
 
 
 @sio.event
+async def meeting_participant_audio(sid, data):
+    """Relay an authenticated presenter's mute/unmute instruction to room clients."""
+    presentation_id = data.get("presentationId")
+    auth_token = data.get("authToken") or ""
+    share_token = data.get("shareToken") or ""
+    raw_target = data.get("targetIdentity")
+    target_identity = raw_target.strip()[:128] if isinstance(raw_target, str) else ""
+    if not presentation_id or not target_identity:
+        return
+    with SessionLocal() as db:
+        presentation = db.get(Presentation, presentation_id)
+        if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
+            await sio.emit("presenter_rejected", {"message": "Presenter permission required"}, room=sid)
+            return
+    await sio.emit(
+        "meeting_participant_audio_command",
+        {"presentationId": presentation_id, "targetIdentity": target_identity, "muted": data.get("muted") is True},
+        room=presentation_id,
+    )
+
+
+def _clean_meeting_identity(data):
+    identity = data.get("identity")
+    name = data.get("name")
+    return (
+        identity.strip()[:128] if isinstance(identity, str) else "",
+        " ".join(name.split())[:80] if isinstance(name, str) and name.strip() else "Guest",
+    )
+
+
+@sio.event
+async def meeting_chat(sid, data):
+    presentation_id = data.get("presentationId")
+    text = data.get("text")
+    if not presentation_id or presentation_id not in sio.rooms(sid) or not isinstance(text, str) or not text.strip():
+        return
+    with SessionLocal() as db:
+        if not db.get(Presentation, presentation_id):
+            return
+    identity, name = _clean_meeting_identity(data)
+    await sio.emit(
+        "meeting_chat_message",
+        {
+            "presentationId": presentation_id,
+            "identity": identity,
+            "name": name,
+            "text": text.strip()[:500],
+            "sentAt": int(utc_now().timestamp() * 1000),
+        },
+        room=presentation_id,
+    )
+
+
+@sio.event
+async def meeting_reaction(sid, data):
+    presentation_id = data.get("presentationId")
+    reaction = data.get("reaction")
+    if not presentation_id or presentation_id not in sio.rooms(sid) or reaction not in {"clap", "party", "heart"}:
+        return
+    identity, name = _clean_meeting_identity(data)
+    await sio.emit(
+        "meeting_reaction_event",
+        {"presentationId": presentation_id, "identity": identity, "name": name, "reaction": reaction},
+        room=presentation_id,
+    )
+
+
+@sio.event
+async def meeting_hand(sid, data):
+    presentation_id = data.get("presentationId")
+    if not presentation_id or presentation_id not in sio.rooms(sid):
+        return
+    identity, name = _clean_meeting_identity(data)
+    if not identity:
+        return
+    await sio.emit(
+        "meeting_hand_state",
+        {"presentationId": presentation_id, "identity": identity, "name": name, "raised": data.get("raised") is True},
+        room=presentation_id,
+    )
+
+
+@sio.event
 async def end_session(sid, data):
     presentation_id = data.get("presentationId")
     auth_token = data.get("authToken") or ""

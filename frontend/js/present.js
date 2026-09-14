@@ -272,6 +272,7 @@ function setupSocket() {
   if (!socket) return;
   const joinRoom = () => socket.emit("join_presentation", { presentationId: presentation.id });
   socket.on("connect", joinRoom);
+  if (socket.connected) joinRoom();
   socket.on("presentation_state", applyPresentationState);
   socket.on("presentation_annotation", handleAudienceAnnotation);
   socket.on("presentation_updated", event => {

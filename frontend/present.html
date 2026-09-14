@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio - Present</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260913-screen-moderation">
+    <link rel="stylesheet" href="/css/styles.css?v=20260914-meeting-tools">
   </head>
   <body class="present-page">
     <div class="present-loading" id="presentLoading">
@@ -47,7 +47,12 @@
         </div>
         <aside class="audience-meeting-sidebar live-meeting-sidebar" aria-label="Participants and meeting controls">
           <header class="audience-meeting-sidebar-header"><div><strong>Participants</strong><span data-live-count>0 connected</span></div><div><button class="live-media-toggle" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="live-media-toggle" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
-          <div class="live-media-tiles" data-live-tiles aria-live="polite"></div>
+          <div class="live-engagement-bar" aria-label="Meeting reactions"><button type="button" data-live-hand disabled aria-pressed="false"><span aria-hidden="true">✋</span><span>Raise hand</span></button><button type="button" data-live-reaction="clap" disabled aria-label="Send applause"><span aria-hidden="true">👏</span><span>Clap</span></button><button type="button" data-live-reaction="party" disabled aria-label="Send party horn"><span aria-hidden="true">🥳</span><span>Celebrate</span></button><button type="button" data-live-reaction="heart" disabled aria-label="Send heart"><span aria-hidden="true">❤️</span><span>Love</span></button></div>
+          <nav class="live-sidebar-tabs" aria-label="Meeting sidebar" role="tablist"><button type="button" role="tab" data-live-tab="people" aria-selected="true" class="is-active">People <span data-live-people-badge>0</span></button><button type="button" role="tab" data-live-tab="chat" aria-selected="false">Chat <span data-live-chat-badge hidden>0</span></button></nav>
+          <div class="live-sidebar-panels">
+            <section class="live-sidebar-panel is-active" data-live-panel="people" aria-label="People"><div class="live-media-tiles" data-live-tiles aria-live="polite"></div></section>
+            <section class="live-sidebar-panel live-chat-panel" data-live-panel="chat" aria-label="Meeting chat" hidden><div class="live-chat-messages" data-live-chat-messages role="log" aria-live="polite"><p class="live-chat-empty" data-live-chat-empty>Messages shared in this meeting appear here.</p></div><form class="live-chat-compose" data-live-chat-form><label class="sr-only" for="audienceChatInput">Message everyone</label><input id="audienceChatInput" data-live-chat-input maxlength="500" autocomplete="off" placeholder="Message everyone"><button type="submit" disabled aria-label="Send message">Send</button></form></section>
+          </div>
           <div class="live-media-actions audience-meeting-controls"><button type="button" data-live-microphone disabled>Unmute microphone</button><button type="button" data-live-camera disabled>Turn camera on</button><button type="button" data-live-screen-share disabled aria-pressed="false">Share Screen</button><button type="button" data-live-enable-audio hidden>Enable Audio</button><button type="button" data-live-leave disabled>Leave audio/video</button></div>
         </aside>
       </aside>
@@ -57,7 +62,7 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260913-socket-control"></script>
-    <script src="/js/present.js?v=20260913-socket-control"></script>
+    <script src="/js/live-media.js?v=20260914-meeting-tools"></script>
+    <script src="/js/present.js?v=20260914-meeting-tools"></script>
   </body>
 </html>
