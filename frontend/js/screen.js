@@ -21,6 +21,7 @@
   let activeMedia = null;
   let linkedAudio = null;
   let currentState = null;
+  function presentationVolume(media, state = currentState) { const value = Number(media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
 
   function stopMedia() {
     if (activeMedia?.pause) activeMedia.pause();
@@ -44,7 +45,7 @@
   function playLinkedAudio(src, loop = false) {
     if (!src) return;
     linkedAudio = new Audio(src);
-    linkedAudio.volume = 1;
+    linkedAudio.volume = presentationVolume(linkedAudio);
     linkedAudio.loop = loop;
     linkedAudio.muted = !audioUnlocked || Boolean(currentState?.muted);
     linkedAudio.hidden = true;
@@ -84,6 +85,7 @@
     });
     if (node.tagName === "VIDEO") {
       Object.assign(node, { autoplay: true, playsInline: true, loop: item.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
+      node.volume = presentationVolume(node);
       activeMedia = node;
       node.play().catch(() => { node.muted = true; node.play().catch(() => {}); });
     }
@@ -114,6 +116,7 @@
     node.className = "live-output-item";
     if (kind === "video") {
       Object.assign(node, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
+      node.volume = presentationVolume(node);
       activeMedia = node;
       node.play().catch(() => { node.muted = true; node.play().catch(() => {}); });
     } else {
@@ -155,6 +158,7 @@
         video.style.height = `${object.full_bleed ? 100 : (((object.height || 0) * (object.scaleY || 1)) / 720) * 100}%`;
         video.style.objectFit = object.fit || (object.full_bleed ? "fill" : "contain");
         Object.assign(video, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
+        video.volume = presentationVolume(video);
         mediaLayer.append(video);
         activeMedia = video;
         video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
@@ -338,6 +342,7 @@
       const target = expectedPosition(state);
       const drift = target - (Number(media.currentTime) || 0);
       media.muted = !audioUnlocked || Boolean(state.muted);
+      media.volume = presentationVolume(media, state);
       if (!state.playing) {
         media.pause();
         media.playbackRate = 1;

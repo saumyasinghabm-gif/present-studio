@@ -166,6 +166,8 @@ async def media_selected(sid, data):
             media_id=str(media_id)[:128] if media_id is not None else None,
             playing=bool(data.get("playing", kind in {"video", "audio"})),
             muted=bool(data.get("muted", False)),
+            video_volume=data.get("videoVolume"),
+            audio_volume=data.get("audioVolume"),
         )
         db.commit()
         state = live_session_payload(live, presentation_id)
@@ -217,6 +219,8 @@ async def controller_state(sid, data):
             position=position,
             playing=bool(data.get("playing", False)),
             muted=bool(data.get("muted", False)),
+            video_volume=data.get("videoVolume"),
+            audio_volume=data.get("audioVolume"),
         )
         db.commit()
         state = live_session_payload(live, presentation_id)

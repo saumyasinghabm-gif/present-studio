@@ -91,6 +91,8 @@ class LiveSession(Base):
     media_position: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     media_playing: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     media_muted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    video_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+    audio_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
     media_updated_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
     featured_share_identity: Mapped[str | None] = mapped_column(String(128), nullable=True)
     meeting_muted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")

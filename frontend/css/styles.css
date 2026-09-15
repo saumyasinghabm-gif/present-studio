@@ -2307,3 +2307,19 @@ button.present-back {
   .audience-live-view .audience-welcome-copy h1 { font-size: 1.65rem; }
   .audience-live-view .present-live-media:not(.is-connected) > .audience-prejoin-form { margin-top: 18px; }
 }
+
+.controller-volume-mixer { display: grid; gap: 1px; border-top: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.1); }
+.controller-volume-row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: #1e1e19; }
+.controller-volume-row > span { min-width: 0; display: grid; gap: 2px; }
+.controller-volume-row b { color: #f4f1e8; font: 800 .68rem var(--sans); }
+.controller-volume-row small { color: #96958e; font: 600 .56rem var(--mono); }
+.controller-volume-options { flex: 0 0 auto; display: flex; gap: 3px; padding: 3px; border: 1px solid #45443d; border-radius: 7px; background: #11110e; }
+.controller-volume-options button { min-height: 30px; border: 0; border-radius: 4px; padding: 5px 9px; background: transparent; color: #bdbbb3; font: 800 .57rem var(--mono); cursor: pointer; }
+.controller-volume-options button:hover, .controller-volume-options button:focus-visible { background: #333127; color: #fff; outline: none; }
+.controller-volume-options button[aria-pressed="true"] { background: #ffd54a; color: #171713; }
+.controller-volume-options button[aria-pressed="true"]:hover, .controller-volume-options button[aria-pressed="true"]:focus-visible { background: #ffe171; color: #171713; }
+@media (max-width: 420px) {
+  .controller-volume-row { flex-wrap: wrap; }
+  .controller-volume-options { width: 100%; }
+  .controller-volume-options button { flex: 1; }
+}

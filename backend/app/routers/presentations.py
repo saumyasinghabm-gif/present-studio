@@ -29,6 +29,8 @@ def serialize_live_session(live: LiveSession | None, presentation_id: str) -> Li
         position=state["position"],
         playing=state["playing"],
         muted=state["muted"],
+        videoVolume=state["videoVolume"],
+        audioVolume=state["audioVolume"],
         serverTime=state["serverTime"],
     )
 

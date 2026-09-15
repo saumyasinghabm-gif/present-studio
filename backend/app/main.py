@@ -111,6 +111,8 @@ def live_session_repair_statements(dialect_name: str, columns: set[str]) -> list
         "media_position": "FLOAT DEFAULT 0 NOT NULL",
         "media_playing": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
         "media_muted": f"BOOLEAN DEFAULT {bool_default} NOT NULL",
+        "video_volume": "FLOAT DEFAULT 1 NOT NULL",
+        "audio_volume": "FLOAT DEFAULT 1 NOT NULL",
         "media_updated_at": timestamp_type,
         "featured_share_identity": "VARCHAR(128)",
         "meeting_muted": f"BOOLEAN DEFAULT {bool_default} NOT NULL",

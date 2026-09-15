@@ -139,4 +139,6 @@ class LiveSessionOut(BaseModel):
     position: float = 0.0
     playing: bool = False
     muted: bool = False
+    videoVolume: float = 1.0
+    audioVolume: float = 1.0
     serverTime: int | None = None

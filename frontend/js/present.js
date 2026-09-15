@@ -26,6 +26,7 @@ function mediaItems(slide) {
   return [...legacy, ...fabricVideos].filter(item => config.media_mode === "all" || config.media_mode === `${item.type}s`);
 }
 function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || liveState?.muted); }
+function presentationVolume(media, state = liveState) { const value = Number(media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
 function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; audioEnabled = false; syncAudioButton(); media.play().catch(() => {}); }); }
 function renderMedia(slide) {
   const layer = $("presentMedia");
@@ -46,6 +47,7 @@ function renderMedia(slide) {
     if (item.type === "video") {
       node.dataset.authoredMuted = String(item.muted === true);
       Object.assign(node, { autoplay: true, muted: mediaMuted(item.muted === true), loop: config.loop_videos !== false && item.loop !== false, playsInline: true, controls: permission === "presenter" && !item.full_bleed });
+      node.volume = presentationVolume(node);
     }
     layer.append(node);
     if (item.type === "video") startPresentationMedia(node);
@@ -56,6 +58,7 @@ function renderMedia(slide) {
     audio.src = track.src;
     audio.dataset.slideMusic = "true";
     Object.assign(audio, { autoplay: true, muted: mediaMuted(), loop: Boolean(track.loop), playsInline: true });
+    audio.volume = presentationVolume(audio);
     layer.append(audio);
     startPresentationMedia(audio);
   }
@@ -203,6 +206,7 @@ function renderDirectOutput(slide, state) {
     audio.src = item.src;
     audio.dataset.slideMusic = "true";
     Object.assign(audio, { autoplay: true, muted: mediaMuted(), loop: Boolean(item.loop), playsInline: true });
+    audio.volume = presentationVolume(audio);
     layer.append(audio);
     startPresentationMedia(audio);
   } else if (item?.src) {
@@ -213,6 +217,7 @@ function renderDirectOutput(slide, state) {
     if (state.kind === "video") {
       node.dataset.authoredMuted = String(item.muted === true);
       Object.assign(node, { autoplay: true, muted: mediaMuted(item.muted === true), loop: item.loop !== false, playsInline: true });
+      node.volume = presentationVolume(node);
     }
     layer.append(node);
     if (state.kind === "video") startPresentationMedia(node);
@@ -221,6 +226,7 @@ function renderDirectOutput(slide, state) {
       audio.src = item.audioSrc;
       audio.hidden = true;
       Object.assign(audio, { autoplay: true, muted: mediaMuted(), playsInline: true });
+      audio.volume = presentationVolume(audio);
       layer.append(audio);
       startPresentationMedia(audio);
     }
@@ -238,6 +244,7 @@ function syncMediaToState(media, state) {
     const target = expectedMediaPosition(state);
     const drift = target - (Number(media.currentTime) || 0);
     media.muted = mediaMuted(media.dataset.authoredMuted === "true");
+    media.volume = presentationVolume(media, state);
     if (!state.playing) {
       media.pause();
       media.playbackRate = 1;

@@ -25,6 +25,8 @@
   let previewAudioEnabled = true;
   let previewAudioManuallyMuted = false;
   let audienceAudioMuted = false;
+  let videoVolume = 1;
+  let audioVolume = 1;
   let restoredMediaState = null;
   let outputBlanked = false;
 
@@ -387,6 +389,29 @@
   }
 
   function previewMediaElements() { return [...$("#controllerPreviewMedia").querySelectorAll("video,audio")]; }
+  const volumeLevels = { low: .25, medium: .6, high: 1 };
+  function normalizedVolume(value) { const volume = Number(value); return Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1; }
+  function closestVolumeLevel(value) { return Object.keys(volumeLevels).reduce((closest, level) => Math.abs(volumeLevels[level] - value) < Math.abs(volumeLevels[closest] - value) ? level : closest, "high"); }
+  function applyPreviewVolumes() { previewMediaElements().forEach(media => { media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume; }); }
+  function syncVolumeControls() {
+    document.querySelectorAll("[data-volume-kind][data-volume-level]").forEach(button => {
+      const volume = button.dataset.volumeKind === "video" ? videoVolume : audioVolume;
+      button.setAttribute("aria-pressed", String(button.dataset.volumeLevel === closestVolumeLevel(volume)));
+    });
+  }
+  function setPresentationVolume(kind, level) {
+    if (!(level in volumeLevels)) return;
+    if (kind === "video") videoVolume = volumeLevels[level];
+    else if (kind === "audio") audioVolume = volumeLevels[level];
+    else return;
+    applyPreviewVolumes();
+    syncVolumeControls();
+    emitControllerState();
+  }
+  function bindVolumeControls() {
+    document.querySelectorAll("[data-volume-kind][data-volume-level]").forEach(button => button.addEventListener("click", () => setPresentationVolume(button.dataset.volumeKind, button.dataset.volumeLevel)));
+    syncVolumeControls();
+  }
   function primaryPreviewMedia() { return previewMediaElements().at(-1) || null; }
   function formatMediaTime(value) {
     const seconds = Math.max(0, Math.floor(Number(value) || 0));
@@ -427,6 +452,7 @@
 
   function monitorPreviewMedia(media, autoplay = true) {
     media.muted = !previewAudioEnabled;
+    media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume;
     ["loadedmetadata", "timeupdate", "play", "pause", "ended", "volumechange"].forEach(eventName => media.addEventListener(eventName, updatePreviewMediaState));
     if (autoplay) media.play().catch(() => {
       media.muted = true;
@@ -467,6 +493,7 @@
     const apply = media => {
       setPreviewMediaPosition(media, projectedMediaPosition(state));
       media.muted = !previewAudioEnabled;
+      media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume;
       if (state?.playing) media.play().catch(() => {});
       else media.pause();
       updatePreviewMediaState();
@@ -489,7 +516,9 @@
       mediaId: outputBlanked ? null : (target.mediaId || null),
       position: media && media.readyState >= 1 ? Number(media.currentTime) || 0 : fallbackPosition,
       playing: !outputBlanked && (media && media.readyState >= 1 ? !media.paused && !media.ended : Boolean(restoredMediaState?.playing)),
-      muted: audienceAudioMuted
+      muted: audienceAudioMuted,
+      videoVolume,
+      audioVolume
     };
   }
 
@@ -823,6 +852,7 @@
   bindControllerConsole();
   bindPreviewDock();
   bindControllerNotes();
+  bindVolumeControls();
 
   try {
     if (!window.fabric) throw new Error("The slide preview library could not be loaded.");
@@ -832,6 +862,9 @@
     ]);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
+    videoVolume = normalizedVolume(live.videoVolume);
+    audioVolume = normalizedVolume(live.audioVolume);
+    syncVolumeControls();
     liveMediaSession = window.SnapKeyLiveMedia?.create({
       root: $("#controllerLiveMedia"),
       presentationId,
@@ -900,6 +933,13 @@
     socket?.on("connect_error", () => setConnectionStatus("Sync backup"));
     socket?.on("disconnect", () => setConnectionStatus("Sync backup"));
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
+    socket?.on("presentation_state", state => {
+      if (state.presentationId && state.presentationId !== presentationId) return;
+      videoVolume = normalizedVolume(state.videoVolume);
+      audioVolume = normalizedVolume(state.audioVolume);
+      applyPreviewVolumes();
+      syncVolumeControls();
+    });
     socket?.on("presentation_updated", event => {
       if (event.presentationId !== presentationId || !event.presentation) return;
       const previousState = controllerStatePayload();
