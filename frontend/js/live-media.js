@@ -21,6 +21,7 @@
     const leaveButton = root.querySelector("[data-live-leave]");
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
     const panelRestore = root.querySelector("[data-live-panel-restore]");
+    const restoreCount = root.querySelector("[data-live-restore-count]");
     const sheetHandle = root.querySelector("[data-live-sheet-handle]");
     const meetingSidebar = root.querySelector(".live-meeting-sidebar");
     const audienceControls = !options.controller && meetingSidebar?.querySelector(".audience-meeting-controls");
@@ -704,7 +705,7 @@
     }
 
     function renderParticipants() {
-      if (!room) { count.textContent = "0 connected"; return; }
+      if (!room) { count.textContent = "0 connected"; if (restoreCount) restoreCount.textContent = "0"; return; }
       if (isController && mutedParticipants.size) {
         const connectedIdentities = new Set([room.localParticipant.identity, ...[...room.remoteParticipants.values()].map(participant => participant.identity)]);
         const activeMuted = new Set([...mutedParticipants].filter(identity => connectedIdentities.has(identity)));
@@ -740,6 +741,7 @@
       const total = room.remoteParticipants.size + 1;
       count.textContent = `${total} connected`;
       if (peopleBadge) peopleBadge.textContent = String(total);
+      if (restoreCount) restoreCount.textContent = String(total);
     }
 
     function scheduleParticipantRender() {
@@ -794,7 +796,7 @@
       }
       if (panelToggle) {
         panelToggle.setAttribute("aria-expanded", String(!collapsed));
-        panelToggle.setAttribute("aria-label", collapsed ? "Show participants and meeting controls" : "Hide participants and meeting controls");
+        panelToggle.setAttribute("aria-label", collapsed ? "Show people panel" : "Hide people panel");
         panelToggle.title = panelToggle.getAttribute("aria-label");
       }
       if (panelRestore) panelRestore.hidden = !collapsed;
@@ -903,7 +905,7 @@
         });
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
-        if (!isController && window.matchMedia("(max-width: 680px)").matches) setAudienceSidebarHidden(true);
+        if (!isController) setAudienceSidebarHidden(false);
       } catch (error) {
         room?.disconnect(); room = null;
         if (!isController) admissionState = "idle";
