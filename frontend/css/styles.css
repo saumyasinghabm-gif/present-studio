@@ -1826,3 +1826,199 @@ button.present-back {
   .live-background-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live-background-preview { height: 76px; }
 }
+
+/* Mobile audience view: keep the presentation dominant and meeting tools thumb-first. */
+@media (max-width: 680px) {
+  .audience-live-view .present-stage {
+    align-items: stretch;
+    background: #080807;
+  }
+
+  .audience-live-view .present-live-media.is-connected,
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    background: #080807;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-stage {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+    background: #080807;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-presentation-feed,
+  .audience-live-view .present-live-media.is-connected.has-screen-share .live-screen-share {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    background: #000;
+    box-shadow: 0 12px 38px rgba(0,0,0,.28);
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-presentation-feed-heading,
+  .audience-live-view .present-live-media.is-connected .live-screen-share-heading {
+    position: absolute;
+    z-index: 3;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    min-height: 34px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 9px;
+    padding: 0 9px;
+    background: rgba(14,14,12,.72);
+    backdrop-filter: blur(10px);
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-presentation-feed-frame {
+    height: 100%;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-presentation-feed {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .audience-live-view .present-live-media.is-connected.has-screen-share .live-screen-share-media {
+    height: 100%;
+    padding-top: 50px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+    position: relative;
+    grid-column: 1;
+    grid-row: 2;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    height: clamp(150px, 34dvh, 310px);
+    max-height: none;
+    border-top: 1px solid rgba(255,255,255,.18);
+    border-left: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -16px 46px rgba(0,0,0,.4);
+    transform: translateY(0);
+  }
+
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden .audience-meeting-sidebar {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(calc(100% - 82px));
+  }
+
+  .audience-meeting-sidebar-header {
+    min-height: 44px;
+    padding: 7px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left));
+  }
+
+  .audience-meeting-sidebar-header::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.2);
+    transform: translateX(-50%);
+  }
+
+  .audience-meeting-sidebar-header > div:first-child strong { font-size: .78rem; }
+  .audience-meeting-sidebar-header > div:first-child span { font-size: .57rem; }
+
+  .audience-live-view .present-live-media.is-connected .live-engagement-bar {
+    display: none;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-sidebar-tabs {
+    min-height: 36px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-sidebar-panels {
+    min-height: 0;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tiles {
+    height: 100%;
+    display: flex;
+    grid-template-columns: none;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
+    scroll-snap-type: x proximity;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile {
+    flex: 0 0 124px;
+    width: 124px;
+    scroll-snap-align: start;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile-video {
+    aspect-ratio: 4 / 3;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile footer {
+    padding: 5px 6px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile footer strong,
+  .audience-live-view .present-live-media.is-connected .live-media-tile footer span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-chat-messages {
+    padding: 8px 10px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-chat-compose {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-controls.live-icon-control-dock {
+    min-height: 72px;
+    padding-top: 6px;
+    background: linear-gradient(180deg, rgba(25,25,22,.96), #121210);
+  }
+
+  .audience-sidebar-restore {
+    top: auto;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(88px, calc(env(safe-area-inset-bottom) + 88px));
+    min-height: 38px;
+    border-radius: 999px;
+  }
+}
+
+@media (max-width: 420px) {
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+    height: clamp(142px, 32dvh, 280px);
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile {
+    flex-basis: 112px;
+    width: 112px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-controls.live-icon-control-dock .live-control-button {
+    min-width: 46px;
+  }
+
+  .live-icon-control-dock .live-control-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+}
