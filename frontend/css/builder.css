@@ -1681,9 +1681,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 @media (max-width: 540px) {
-  .builder-page .header-share,
   .builder-page .save-status { display: none; }
-  .builder-page .header-present { padding: 0 9px; }
+  .builder-page .header-right { gap: 5px; }
+  .builder-page .header-present,
+  .builder-page .header-share { min-width: 56px; padding: 0 8px; }
+  .builder-page .header-present i,
+  .builder-page .header-share i { margin-right: 4px; }
   .builder-page .slide-item { flex-basis: 148px; width: 148px; }
   .builder-page .editor-main { grid-template-rows: 110px minmax(0, 1fr); }
   .builder-page .canvas-stage { width: calc(100vw - 20px); min-width: 0; }
