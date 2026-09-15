@@ -832,10 +832,16 @@
       });
     }
 
-    function requestAdmission() {
-      if (joining || room || admissionState === "waiting") return;
+    let admissionValidating = false;
+    async function requestAdmission() {
+      if (joining || room || admissionState === "waiting" || admissionValidating) return;
       const name = nameInput.value.trim();
       if (!name) { setStatus("Enter your name before asking to join", "error"); nameInput.focus(); return; }
+      admissionValidating = true;
+      joinButton.disabled = true;
+      try { await options.onValidateAdmission?.(); }
+      catch (error) { setStatus(error.message || "Check your meeting access code and try again.", "error"); return; }
+      finally { admissionValidating = false; if (admissionState !== "waiting") joinButton.disabled = false; }
       admissionState = "waiting";
       setStatus("Waiting for the presenter to admit you…");
       syncButtons(false);
@@ -867,7 +873,7 @@
         let audioUnlock = Promise.resolve(false);
         try { audioUnlock = Promise.resolve(room.startAudio()).then(() => true).catch(() => false); } catch {}
         const credentials = await api.getLiveMediaToken(options.presentationId, {
-          displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.screenAccessCode || undefined,
+          displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.getScreenAccessCode?.() || options.screenAccessCode || undefined,
           clientId: meetingClientId
         });
         await room.connect(credentials.url, credentials.token, { autoSubscribe: true });

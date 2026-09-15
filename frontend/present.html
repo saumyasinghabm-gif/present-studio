@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio - Present</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260915-interactive-audience-rail">
+    <link rel="stylesheet" href="/css/styles.css?v=20260915-audience-prejoin-preview">
   </head>
   <body class="present-page">
     <div class="present-loading" id="presentLoading">
@@ -38,8 +38,9 @@
           <div class="audience-welcome-brand"><span class="audience-welcome-mark" aria-hidden="true">S</span><span><small>SnapKey Present Studio</small><strong>Live audience</strong></span></div>
           <div class="audience-welcome-copy"><span class="eyebrow">You’re invited</span><h1>Welcome to the presentation</h1><p data-live-welcome-presentation>Enter your name and the presenter will let you into the live room.</p></div>
           <div class="audience-welcome-notes" aria-label="Joining information"><span><b aria-hidden="true">✓</b> Presenter approval</span><span><b aria-hidden="true">✓</b> Mic and camera off</span></div>
+          <div class="audience-preview-audio"><button data-presentation-audio type="button" aria-label="Enable presentation sound"><span aria-hidden="true">🔇</span> Enable presentation sound</button><p data-presentation-audio-status aria-live="polite">The live presentation is playing on this page. Select this to hear its videos and music.</p></div>
         </div>
-        <div class="live-media-join audience-prejoin-form"><label><span>Your display name</span><input data-live-name type="text" maxlength="80" autocomplete="name" enterkeyhint="go" placeholder="Enter your name" aria-describedby="audienceJoinHelp"></label><button data-live-join type="button">Request to join</button></div>
+        <div class="live-media-join audience-prejoin-form"><label><span>Your display name</span><input data-live-name type="text" maxlength="80" autocomplete="name" enterkeyhint="go" placeholder="Enter your name" aria-describedby="audienceJoinHelp"></label><label data-screen-code-field hidden><span>Meeting access code</span><input data-screen-code type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" placeholder="4-digit code" aria-describedby="audienceJoinHelp"></label><button data-live-join type="button">Request to join</button></div>
         <p class="live-media-status audience-prejoin-status" id="audienceJoinHelp" data-live-status aria-live="polite">You’ll wait briefly in the lobby until the presenter admits you.</p>
         <div class="audience-meeting-stage">
           <button class="audience-sidebar-restore" data-live-panel-restore type="button" aria-label="Show participants and meeting controls" title="Show participants and meeting controls" hidden><span aria-hidden="true">‹</span><span>Show controls</span></button>
@@ -74,7 +75,7 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260914-short-audience-link"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260915-interactive-audience-rail"></script>
-    <script src="/js/present.js?v=20260914-audience-welcome"></script>
+    <script src="/js/live-media.js?v=20260915-audience-prejoin-preview"></script>
+    <script src="/js/present.js?v=20260915-audience-prejoin-preview"></script>
   </body>
 </html>

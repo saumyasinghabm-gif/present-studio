@@ -7,7 +7,7 @@ const authToken = localStorage.getItem("presentStudio.accessToken") || "";
 const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 let canvas;
 const $ = (id) => document.getElementById(id);
-let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let screenAccessCode = ""; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
+let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
 function activeSlide() { return presentation.slides[currentSlideIndex]; }
 function playback() { return presentation.slides[0]?.canvas?.presentation_playback || { mode: "manual", interval_ms: 5000, slide_ids: [], media_mode: "all", media_cycle: "all", media_interval_ms: 5000, loop_videos: true }; }
 function setVisible(element, visible) { if (element) element.hidden = !visible; }
@@ -26,7 +26,7 @@ function mediaItems(slide) {
   return [...legacy, ...fabricVideos].filter(item => config.media_mode === "all" || config.media_mode === `${item.type}s`);
 }
 function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || liveState?.muted); }
-function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; if (permission === "presenter") audioEnabled = false; syncAudioButton(); media.play().catch(() => {}); }); }
+function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; audioEnabled = false; syncAudioButton(); media.play().catch(() => {}); }); }
 function renderMedia(slide) {
   const layer = $("presentMedia");
   layer.replaceChildren();
@@ -63,7 +63,16 @@ function renderMedia(slide) {
   setVisible($("audioToggle"), hasAudio);
   syncAudioButton();
 }
-function syncAudioButton() { const button = $("audioToggle"); if (!button) return; button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio"; button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio"); }
+function syncAudioButton() {
+  const button = $("audioToggle");
+  if (button) { button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio"; button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio"); }
+  const prejoinButton = document.querySelector("[data-presentation-audio]");
+  if (prejoinButton) {
+    prejoinButton.innerHTML = audioEnabled ? '<span aria-hidden="true">🔊</span> Mute presentation sound' : '<span aria-hidden="true">🔇</span> Enable presentation sound';
+    prejoinButton.setAttribute("aria-label", audioEnabled ? "Mute presentation sound" : "Enable presentation sound");
+    prejoinButton.setAttribute("aria-pressed", String(audioEnabled));
+  }
+}
 async function enablePresentationAudio() {
   audioEnabled = true;
   const attempts = [...document.querySelectorAll("#presentMedia video, #presentMedia audio")].map(media => {
@@ -72,9 +81,25 @@ async function enablePresentationAudio() {
   });
   syncAudioButton();
   const results = await Promise.allSettled(attempts);
-  return results.every(result => result.status === "fulfilled");
+  const ready = results.every(result => result.status === "fulfilled");
+  if (!ready) {
+    audioEnabled = false;
+    document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = true; });
+    syncAudioButton();
+  }
+  return ready;
 }
 function toggleAudio() { audioEnabled = !audioEnabled; document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = mediaMuted(media.dataset.authoredMuted === "true"); if (audioEnabled) media.play().catch(() => { audioEnabled = false; media.muted = true; syncAudioButton(); }); }); syncAudioButton(); }
+async function togglePrejoinAudio() {
+  const status = document.querySelector("[data-presentation-audio-status]");
+  if (audioEnabled) {
+    toggleAudio();
+    if (status) status.textContent = "Presentation sound is muted. You can enable it again at any time.";
+    return;
+  }
+  const ready = await enablePresentationAudio();
+  if (status) status.textContent = !ready ? "Your browser blocked sound. Select Enable presentation sound again or check this tab’s sound setting." : liveState?.muted ? "The presenter has muted presentation sound. Your audio is ready when it resumes." : "Presentation sound is on. You can watch and listen while you wait.";
+}
 function annotationCanvases() { return [...document.querySelectorAll("[data-audience-annotation-canvas]")]; }
 function annotationTextLayers() { return [...document.querySelectorAll("[data-audience-annotation-text]")]; }
 function drawAudienceAnnotation(points = [], color = "#ffd54a", size = 7) {
@@ -295,12 +320,17 @@ async function loadPresentationAccess() {
   if (!presentationId) presentationId = "pres_demo";
   if (!shareToken) return api.getPresentation(presentationId);
   const access = await api.getScreenAccessRequirements(presentationId, shareToken);
-  if (!access.requiresCode) return api.getPresentation(presentationId, shareToken);
-  const enteredCode = window.prompt("Enter the 4-digit presentation access code.", "");
-  if (enteredCode === null) throw new Error("The presentation access code is required.");
-  screenAccessCode = enteredCode.trim();
-  if (!/^\d{4}$/.test(screenAccessCode)) throw new Error("Enter exactly four digits for the presentation access code.");
-  return api.getScreenPresentation(presentationId, shareToken, screenAccessCode);
+  screenCodeRequired = Boolean(access.requiresCode);
+  return api.getPresentation(presentationId, shareToken);
+}
+async function validateMeetingAccessCode() {
+  if (!screenCodeRequired) return true;
+  const input = document.querySelector("[data-screen-code]");
+  const code = input?.value.trim() || "";
+  if (!/^\d{4}$/.test(code)) { input?.focus(); throw new Error("Enter the four-digit meeting access code."); }
+  await api.verifyScreenAccessCode(presentationId, shareToken, code);
+  screenAccessCode = code;
+  return true;
 }
 async function init() {
   if (!window.fabric) throw new Error("Fabric.js could not be loaded. Check the presentation's network access and reload.");
@@ -315,7 +345,9 @@ async function init() {
   document.body.classList.toggle("audience-live-view", !presenter);
   document.title = presenter ? `${presentation.title} — Presenter` : `${presentation.title} — Live presentation`;
   const welcomePresentation = document.querySelector("[data-live-welcome-presentation]");
-  if (welcomePresentation) welcomePresentation.textContent = `You’re joining “${presentation.title}”. Enter your name and the presenter will let you in.`;
+  if (welcomePresentation) welcomePresentation.textContent = `You’re watching “${presentation.title}” live. Enter your name${screenCodeRequired ? " and meeting code" : ""} to request a place in the interactive room.`;
+  const screenCodeField = document.querySelector("[data-screen-code-field]");
+  if (screenCodeField) screenCodeField.hidden = presenter || !screenCodeRequired;
   setVisible($("presentControls"), presenter);
   $("presenterBadge").textContent = presenter ? "Presenter Mode" : "Audience View";
   setVisible($("presenterBadge"), presenter);
@@ -324,6 +356,8 @@ async function init() {
   $("nextSlide").onclick = () => go(1);
   $("autoplayToggle").onclick = () => setAutoplay(!autoplayRunning);
   $("audioToggle").onclick = toggleAudio;
+  const prejoinAudioButton = document.querySelector("[data-presentation-audio]");
+  if (prejoinAudioButton) prejoinAudioButton.onclick = togglePrejoinAudio;
   $("endLive").onclick = endLive;
   document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "f" && presenter) $("fullscreenToggle").click(); if (event.key === "ArrowLeft") go(-1); if (event.key === "ArrowRight") go(1); });
   $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen();
@@ -332,6 +366,8 @@ async function init() {
     root: $("presentLiveMedia"), presentationId, shareToken, authToken, screenAccessCode, socket,
     displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
     onEnableAudio: enablePresentationAudio,
+    onValidateAdmission: validateMeetingAccessCode,
+    getScreenAccessCode: () => screenAccessCode,
     presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => currentOutputLabel || activeSlide()?.title || presentation.title }
   });
   setVisible($("presentLoading"), false);
