@@ -21,7 +21,7 @@
   let activeMedia = null;
   let linkedAudio = null;
   let currentState = null;
-  function presentationVolume(media, state = currentState) { const value = Number(media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
+  function presentationVolume(media, state = currentState) { const raw = media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume; const value = raw == null ? NaN : Number(raw); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
 
   function stopMedia() {
     if (activeMedia?.pause) activeMedia.pause();

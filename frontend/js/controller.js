@@ -44,6 +44,13 @@
 
   function setControllerMode(mode, remember = true) {
     const nextMode = mode === "interactive" ? "interactive" : "control";
+    const modeSwitch = $(".controller-mode-switch");
+    const editorLink = $("#backToEditor");
+    if (nextMode === "interactive") $("#interactiveWorkspaceLinks").append(modeSwitch, editorLink);
+    else {
+      $(".live-controller-header").insertBefore(modeSwitch, $(".live-controller-actions"));
+      $(".live-controller-actions").append(editorLink);
+    }
     document.querySelectorAll("[data-controller-mode-view]").forEach(view => { view.hidden = view.dataset.controllerModeView !== nextMode; });
     document.querySelectorAll("[data-controller-mode-target]").forEach(button => {
       const active = button.dataset.controllerModeTarget === nextMode;
@@ -390,7 +397,7 @@
 
   function previewMediaElements() { return [...$("#controllerPreviewMedia").querySelectorAll("video,audio")]; }
   const volumeLevels = { low: .25, medium: .6, high: 1 };
-  function normalizedVolume(value) { const volume = Number(value); return Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1; }
+  function normalizedVolume(value) { const volume = value == null ? NaN : Number(value); return Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1; }
   function closestVolumeLevel(value) { return Object.keys(volumeLevels).reduce((closest, level) => Math.abs(volumeLevels[level] - value) < Math.abs(volumeLevels[closest] - value) ? level : closest, "high"); }
   function applyPreviewVolumes() { previewMediaElements().forEach(media => { media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume; }); }
   function syncVolumeControls() {

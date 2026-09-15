@@ -337,7 +337,7 @@
         audio.muted = participantAudioMuted(audio.dataset.liveAudioParticipant);
       });
       if (muteAllButton) {
-        setControlLabel(muteAllButton, meetingMuted ? "Unmute all" : "Mute all", meetingMuted ? "Unmute everyone" : "Mute everyone");
+        setControlLabel(muteAllButton, meetingMuted ? "Unmute all" : "Mute all", meetingMuted ? "Everyone is muted. Select to unmute everyone" : "Everyone can speak. Select to mute everyone");
         muteAllButton.setAttribute("aria-pressed", String(meetingMuted));
       }
     }
@@ -535,7 +535,8 @@
       label.textContent = `${participant.name || "Guest"}${isLocal ? " (You)" : ""}`;
       const state = document.createElement("span");
       const micOn = publications(participant).some(publication => isSource(publication, "Microphone") && !publication.isMuted);
-      state.textContent = `${participantRole(participant) === "presenter" ? "Presenter" : "Audience"} · ${micOn ? "Mic on" : "Muted"}`;
+      const micAudible = micOn && !meetingMuted && !mutedParticipants.has(participant.identity);
+      state.textContent = `${participantRole(participant) === "presenter" ? "Presenter" : "Audience"} · ${micAudible ? "Mic on" : "Muted"}`;
       caption.append(label, state);
       const raised = raisedHands.get(participant.identity);
       if (raised) {
@@ -549,14 +550,14 @@
         const participantActions = document.createElement("div");
         participantActions.className = "live-participant-actions";
         const mute = document.createElement("button");
-        const muted = meetingMuted || mutedParticipants.has(participant.identity) || !micOn;
+        const muted = !micAudible;
         mute.type = "button";
         mute.className = "live-participant-mute";
         mute.innerHTML = muted
-          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>'
-          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg>';
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>';
         mute.disabled = meetingMuted;
-        const muteLabel = meetingMuted ? "Turn off Mute everyone before changing one participant" : `${muted ? "Unmute" : "Mute"} ${participant.name || "participant"}`;
+        const muteLabel = meetingMuted ? "Everyone is muted. Turn off Mute all before changing one participant" : muted && !micOn ? `Ask ${participant.name || "participant"} to unmute their microphone` : `${muted ? "Unmute" : "Mute"} ${participant.name || "participant"}`;
         mute.setAttribute("aria-label", muteLabel);
         mute.title = muteLabel;
         mute.setAttribute("aria-pressed", String(muted));
@@ -756,7 +757,7 @@
       if (chatInput) chatInput.disabled = !connected;
       if (chatSubmit) chatSubmit.disabled = !connected;
       leaveButton.disabled = !connected;
-      setControlLabel(microphoneButton, microphoneEnabled ? "Mute" : "Unmute", microphoneEnabled ? "Mute microphone" : "Unmute microphone");
+      setControlLabel(microphoneButton, isController ? (microphoneEnabled ? "Mic on" : "Mic off") : (microphoneEnabled ? "Mute" : "Unmute"), microphoneEnabled ? "Microphone is on. Select to mute" : "Microphone is off. Select to unmute");
       setControlLabel(cameraButton, cameraEnabled ? "Camera off" : "Camera on", cameraEnabled ? "Turn camera off" : "Turn camera on");
       if (screenShareEnabled) setControlLabel(screenShareButton, "Stop share", "Stop sharing your screen");
       else if (screenShareRequestPending) setControlLabel(screenShareButton, "Pending", "Screen share request pending");

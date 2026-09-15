@@ -26,7 +26,7 @@ function mediaItems(slide) {
   return [...legacy, ...fabricVideos].filter(item => config.media_mode === "all" || config.media_mode === `${item.type}s`);
 }
 function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || liveState?.muted); }
-function presentationVolume(media, state = liveState) { const value = Number(media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
+function presentationVolume(media, state = liveState) { const raw = media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume; const value = raw == null ? NaN : Number(raw); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
 function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; audioEnabled = false; syncAudioButton(); media.play().catch(() => {}); }); }
 function renderMedia(slide) {
   const layer = $("presentMedia");

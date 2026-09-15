@@ -4,19 +4,19 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260915-controller-volume">
+    <link rel="stylesheet" href="/css/styles.css?v=20260915-controller-fullstage">
   </head>
   <body class="live-controller-page">
     <main class="live-controller-shell">
       <header class="live-controller-header">
         <div class="controller-brand"><p class="eyebrow">Private presenter panel</p><h1 id="controllerTitle">Live Controller</h1></div>
         <nav class="controller-mode-switch" aria-label="Controller workspace" role="tablist">
-          <button type="button" id="controllerControlTab" role="tab" aria-controls="controllerControlView" data-controller-mode-target="control" class="is-active" aria-selected="true"><span aria-hidden="true">▣</span> Control</button>
-          <button type="button" id="controllerInteractiveTab" role="tab" aria-controls="controllerLiveMedia" data-controller-mode-target="interactive" aria-selected="false"><span aria-hidden="true">◉</span> Interactive</button>
+          <button type="button" id="controllerControlTab" role="tab" aria-controls="controllerControlView" aria-label="Control mode" title="Control mode" data-controller-mode-target="control" class="is-active" aria-selected="true"><span aria-hidden="true">▣</span><span class="controller-mode-label">Control</span></button>
+          <button type="button" id="controllerInteractiveTab" role="tab" aria-controls="controllerLiveMedia" aria-label="Interactive mode" title="Interactive mode" data-controller-mode-target="interactive" aria-selected="false"><span aria-hidden="true">◉</span><span class="controller-mode-label">Interactive</span></button>
         </nav>
         <div class="live-controller-actions">
           <span class="controller-connection" id="connectionStatus" data-state="connecting"><i></i> Connecting</span>
-          <a class="button button-soft" id="backToEditor" href="/dashboard.html">Editor</a>
+          <a class="button button-soft" id="backToEditor" href="/dashboard.html" aria-label="Open editor" title="Open editor"><span aria-hidden="true">✎</span><span class="controller-editor-label">Editor</span></a>
         </div>
       </header>
 
@@ -115,14 +115,14 @@
           <section class="live-screen-share interactive-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong><span data-live-screen-share-mode>Choose the screen shown to everyone</span></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
         </div>
         <aside class="interactive-session-sidebar live-meeting-sidebar" aria-label="Participants and meeting controls">
-          <header class="interactive-session-sidebar-header"><div><strong>Interactive audience</strong><span data-live-count>0 connected</span></div><div><button class="interactive-header-button" data-controller-mode-target="control" type="button" aria-label="Return to controller" title="Return to controller">Control</button><button class="interactive-header-button" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
+          <header class="interactive-session-sidebar-header"><div><strong>Interactive audience</strong><span data-live-count>0 connected</span></div><div><div class="interactive-workspace-links" id="interactiveWorkspaceLinks"></div><button class="interactive-header-button" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
           <div class="interactive-session-card interactive-session-setup"><p class="eyebrow">Session setup</p><div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div><p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p></div>
           <div class="live-media-actions interactive-control-dock live-icon-control-dock" aria-label="Meeting controls">
             <button class="live-control-button is-microphone" type="button" data-live-microphone disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mic</span></button>
             <button class="live-control-button is-camera" type="button" data-live-camera disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg></span><span data-live-control-label>Camera</span></button>
             <button class="live-control-button is-screen" type="button" data-live-screen-share disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4M12 13V7M9 10l3-3 3 3"></path></svg></span><span data-live-control-label>Share</span></button>
             <button class="live-control-button is-background" type="button" data-live-background disabled aria-haspopup="dialog" aria-expanded="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 3 3 2-2 7 7M16.5 9h.01"></path></svg></span><span data-live-control-label>Effects</span></button>
-            <button class="live-control-button is-mute-all" type="button" data-live-mute-all disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg></span><span data-live-control-label>Mute all</span></button>
+            <button class="live-control-button is-mute-all" type="button" data-live-mute-all disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mute all</span></button>
             <button class="live-control-button is-audio" type="button" data-live-enable-audio hidden><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"></path></svg></span><span data-live-control-label>Audio</span></button>
             <button class="live-control-button is-leave" type="button" data-live-leave disabled><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 15.5c4.3-3.6 8.7-3.6 13 0M4 14l2 5 4-2M20 14l-2 5-4-2"></path></svg></span><span data-live-control-label>Leave</span></button>
           </div>
@@ -150,7 +150,7 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260915-interactive-audience-rail"></script>
-    <script src="/js/controller.js?v=20260915-controller-volume"></script>
+    <script src="/js/live-media.js?v=20260915-controller-fullstage"></script>
+    <script src="/js/controller.js?v=20260915-controller-fullstage"></script>
   </body>
 </html>

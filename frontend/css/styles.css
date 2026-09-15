@@ -2323,3 +2323,29 @@ button.present-back {
   .controller-volume-options { width: 100%; }
   .controller-volume-options button { flex: 1; }
 }
+
+/* In Interactive mode, keep navigation in the meeting panel and give the output the viewport. */
+.live-controller-page[data-controller-mode="interactive"] { height: 100dvh; }
+.live-controller-page[data-controller-mode="interactive"] .live-controller-shell { height: 100dvh; min-height: 0; grid-template-rows: minmax(0, 1fr); gap: 0; padding: 0; }
+.live-controller-page[data-controller-mode="interactive"] .live-controller-header { display: none; }
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace { height: 100%; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
+.live-controller-page[data-controller-mode="interactive"] .interactive-presentation-feed { grid-template-rows: minmax(0, 1fr); }
+.live-controller-page[data-controller-mode="interactive"] .interactive-presentation-feed .live-presentation-feed-heading,
+.live-controller-page[data-controller-mode="interactive"] .interactive-screen-share .live-screen-share-heading { display: none; }
+.live-controller-page[data-controller-mode="interactive"] .interactive-screen-share .live-screen-share-media { height: 100%; }
+.interactive-workspace-links { display: flex; align-items: center; gap: 4px; }
+.interactive-workspace-links .controller-mode-switch { display: flex; gap: 2px; border-color: #555249; border-radius: 6px; padding: 2px; background: #11110f; box-shadow: none; }
+.interactive-workspace .interactive-session-sidebar-header .interactive-workspace-links .controller-mode-switch button { width: 28px; min-width: 28px; min-height: 28px; justify-content: center; border-radius: 4px; padding: 0; color: #bab8ad; }
+.interactive-workspace-links .controller-mode-switch button > span:first-child { font-size: 1rem; }
+.interactive-workspace-links .controller-mode-switch button .controller-mode-label { display: none; }
+.interactive-workspace .interactive-session-sidebar-header .interactive-workspace-links .controller-mode-switch button:hover,
+.interactive-workspace .interactive-session-sidebar-header .interactive-workspace-links .controller-mode-switch button:focus-visible { background: #333127; color: #fff; outline: none; }
+.interactive-workspace .interactive-session-sidebar-header .interactive-workspace-links .controller-mode-switch button.is-active { background: #ffd54a; color: #171713; }
+.interactive-workspace-links #backToEditor { width: 32px; min-width: 32px; min-height: 32px; display: grid; place-items: center; border: 1px solid #555249; border-radius: 5px; padding: 0; background: #292925; color: #fff; font-size: 1rem; }
+.interactive-workspace-links #backToEditor .controller-editor-label { display: none; }
+.interactive-workspace-links #backToEditor:hover, .interactive-workspace-links #backToEditor:focus-visible { border-color: #ffd54a; color: #ffd54a; outline: none; }
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute[aria-pressed="false"] { border-color: rgba(88,139,99,.62); color: #b5e3bd; }
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute[aria-pressed="true"] { border-color: rgba(213,80,69,.58); background: #35201e; color: #ffaaa3; }
+.live-icon-control-dock .live-control-button.is-mute-all[aria-pressed="true"] .live-control-icon { border-color: rgba(213,80,69,.58); background: #35201e; color: #ffaaa3; }
+.live-icon-control-dock .live-control-button.is-mute-all[aria-pressed="true"] [data-live-control-label] { color: #ffaaa3; }
+.live-icon-control-dock .live-control-button.is-mute-all[aria-pressed="true"] .live-control-icon::after { content: ""; position: absolute; width: 25px; height: 2px; border-radius: 999px; background: #ffaaa3; transform: rotate(-45deg); }
