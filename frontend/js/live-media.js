@@ -22,6 +22,15 @@
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
     const panelRestore = root.querySelector("[data-live-panel-restore]");
     const meetingSidebar = root.querySelector(".live-meeting-sidebar");
+    const audienceControls = !options.controller && meetingSidebar?.querySelector(".audience-meeting-controls");
+    let audienceFeedback = null;
+    if (audienceControls) {
+      // Keep personal media controls available while the mobile people sheet is closed.
+      audienceFeedback = document.createElement("p");
+      audienceFeedback.className = "audience-control-feedback";
+      audienceFeedback.setAttribute("role", "status");
+      meetingSidebar.after(audienceFeedback, audienceControls);
+    }
     const fullscreenButton = root.querySelector("[data-live-fullscreen]");
     const status = root.querySelector("[data-live-status]");
     const count = root.querySelector("[data-live-count]");
@@ -39,6 +48,15 @@
     const reactionButtons = [...root.querySelectorAll("[data-live-reaction]")];
     const sidebarTabs = [...root.querySelectorAll("[data-live-tab]")];
     const sidebarPanels = [...root.querySelectorAll("[data-live-panel]")];
+    if (options.controller && meetingSidebar) {
+      // People and chat use the upper flexible area; presenter actions stay below.
+      meetingSidebar.append(...[
+        root.querySelector(".live-sidebar-tabs"),
+        root.querySelector(".live-sidebar-panels"),
+        root.querySelector(".live-engagement-bar"),
+        root.querySelector(".interactive-control-dock")
+      ].filter(Boolean));
+    }
     const peopleBadge = root.querySelector("[data-live-people-badge]");
     const chatBadge = root.querySelector("[data-live-chat-badge]");
     const chatMessages = root.querySelector("[data-live-chat-messages]");
@@ -93,7 +111,14 @@
     };
 
     nameInput.value = options.displayName || "";
-    const setStatus = (message, kind = "") => { status.textContent = message; status.dataset.kind = kind; };
+    const setStatus = (message, kind = "") => {
+      status.textContent = message;
+      status.dataset.kind = kind;
+      if (audienceFeedback) {
+        audienceFeedback.textContent = message;
+        audienceFeedback.dataset.kind = kind;
+      }
+    };
     function participantRole(participant) { try { return JSON.parse(participant.metadata || "{}").role || "viewer"; } catch { return "viewer"; } }
     function publications(participant) { return participant?.trackPublications ? [...participant.trackPublications.values()] : []; }
     function isSource(publication, name) { return publication?.source === livekit.Track?.Source?.[name]; }
@@ -527,9 +552,13 @@
         const muted = meetingMuted || mutedParticipants.has(participant.identity) || !micOn;
         mute.type = "button";
         mute.className = "live-participant-mute";
-        mute.textContent = meetingMuted ? "Unmute all first" : (muted ? "Unmute person" : "Mute person");
+        mute.innerHTML = muted
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg>';
         mute.disabled = meetingMuted;
-        if (meetingMuted) mute.title = "Turn off Mute everyone before changing one participant";
+        const muteLabel = meetingMuted ? "Turn off Mute everyone before changing one participant" : `${muted ? "Unmute" : "Mute"} ${participant.name || "participant"}`;
+        mute.setAttribute("aria-label", muteLabel);
+        mute.title = muteLabel;
         mute.setAttribute("aria-pressed", String(muted));
         mute.addEventListener("click", event => {
           event.stopPropagation();
@@ -548,8 +577,9 @@
           const remove = document.createElement("button");
           remove.type = "button";
           remove.className = "live-participant-remove";
-          remove.textContent = "Remove";
-          remove.title = "Remove this person and return them to the waiting room";
+          remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><path d="M3.5 19c.3-3 2.2-5 5.5-5s5.2 2 5.5 5M16 9l5 5m0-5-5 5"></path></svg>';
+          remove.setAttribute("aria-label", `Move ${participant.name || "participant"} to the waiting room`);
+          remove.title = `Move ${participant.name || "participant"} to the waiting room`;
           remove.addEventListener("click", event => {
             event.stopPropagation();
             options.socket?.emit("meeting_remove_participant", { ...moderationCredentials(), clientId: registryItem.clientId });
@@ -851,6 +881,7 @@
         });
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
+        if (!isController && window.matchMedia("(max-width: 680px)").matches) setAudienceSidebarHidden(true);
       } catch (error) {
         room?.disconnect(); room = null;
         if (!isController) admissionState = "idle";
@@ -882,6 +913,10 @@
     async function toggleScreenShare() {
       if (!room) return;
       const enable = !screenShareEnabled;
+      if (enable && typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
+        setStatus("This browser cannot capture your screen. You can share your camera here, or use a desktop browser to share a screen.", "error");
+        return;
+      }
       if (enable && !isController && !screenShareApproved) {
         screenShareRequestPending = true;
         setStatus("Waiting for the presenter to allow screen sharing…");

@@ -2022,3 +2022,167 @@ button.present-back {
     flex-basis: 36px;
   }
 }
+
+/* Audience media actions remain reachable when the people sheet is closed. */
+.audience-live-view .present-live-media:not(.is-connected) > .audience-meeting-controls,
+.audience-live-view .present-live-media:not(.is-connected) > .audience-control-feedback { display: none; }
+.audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  padding-bottom: 76px;
+}
+.audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock {
+  position: relative;
+  z-index: 12;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  width: 100%;
+  min-height: 76px;
+  justify-content: space-evenly;
+  padding: 8px;
+  box-shadow: 0 -10px 25px rgba(0,0,0,.18);
+}
+.audience-live-view .present-live-media.is-connected.is-sidebar-hidden > .audience-meeting-controls.live-icon-control-dock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(350px, 100vw);
+}
+.audience-live-view .present-live-media.is-connected > .audience-control-feedback {
+  position: absolute;
+  z-index: 13;
+  right: 8px;
+  bottom: 82px;
+  width: min(334px, calc(100vw - 16px));
+  margin: 0;
+  border: 1px solid #48483e;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(27,27,24,.94);
+  color: #ddd9cc;
+  font: 600 .68rem/1.4 var(--sans);
+  box-shadow: 0 10px 28px rgba(0,0,0,.25);
+  pointer-events: none;
+}
+.audience-live-view .present-live-media.is-connected > .audience-control-feedback[data-kind="success"] { border-color: #588b63; color: #b5e3bd; }
+.audience-live-view .present-live-media.is-connected > .audience-control-feedback[data-kind="error"] { border-color: #a85750; color: #ffbeb8; }
+
+@media (max-width: 680px) {
+  .audience-live-view .present-live-media.is-connected .audience-meeting-stage { padding-bottom: 78px; }
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+    grid-column: 1;
+    grid-row: 1;
+    position: absolute;
+    top: auto;
+    bottom: 78px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: min(62dvh, 560px);
+    padding-bottom: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -18px 50px rgba(0,0,0,.46);
+  }
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden .audience-meeting-sidebar { transform: translateY(calc(100% + 78px)); }
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden > .audience-meeting-controls.live-icon-control-dock {
+    right: 0;
+    left: 0;
+    width: 100%;
+  }
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock {
+    grid-column: 1;
+    bottom: 0;
+    min-height: 78px;
+    padding: 6px max(8px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    background: #1b1b18;
+    border-top-color: rgba(255,255,255,.2);
+  }
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button {
+    flex: 1 1 0;
+    min-width: 46px;
+    max-width: none;
+  }
+  .audience-live-view .present-live-media.is-connected > .audience-control-feedback {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    width: auto;
+  }
+  .audience-sidebar-restore { top: max(52px, calc(env(safe-area-inset-top) + 44px)); bottom: auto; }
+}
+
+/* Presenter interactive rail: people first, meeting actions at the bottom. */
+.interactive-workspace .interactive-session-sidebar {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+}
+.interactive-workspace.is-connected .interactive-session-sidebar {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+}
+.interactive-workspace .interactive-session-sidebar > .live-sidebar-panels { min-height: 0; }
+.interactive-workspace .controller-people-panel { grid-template-rows: auto minmax(0, 1fr); }
+.interactive-workspace .controller-people-panel > .live-lobby {
+  height: auto;
+  max-height: min(220px, 35vh);
+}
+.interactive-workspace .interactive-session-sidebar > .live-engagement-bar { border-top: 1px solid rgba(255,255,255,.12); }
+.interactive-workspace .interactive-session-sidebar > .interactive-control-dock.live-icon-control-dock {
+  border-top: 1px solid rgba(255,255,255,.12);
+  padding-bottom: max(7px, env(safe-area-inset-bottom));
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 5px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  padding-top: 6px;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions button {
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border: 1px solid #55544c;
+  border-radius: 8px;
+  padding: 0;
+  background: #2b2b27;
+  color: #eae8e0;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute[aria-pressed="true"] {
+  border-color: #9b8034;
+  background: #37301d;
+  color: #ffd54a;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-remove {
+  border-color: rgba(213,80,69,.48);
+  color: #ffaaa3;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions button:hover:not(:disabled),
+.interactive-workspace .interactive-participant-grid .live-participant-actions button:focus-visible {
+  border-color: #ffd54a;
+  background: #38352a;
+  outline: none;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-remove:hover:not(:disabled),
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-remove:focus-visible {
+  border-color: #ffaaa3;
+  background: #3a2421;
+}
+
+@media (max-width: 820px) {
+  .interactive-workspace .interactive-session-sidebar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
