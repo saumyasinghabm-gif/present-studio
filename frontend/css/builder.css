@@ -294,6 +294,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .tool-button.tool-tall i { font-size: 28px; }
 .tool-button.tool-small { min-width: 32px; height: 36px; padding: 6px; }
+.background-ribbon-group { min-width: 0; padding-right: 12px; padding-left: 12px; }
+.background-color-tool { gap: 7px; cursor: pointer; }
+.background-color-tool i { font-size: 18px; }
+.background-color-tool input[type="color"] { width: 24px; height: 24px; padding: 2px; border: 1px solid #cfcfcb; border-radius: 4px; background: #fff; cursor: pointer; }
 .tool-stack { display: flex; flex-direction: column; gap: 5px; }
 .tool-row { display: flex; align-items: center; gap: 6px; }
 .ribbon-separator { width: 1px; height: 62px; background: var(--border); margin: 0 2px; }
