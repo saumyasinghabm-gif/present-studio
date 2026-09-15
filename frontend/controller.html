@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260915-youtube-share-gallery">
+    <link rel="stylesheet" href="/css/styles.css?v=20260915-camera-scenes">
   </head>
   <body class="live-controller-page" data-controller-mode="control">
     <main class="live-controller-shell">
@@ -118,7 +118,26 @@
             <button class="live-control-button is-audio" type="button" data-live-enable-audio hidden><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"></path></svg></span><span data-live-control-label>Audio</span></button>
             <button class="live-control-button is-leave" type="button" data-live-leave disabled><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 15.5c4.3-3.6 8.7-3.6 13 0M4 14l2 5 4-2M20 14l-2 5-4-2"></path></svg></span><span data-live-control-label>Leave</span></button>
           </div>
-          <dialog class="live-background-dialog" data-live-background-dialog aria-labelledby="controllerBackgroundTitle"><div class="live-background-dialog-header"><div><small>Camera effects</small><strong id="controllerBackgroundTitle">Choose a background</strong></div><button type="button" data-live-background-close aria-label="Close background chooser">×</button></div><p>Your selection is applied only to your camera and is remembered on this device.</p><div class="live-background-options"><button type="button" data-live-background-option="none"><span class="live-background-preview is-none">None</span><b>No effect</b></button><button type="button" data-live-background-option="blur"><span class="live-background-preview is-blur">Blur</span><b>Background blur</b></button><button type="button" data-live-background-option="studio"><span class="live-background-preview is-studio"></span><b>Studio</b></button><button type="button" data-live-background-option="office"><span class="live-background-preview is-office"></span><b>Office</b></button><button type="button" data-live-background-option="warm"><span class="live-background-preview is-warm"></span><b>Warm light</b></button></div><span class="live-background-support" data-live-background-support aria-live="polite"></span></dialog>
+          <dialog class="live-background-dialog" data-live-background-dialog aria-labelledby="controllerBackgroundTitle">
+            <div class="live-background-dialog-header"><div><small>Camera effects</small><strong id="controllerBackgroundTitle">Choose a background</strong></div><button type="button" data-live-background-close aria-label="Close background chooser">×</button></div>
+            <p>Choose a look for your camera. Your selection is remembered on this device.</p>
+            <div class="live-background-options">
+              <span class="live-background-category">Essentials</span>
+              <button type="button" data-live-background-option="none"><span class="live-background-preview is-none">None</span><b>No effect</b></button>
+              <button type="button" data-live-background-option="blur"><span class="live-background-preview is-blur">Blur</span><b>Soft blur</b></button>
+              <button type="button" data-live-background-option="blur-strong"><span class="live-background-preview is-blur-strong">Blur</span><b>Focus blur</b></button>
+              <span class="live-background-category">Spaces &amp; color</span>
+              <button type="button" data-live-background-option="minimal"><span class="live-background-preview is-minimal"></span><b>Minimal</b></button>
+              <button type="button" data-live-background-option="loft"><span class="live-background-preview is-loft"></span><b>Daylight loft</b></button>
+              <button type="button" data-live-background-option="botanical"><span class="live-background-preview is-botanical"></span><b>Botanical</b></button>
+              <button type="button" data-live-background-option="aurora"><span class="live-background-preview is-aurora"></span><b>Aurora</b></button>
+              <button type="button" data-live-background-option="gallery"><span class="live-background-preview is-gallery"></span><b>Gallery</b></button>
+              <button type="button" data-live-background-option="studio"><span class="live-background-preview is-studio"></span><b>Studio</b></button>
+              <button type="button" data-live-background-option="office"><span class="live-background-preview is-office"></span><b>Office</b></button>
+              <button type="button" data-live-background-option="warm"><span class="live-background-preview is-warm"></span><b>Warm light</b></button>
+            </div>
+            <span class="live-background-support" data-live-background-support aria-live="polite"></span>
+          </dialog>
           <div class="live-engagement-bar" aria-label="Meeting reactions"><button type="button" data-live-hand disabled aria-pressed="false"><span aria-hidden="true">✋</span><span>Raise hand</span></button><button type="button" data-live-reaction="clap" disabled aria-label="Send applause"><span aria-hidden="true">👏</span><span>Clap</span></button><button type="button" data-live-reaction="party" disabled aria-label="Send party horn"><span aria-hidden="true">🥳</span><span>Celebrate</span></button><button type="button" data-live-reaction="heart" disabled aria-label="Send heart"><span aria-hidden="true">❤️</span><span>Love</span></button></div>
           <nav class="live-sidebar-tabs" aria-label="Meeting sidebar" role="tablist"><button type="button" role="tab" data-live-tab="people" aria-selected="true" class="is-active">People <span data-live-people-badge>0</span></button><button type="button" role="tab" data-live-tab="chat" aria-selected="false">Chat <span data-live-chat-badge hidden>0</span></button></nav>
           <div class="live-sidebar-panels">
@@ -143,7 +162,7 @@
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
     <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260915-share-gallery-mobile-grid"></script>
+    <script src="/js/live-media.js?v=20260915-camera-scenes"></script>
     <script src="/js/controller.js?v=20260915-youtube-media"></script>
   </body>
 </html>

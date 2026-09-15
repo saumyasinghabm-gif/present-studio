@@ -102,8 +102,9 @@
     let backgroundProcessor = null;
     let backgroundProcessorTrack = null;
     let backgroundProcessorModule = null;
+    let backgroundApplyQueue = Promise.resolve();
     let selectedBackground = localStorage.getItem("presentStudio.cameraBackground") || "none";
-    if (!["none", "blur", "studio", "office", "warm"].includes(selectedBackground)) selectedBackground = "none";
+    if (!backgroundOptions.some(button => button.dataset.liveBackgroundOption === selectedBackground)) selectedBackground = "none";
     const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     const reactionMeta = {
@@ -432,7 +433,12 @@
     const backgroundPresets = {
       studio: "/assets/meeting-backgrounds/studio.svg",
       office: "/assets/meeting-backgrounds/office.svg",
-      warm: "/assets/meeting-backgrounds/warm.svg"
+      warm: "/assets/meeting-backgrounds/warm.svg",
+      minimal: "/assets/meeting-backgrounds/minimal.svg",
+      loft: "/assets/meeting-backgrounds/loft.svg",
+      botanical: "/assets/meeting-backgrounds/botanical.svg",
+      aurora: "/assets/meeting-backgrounds/aurora.svg",
+      gallery: "/assets/meeting-backgrounds/gallery.svg"
     };
 
     function syncBackgroundOptions() {
@@ -458,7 +464,7 @@
       return backgroundProcessorModule;
     }
 
-    async function applySelectedCameraBackground(announce = false) {
+    async function applyCameraBackgroundNow(announce = false) {
       syncBackgroundOptions();
       const cameraTrack = localCameraTrack();
       if (!cameraTrack) {
@@ -474,7 +480,7 @@
           backgroundProcessorTrack = cameraTrack;
         }
         if (selectedBackground === "none") await backgroundProcessor.switchTo({ mode: "disabled" });
-        else if (selectedBackground === "blur") await backgroundProcessor.switchTo({ mode: "background-blur", blurRadius: 12 });
+        else if (selectedBackground === "blur" || selectedBackground === "blur-strong") await backgroundProcessor.switchTo({ mode: "background-blur", blurRadius: selectedBackground === "blur-strong" ? 22 : 12 });
         else await backgroundProcessor.switchTo({ mode: "virtual-background", imagePath: new URL(backgroundPresets[selectedBackground], location.origin).href });
         if (backgroundSupport) backgroundSupport.textContent = selectedBackground === "none" ? "Camera effect is off." : "Camera effect applied.";
         if (announce) setStatus(selectedBackground === "none" ? "Camera background removed" : "Camera background updated", "success");
@@ -484,6 +490,11 @@
         if (backgroundSupport) backgroundSupport.textContent = error.message || "This camera effect could not be applied.";
         if (announce) setStatus(error.message || "Camera background could not be applied", "error");
       }
+    }
+
+    function applySelectedCameraBackground(announce = false) {
+      backgroundApplyQueue = backgroundApplyQueue.catch(() => {}).then(() => applyCameraBackgroundNow(announce));
+      return backgroundApplyQueue;
     }
 
     function openBackgroundDialog() {

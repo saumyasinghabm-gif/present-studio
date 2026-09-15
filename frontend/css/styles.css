@@ -1809,16 +1809,24 @@ button.present-back {
 .live-media-panel .live-background-dialog-header button { width: 34px; min-width: 34px; min-height: 34px; border-color: #494941; border-radius: 50%; padding: 0; background: #292925; color: #fff; font-size: 1.1rem; }
 .live-background-dialog > p { margin: 10px 0 16px; color: #aaa8a1; font-size: .75rem; line-height: 1.5; }
 .live-background-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
-.live-media-panel .live-background-options button { min-width: 0; min-height: 0; display: grid; gap: 7px; border: 1px solid #3f3f39; border-radius: 9px; padding: 7px; background: #242420; color: #e9e7df; text-align: left; }
+.live-media-panel .live-background-options button { position: relative; min-width: 0; min-height: 0; display: grid; gap: 7px; border: 1px solid #3f3f39; border-radius: 9px; padding: 7px; background: #242420; color: #e9e7df; text-align: left; }
 .live-media-panel .live-background-options button:hover { border-color: #8d782b; background: #2b2921; }
 .live-media-panel .live-background-options button.is-selected { border-color: #ffd54a; box-shadow: 0 0 0 2px rgba(255,213,74,.14); }
+.live-media-panel .live-background-options button.is-selected::after { position: absolute; top: 12px; right: 12px; width: 19px; height: 19px; display: grid; place-items: center; border-radius: 50%; background: #ffd54a; color: #171713; font: 900 .73rem var(--sans); content: "✓"; box-shadow: 0 2px 8px rgba(0,0,0,.32); }
+.live-background-category { grid-column: 1 / -1; margin-top: 6px; color: #c9c4b6; font: 800 .62rem var(--mono); letter-spacing: .06em; text-transform: uppercase; }
 .live-background-options button b { overflow: hidden; padding: 0 2px 2px; font: 700 .6rem var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 .live-background-preview { height: 88px; display: grid; place-items: center; overflow: hidden; border-radius: 6px; background-position: center; background-size: cover; color: #a4a198; font: 800 .6rem var(--mono); }
 .live-background-preview.is-none { border: 1px dashed #55544d; background: #161614; }
-.live-background-preview.is-blur { background: radial-gradient(circle at 30% 35%, #c2ab6d, transparent 22%), linear-gradient(135deg, #3f4b51, #75634f); filter: blur(1.5px); }
+.live-background-preview.is-blur { background: radial-gradient(circle at 30% 35%, #c2ab6d, transparent 22%), linear-gradient(135deg, #3f4b51, #75634f); }
+.live-background-preview.is-blur-strong { background: radial-gradient(circle at 26% 30%, #b5c1b9, transparent 31%), radial-gradient(circle at 76% 75%, #d4ad86, transparent 29%), linear-gradient(135deg, #3c4c52, #776451); }
 .live-background-preview.is-studio { background-image: url('/assets/meeting-backgrounds/studio.svg'); }
 .live-background-preview.is-office { background-image: url('/assets/meeting-backgrounds/office.svg'); }
 .live-background-preview.is-warm { background-image: url('/assets/meeting-backgrounds/warm.svg'); }
+.live-background-preview.is-minimal { background-image: url('/assets/meeting-backgrounds/minimal.svg'); }
+.live-background-preview.is-loft { background-image: url('/assets/meeting-backgrounds/loft.svg'); }
+.live-background-preview.is-botanical { background-image: url('/assets/meeting-backgrounds/botanical.svg'); }
+.live-background-preview.is-aurora { background-image: url('/assets/meeting-backgrounds/aurora.svg'); }
+.live-background-preview.is-gallery { background-image: url('/assets/meeting-backgrounds/gallery.svg'); }
 .live-background-support { min-height: 18px; display: block; margin-top: 12px; color: #aaa8a1; font-size: .68rem; }
 
 @media (max-width: 520px) {
