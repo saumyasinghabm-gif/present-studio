@@ -165,6 +165,9 @@
     if (mediaType === "video" && object.src) {
       return `<span class="slide-thumbnail-object is-video" style="${style}"><video src="${esc(object.src)}" muted preload="metadata" playsinline></video></span>`;
     }
+    if (mediaType === "youtube" && window.SnapKeyYouTube?.idFor(object)) {
+      return `<span class="slide-thumbnail-object is-youtube" style="${style}"><span aria-hidden="true">▶</span> YouTube</span>`;
+    }
     if (["textbox", "text", "i-text"].includes(object.type)) {
       const fontSize = legacy ? Number(object.fontSize || 32) / 7 : Number(object.fontSize || 32) / 7;
       const font = ["Arial", "Calibri", "Inter", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Garamond", "Palatino Linotype", "Courier New", "Impact"].includes(object.fontFamily) ? object.fontFamily : "Arial";
@@ -409,7 +412,36 @@
       Object.assign(video.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
       Object.assign(control.style, { left: `${left + width / 2 - 16}px`, top: `${top + height / 2 - 16}px` });
     });
-    all(".fabric-video-overlay, .fabric-video-control").forEach((item) => { if (!liveIds.has(item.dataset.objectId)) item.remove(); });
+    canvas.getObjects().filter((object) => object.mediaType === "youtube" && window.SnapKeyYouTube?.idFor(object)).forEach((object) => {
+      const id = String(object.id || `youtube_${canvas.getObjects().indexOf(object)}`);
+      liveIds.add(id);
+      let frame = [...host.querySelectorAll(".fabric-youtube-overlay")].find(item => item.dataset.objectId === id);
+      let preview = [...host.querySelectorAll(".fabric-youtube-preview")].find(item => item.dataset.objectId === id);
+      if (!frame) {
+        frame = window.SnapKeyYouTube.frame(object, false);
+        frame.className = "fabric-youtube-overlay";
+        frame.dataset.objectId = id;
+        host.append(frame);
+      }
+      if (!preview) {
+        preview = document.createElement("button");
+        preview.type = "button";
+        preview.className = "fabric-youtube-preview";
+        preview.dataset.objectId = id;
+        preview.innerHTML = '<i class="bi bi-play-fill" aria-hidden="true"></i> Preview video';
+        preview.setAttribute("aria-label", "Play YouTube video in slide preview");
+        preview.addEventListener("click", () => openPreview(currentSlideIndex));
+        host.append(preview);
+      }
+      const bounds = object.getBoundingRect(true, true);
+      const left = container.offsetLeft + bounds.left * scaleX;
+      const top = container.offsetTop + bounds.top * scaleY;
+      const width = Math.max(36, bounds.width * scaleX);
+      const height = Math.max(30, bounds.height * scaleY);
+      Object.assign(frame.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+      Object.assign(preview.style, { left: `${left + Math.max(0, width - preview.offsetWidth - 8)}px`, top: `${top + 8}px` });
+    });
+    all(".fabric-video-overlay, .fabric-video-control, .fabric-youtube-overlay, .fabric-youtube-preview").forEach((item) => { if (!liveIds.has(item.dataset.objectId)) item.remove(); });
   }
 
   function queueVideoOverlayUpdate() { window.requestAnimationFrame(updateVideoOverlays); }
@@ -999,7 +1031,7 @@
   const SHAPE_TYPES = new Set(["rect", "circle", "ellipse", "triangle", "path", "polyline"]);
 
   function isEditableShape(object) {
-    return Boolean(object && SHAPE_TYPES.has(object.type) && object.mediaType !== "video");
+    return Boolean(object && SHAPE_TYPES.has(object.type) && !["video", "youtube"].includes(object.mediaType));
   }
 
   function selectedShape(object = active()) {
@@ -1897,6 +1929,39 @@
     schedule();
   });
 
+  const youtubeDialog = byId("youtubeEmbedDialog");
+  const youtubeLink = byId("youtubeEmbedLink");
+  const youtubeFeedback = byId("youtubeEmbedFeedback");
+  function openYoutubeDialog() {
+    youtubeFeedback.textContent = "Videos that allow embedding can play in the presentation.";
+    youtubeDialog.showModal();
+    youtubeLink.focus();
+  }
+  byId("youtubeEmbedCancel").addEventListener("click", () => youtubeDialog.close());
+  byId("youtubeEmbedForm").addEventListener("submit", event => {
+    event.preventDefault();
+    const id = window.SnapKeyYouTube?.parse(youtubeLink.value);
+    if (!id) {
+      youtubeFeedback.textContent = "Paste a valid YouTube video link (watch, Shorts, live, or youtu.be).";
+      youtubeLink.focus();
+      return;
+    }
+    const object = new fabric.Rect({
+      id: `youtube_${Date.now()}`, mediaType: "youtube", youtubeId: id,
+      src: window.SnapKeyYouTube.embedUrl(id, false), left: 0, top: 0, width: W, height: H,
+      fill: "#141414", stroke: "#e84b46", strokeWidth: 2, rx: 0, ry: 0, fit: "contain"
+    });
+    canvas.add(object);
+    canvas.setActiveObject(object);
+    object.setCoords();
+    canvas.requestRenderAll();
+    youtubeDialog.close();
+    youtubeLink.value = "";
+    queueVideoOverlayUpdate();
+    schedule();
+    toast("YouTube video added. Drag it or use the corner handles to resize.");
+  });
+
   function updateZoom(next) {
     zoom = Math.max(50, Math.min(150, next));
     byId("zoomValue").textContent = `${zoom}%`;
@@ -2369,6 +2434,7 @@
       case "comment": { const comment = window.prompt("Comment"); if (comment) { const slide = ensure(activeSlide()); slide.canvas.comments ||= []; slide.canvas.comments.push({ text: comment, createdAt: new Date().toISOString() }); schedule(); toast("Comment saved with this slide."); } break; }
       case "slide-size": { const ratio = window.prompt("Slide ratio: 16:9 or 4:3", ensure(activeSlide()).canvas.ratio || "16:9"); if (ratio === "16:9" || ratio === "4:3") { ensure(activeSlide()).canvas.ratio = ratio; byId("slideCanvas").style.aspectRatio = ratio === "4:3" ? "4 / 3" : "16 / 9"; schedule(); } break; }
       case "fit-media": if (typeof fitMediaToSlide === "function") fitMediaToSlide(); break;
+      case "insert-youtube": openYoutubeDialog(); break;
       case "animation": setObjectAnimation(button.dataset.animation || "none"); break;
       case "preview-animation": previewObjectAnimation(); break;
       case "transition-menu": showTransitionOptions(button.dataset.transitionMenu); all("[data-transition-menu]").forEach((item) => item.classList.toggle("is-active", item === button)); break;

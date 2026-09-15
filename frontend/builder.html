@@ -7,7 +7,7 @@
   <title>Present Studio — Builder</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/css/builder.css?v=20260915-background-control">
+  <link rel="stylesheet" href="/css/builder.css?v=20260915-youtube-media">
 </head>
 <body class="builder-page">
   <div class="app-shell" id="appShell">
@@ -203,6 +203,15 @@
     <select id="playbackMode"><option value="manual">Manual</option></select><select id="playbackInterval"><option value="5000">5 seconds</option></select>
     <select id="mediaMode"><option value="all">All</option></select><select id="mediaCycle"><option value="all">All</option></select><select id="mediaInterval"><option value="5000">5 seconds</option></select><div id="playbackSlides"></div>
   </div>
+  <dialog class="builder-youtube-dialog" id="youtubeEmbedDialog" aria-labelledby="youtubeEmbedTitle">
+    <form id="youtubeEmbedForm">
+      <div class="builder-youtube-dialog-heading"><i class="bi bi-youtube" aria-hidden="true"></i><div><h2 id="youtubeEmbedTitle">Add YouTube video</h2><p>Paste a video link to place it on this slide.</p></div></div>
+      <label for="youtubeEmbedLink">YouTube link</label>
+      <input id="youtubeEmbedLink" type="url" required placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+      <p id="youtubeEmbedFeedback" role="status" aria-live="polite">Videos that allow embedding can play in the presentation.</p>
+      <div class="builder-youtube-dialog-actions"><button type="button" id="youtubeEmbedCancel">Cancel</button><button type="submit">Add to slide</button></div>
+    </form>
+  </dialog>
   <div class="builder-upload-overlay" id="builderUploadOverlay" hidden role="status" aria-live="polite" aria-busy="true">
     <div class="builder-upload-card">
       <div class="builder-upload-spinner" aria-hidden="true"></div>
@@ -218,8 +227,9 @@
   <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/editor.js?v=20260915-background-control"></script>
-  <script src="/js/builder-ribbon.js?v=20260915-background-control"></script>
-  <script src="/js/builder-ui.js?v=20260912-notes-label"></script>
+  <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
+  <script src="/js/editor.js?v=20260915-youtube-media"></script>
+  <script src="/js/builder-ribbon.js?v=20260915-youtube-media"></script>
+  <script src="/js/builder-ui.js?v=20260915-youtube-media"></script>
 </body>
 </html>

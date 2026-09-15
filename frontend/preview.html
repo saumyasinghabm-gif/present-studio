@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio - Preview</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260905-media-fit">
+    <link rel="stylesheet" href="/css/styles.css?v=20260915-youtube-share-gallery">
     <link rel="stylesheet" href="/css/preview.css?v=20260907-pen-zoom-options">
   </head>
   <body class="present-page preview-page">
@@ -21,7 +21,7 @@
     <main class="present-stage" id="previewStage" hidden>
       <span id="previewStatus" class="preview-status" aria-live="polite"></span>
       <div class="canvas-frame present-frame" id="previewFrame">
-        <div class="present-media-layer" id="previewMedia" aria-hidden="true"></div>
+        <div class="present-media-layer" id="previewMedia"></div>
         <canvas id="previewCanvas" width="1280" height="720" aria-label="Presentation preview"></canvas>
         <canvas class="preview-ink-canvas" id="previewInkCanvas" width="1280" height="720" aria-label="Presentation annotations"></canvas>
         <div class="preview-zoom-layer" id="previewZoomLayer" aria-label="Drag to select an area to zoom"><span id="previewZoomSelection" hidden></span></div>
@@ -45,6 +45,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
     <script src="/js/api.js"></script>
-    <script src="/js/preview.js?v=20260911-audio-once"></script>
+    <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
+    <script src="/js/preview.js?v=20260915-youtube-media"></script>
   </body>
 </html>

@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260915-controller-fullstage">
+    <link rel="stylesheet" href="/css/styles.css?v=20260915-youtube-share-gallery">
   </head>
-  <body class="live-controller-page">
+  <body class="live-controller-page" data-controller-mode="control">
     <main class="live-controller-shell">
       <header class="live-controller-header">
         <div class="controller-brand"><p class="eyebrow">Private presenter panel</p><h1 id="controllerTitle">Live Controller</h1></div>
@@ -24,15 +24,7 @@
         <div class="controller-console-layout" id="controllerConsoleLayout">
           <section class="controller-console-preview" aria-label="Presentation output console">
             <aside class="controller-preview-panel" id="controllerPreviewPanel" aria-label="Live output preview and controls">
-              <div class="controller-preview-bar">
-                <div class="controller-preview-summary"><span class="label">Live output preview</span><strong id="previewTitle" aria-live="polite">Screen ready</strong></div>
-                <div class="controller-preview-window-actions">
-                  <button type="button" id="controllerSidebarRestore" aria-label="Show presenter controls" title="Show presenter controls" hidden><span aria-hidden="true">◧</span><span>Show controls</span></button>
-                  <button type="button" id="previewNotes" aria-label="Open notes for the current slide" aria-pressed="false" title="Open slide notes" disabled><span aria-hidden="true">▤</span><span>Notes</span></button>
-                  <button type="button" id="previewFullscreen" aria-label="Open preview in fullscreen" title="Open preview in fullscreen"><span aria-hidden="true">⛶</span><span data-preview-fullscreen-label>Fullscreen</span></button>
-                  <button type="button" id="previewMinimize" aria-label="Minimize preview" aria-expanded="true" title="Minimize preview"><span aria-hidden="true" data-preview-minimize-icon>—</span><span data-preview-minimize-label>Minimize</span></button>
-                </div>
-              </div>
+              <div class="controller-preview-bar"><div class="controller-preview-window-actions"><button type="button" id="controllerSidebarRestore" aria-label="Show presenter controls" title="Show presenter controls" hidden><span aria-hidden="true">◧</span><span>Show controls</span></button></div></div>
               <div class="controller-preview-body">
                 <div class="controller-preview-stage" id="previewStage">
                   <div class="controller-preview-visual" id="controllerPreviewVisual">
@@ -64,7 +56,7 @@
 
           <aside class="controller-console-sidebar" id="controllerConsoleSidebar" aria-label="Presenter controls and content library">
             <section class="controller-sidebar-controls" aria-labelledby="presenterControlsTitle">
-              <header class="controller-sidebar-controls-header"><div><p class="eyebrow">Live controls</p><h2 id="presenterControlsTitle">Presenter controls</h2></div><button type="button" id="controllerSidebarHide" aria-label="Hide presenter controls" title="Hide presenter controls"><span aria-hidden="true">›</span><span>Hide</span></button></header>
+              <header class="controller-sidebar-controls-header"><div class="controller-sidebar-heading"><p class="eyebrow">Live controls</p><h2 id="presenterControlsTitle">Presenter controls</h2></div><div class="controller-workspace-links" id="controllerWorkspaceLinks"></div><div class="controller-preview-summary"><strong id="previewTitle" aria-live="polite">Screen ready</strong></div><div class="controller-preview-window-actions" role="toolbar" aria-label="Preview tools"><button type="button" id="previewNotes" aria-label="Open notes for the current slide" aria-pressed="false" title="Open slide notes" disabled><span aria-hidden="true">▤</span><span>Notes</span></button><button type="button" id="previewFullscreen" aria-label="Open preview in fullscreen" title="Open preview in fullscreen"><span aria-hidden="true">⛶</span><span data-preview-fullscreen-label>Fullscreen</span></button><button type="button" id="previewMinimize" aria-label="Minimize preview" aria-expanded="true" title="Minimize preview"><span aria-hidden="true" data-preview-minimize-icon>—</span><span data-preview-minimize-label>Minimize</span></button><button type="button" id="controllerSidebarHide" aria-label="Hide presenter controls" title="Hide presenter controls"><span aria-hidden="true">›</span><span>Hide</span></button></div></header>
               <div class="controller-console-actions" aria-label="Live presentation controls">
                 <div class="controller-control-ribbon" role="toolbar" aria-label="Playback and presentation">
                   <button type="button" id="pauseMedia" disabled><span class="controller-control-icon" data-control-icon aria-hidden="true">▶</span><strong>Play</strong><small class="sr-only" id="previewMediaTiming">No active media</small></button>
@@ -74,8 +66,8 @@
                   <button type="button" id="openScreen"><span class="controller-control-icon" aria-hidden="true">▣</span><strong>Open Screen</strong><small class="sr-only">Launch audience output</small></button>
                 </div>
                 <div class="controller-volume-mixer" aria-label="Audience presentation volume">
-                  <div class="controller-volume-row" role="group" aria-label="Video sound volume"><span><b>Video sound</b><small>Audience + preview</small></span><div class="controller-volume-options"><button type="button" data-volume-kind="video" data-volume-level="low" aria-pressed="false" title="Video sound 25 percent">Low</button><button type="button" data-volume-kind="video" data-volume-level="medium" aria-pressed="false" title="Video sound 60 percent">Medium</button><button type="button" data-volume-kind="video" data-volume-level="high" aria-pressed="true" title="Video sound 100 percent">High</button></div></div>
-                  <div class="controller-volume-row" role="group" aria-label="Music and audio volume"><span><b>Music &amp; audio</b><small>Audience + preview</small></span><div class="controller-volume-options"><button type="button" data-volume-kind="audio" data-volume-level="low" aria-pressed="false" title="Music and audio 25 percent">Low</button><button type="button" data-volume-kind="audio" data-volume-level="medium" aria-pressed="false" title="Music and audio 60 percent">Medium</button><button type="button" data-volume-kind="audio" data-volume-level="high" aria-pressed="true" title="Music and audio 100 percent">High</button></div></div>
+                  <div class="controller-volume-row"><label for="controllerVideoVolume">Video sound</label><input id="controllerVideoVolume" type="range" min="0" max="100" step="1" value="100" data-volume-kind="video" aria-label="Video sound volume"><output for="controllerVideoVolume" data-volume-value="video">100%</output></div>
+                  <div class="controller-volume-row"><label for="controllerAudioVolume">Music &amp; audio</label><input id="controllerAudioVolume" type="range" min="0" max="100" step="1" value="100" data-volume-kind="audio" aria-label="Music and audio volume"><output for="controllerAudioVolume" data-volume-value="audio">100%</output></div>
                 </div>
               </div>
             </section>
@@ -110,7 +102,7 @@
           <button class="interactive-sidebar-restore" data-live-panel-restore type="button" aria-label="Show participants and meeting controls" title="Show participants and meeting controls" hidden><span aria-hidden="true">‹</span><span>Show controls</span></button>
           <section class="live-presentation-feed interactive-presentation-feed" data-live-presentation-viewer aria-label="Current live presentation">
             <div class="live-presentation-feed-heading"><strong>Live presentation</strong><span data-live-presentation-label>Waiting for the current slide</span></div>
-            <div class="live-presentation-feed-frame"><canvas data-live-presentation-canvas width="1280" height="720" aria-label="Current presentation output"></canvas><div class="live-presentation-feed-media" data-live-presentation-media aria-hidden="true"></div><span class="live-presentation-feed-empty" data-live-presentation-empty>Waiting for the current slide</span></div>
+            <div class="live-presentation-feed-frame"><canvas data-live-presentation-canvas width="1280" height="720" aria-label="Current presentation output"></canvas><div class="live-presentation-feed-media" data-live-presentation-media></div><span class="live-presentation-feed-empty" data-live-presentation-empty>Waiting for the current slide</span></div>
           </section>
           <section class="live-screen-share interactive-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong><span data-live-screen-share-mode>Choose the screen shown to everyone</span></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
         </div>
@@ -149,8 +141,9 @@
     <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
     <script src="/js/api.js?v=20260911-livekit-media-token"></script>
+    <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260915-controller-fullstage"></script>
-    <script src="/js/controller.js?v=20260915-controller-fullstage"></script>
+    <script src="/js/live-media.js?v=20260915-share-gallery-mobile-grid"></script>
+    <script src="/js/controller.js?v=20260915-youtube-media"></script>
   </body>
 </html>

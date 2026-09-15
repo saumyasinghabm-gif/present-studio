@@ -27,6 +27,7 @@
   let audienceAudioMuted = false;
   let videoVolume = 1;
   let audioVolume = 1;
+  let volumeEmitTimer;
   let restoredMediaState = null;
   let outputBlanked = false;
 
@@ -46,11 +47,9 @@
     const nextMode = mode === "interactive" ? "interactive" : "control";
     const modeSwitch = $(".controller-mode-switch");
     const editorLink = $("#backToEditor");
-    if (nextMode === "interactive") $("#interactiveWorkspaceLinks").append(modeSwitch, editorLink);
-    else {
-      $(".live-controller-header").insertBefore(modeSwitch, $(".live-controller-actions"));
-      $(".live-controller-actions").append(editorLink);
-    }
+    const status = $("#connectionStatus");
+    const links = nextMode === "interactive" ? $("#interactiveWorkspaceLinks") : $("#controllerWorkspaceLinks");
+    links.append(modeSwitch, editorLink, status);
     document.querySelectorAll("[data-controller-mode-view]").forEach(view => { view.hidden = view.dataset.controllerModeView !== nextMode; });
     document.querySelectorAll("[data-controller-mode-target]").forEach(button => {
       const active = button.dataset.controllerModeTarget === nextMode;
@@ -396,27 +395,35 @@
   }
 
   function previewMediaElements() { return [...$("#controllerPreviewMedia").querySelectorAll("video,audio")]; }
-  const volumeLevels = { low: .25, medium: .6, high: 1 };
   function normalizedVolume(value) { const volume = value == null ? NaN : Number(value); return Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1; }
-  function closestVolumeLevel(value) { return Object.keys(volumeLevels).reduce((closest, level) => Math.abs(volumeLevels[level] - value) < Math.abs(volumeLevels[closest] - value) ? level : closest, "high"); }
-  function applyPreviewVolumes() { previewMediaElements().forEach(media => { media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume; }); }
+  function applyPreviewVolumes() {
+    previewMediaElements().forEach(media => { media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume; });
+    $("#controllerPreviewMedia").querySelectorAll("iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: videoVolume, muted: !previewAudioEnabled }));
+  }
   function syncVolumeControls() {
-    document.querySelectorAll("[data-volume-kind][data-volume-level]").forEach(button => {
-      const volume = button.dataset.volumeKind === "video" ? videoVolume : audioVolume;
-      button.setAttribute("aria-pressed", String(button.dataset.volumeLevel === closestVolumeLevel(volume)));
+    document.querySelectorAll("input[type='range'][data-volume-kind]").forEach(slider => {
+      const percent = Math.round((slider.dataset.volumeKind === "video" ? videoVolume : audioVolume) * 100);
+      slider.value = String(percent);
+      const output = document.querySelector(`[data-volume-value='${slider.dataset.volumeKind}']`);
+      if (output) output.value = `${percent}%`;
     });
   }
-  function setPresentationVolume(kind, level) {
-    if (!(level in volumeLevels)) return;
-    if (kind === "video") videoVolume = volumeLevels[level];
-    else if (kind === "audio") audioVolume = volumeLevels[level];
+  function setPresentationVolume(kind, percent, final = false) {
+    const volume = normalizedVolume(Number(percent) / 100);
+    if (kind === "video") videoVolume = volume;
+    else if (kind === "audio") audioVolume = volume;
     else return;
     applyPreviewVolumes();
     syncVolumeControls();
-    emitControllerState();
+    clearTimeout(volumeEmitTimer);
+    if (final) emitControllerState();
+    else volumeEmitTimer = setTimeout(emitControllerState, 100);
   }
   function bindVolumeControls() {
-    document.querySelectorAll("[data-volume-kind][data-volume-level]").forEach(button => button.addEventListener("click", () => setPresentationVolume(button.dataset.volumeKind, button.dataset.volumeLevel)));
+    document.querySelectorAll("input[type='range'][data-volume-kind]").forEach(slider => {
+      slider.addEventListener("input", () => setPresentationVolume(slider.dataset.volumeKind, slider.value));
+      slider.addEventListener("change", () => setPresentationVolume(slider.dataset.volumeKind, slider.value, true));
+    });
     syncVolumeControls();
   }
   function primaryPreviewMedia() { return previewMediaElements().at(-1) || null; }
@@ -433,23 +440,24 @@
     const pauseButton = $("#pauseMedia");
     const replayButton = $("#replayMedia");
     const audioButton = $("#previewAudio");
-    pauseButton.disabled = !media;
-    replayButton.disabled = !media;
-    audioButton.disabled = !media;
-    const playing = Boolean(media && !media.paused && !media.ended);
+    const hasYoutube = Boolean($("#controllerPreviewMedia").querySelector("iframe[data-youtube-id]"));
+    pauseButton.disabled = !media && !hasYoutube;
+    replayButton.disabled = !media && !hasYoutube;
+    audioButton.disabled = !media && !hasYoutube;
+    const playing = Boolean(media && !media.paused && !media.ended || !media && hasYoutube && restoredMediaState?.playing);
     pauseButton.querySelector("strong").textContent = playing ? "Pause" : "Play";
     pauseButton.querySelector("[data-control-icon]").textContent = playing ? "Ⅱ" : "▶";
     pauseButton.classList.toggle("is-active", playing);
     pauseButton.setAttribute("aria-pressed", String(playing));
     audioButton.querySelector("strong").textContent = audienceAudioMuted ? "Enable Audio" : "Mute Audio";
     audioButton.querySelector("[data-control-icon]").textContent = audienceAudioMuted ? "🔇" : "🔊";
-    audioButton.classList.toggle("is-active", Boolean(media && !audienceAudioMuted));
-    audioButton.setAttribute("aria-pressed", String(Boolean(media && !audienceAudioMuted)));
+    audioButton.classList.toggle("is-active", Boolean((media || hasYoutube) && !audienceAudioMuted));
+    audioButton.setAttribute("aria-pressed", String(Boolean((media || hasYoutube) && !audienceAudioMuted)));
     audioButton.querySelector("small").textContent = audienceAudioMuted
       ? "Audience and preview muted"
       : previewAudioEnabled ? "Audience and preview audio on" : "Audience audio on · preview muted";
     const timing = $("#previewMediaTiming");
-    if (!media) timing.textContent = "No active media";
+    if (!media) timing.textContent = hasYoutube ? (playing ? "YouTube video · Playing" : "YouTube video · Paused") : "No active media";
     else {
       const duration = Number.isFinite(media.duration) ? ` / ${formatMediaTime(media.duration)}` : "";
       const state = media.ended ? "Ended" : media.paused ? "Paused" : "Playing";
@@ -509,6 +517,8 @@
       if (media.readyState >= 1) apply(media);
       else media.addEventListener("loadedmetadata", () => apply(media), { once: true });
     });
+    $("#controllerPreviewMedia").querySelectorAll("iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: videoVolume, muted: !previewAudioEnabled, playing: Boolean(state?.playing), position: projectedMediaPosition(state) }));
+    applyPreviewVolumes();
   }
 
   function controllerStatePayload() {
@@ -544,12 +554,14 @@
       if (action === "replay") { try { media.currentTime = 0; } catch {} media.muted = !previewAudioEnabled; media.play().catch(() => {}); }
       if (action === "stop") media.pause();
     });
+    $("#controllerPreviewMedia").querySelectorAll("iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: videoVolume, muted: !previewAudioEnabled, playing: action === "stop" || action === "pause" ? false : ["play", "replay"].includes(action) ? true : undefined, position: action === "replay" ? 0 : undefined }));
     updatePreviewMediaState();
   }
 
   function sendMediaControl(requestedAction) {
     const media = primaryPreviewMedia();
-    const action = requestedAction === "toggle" ? (media && !media.paused && !media.ended ? "pause" : "play") : requestedAction;
+    const youtubeActive = Boolean($("#controllerPreviewMedia").querySelector("iframe[data-youtube-id]"));
+    const action = requestedAction === "toggle" ? (media && !media.paused && !media.ended || youtubeActive && restoredMediaState?.playing ? "pause" : "play") : requestedAction;
     const position = action === "replay" ? 0 : Number(media?.currentTime) || 0;
     if (["play", "replay"].includes(action) && !previewAudioManuallyMuted) previewAudioEnabled = true;
     restoredMediaState = {
@@ -570,6 +582,7 @@
     previewMediaElements().forEach(media => {
       media.muted = !previewAudioEnabled;
     });
+    applyPreviewVolumes();
     if (restoredMediaState) restoredMediaState = { ...restoredMediaState, muted: audienceAudioMuted };
     updatePreviewMediaState();
     emitControllerState();
@@ -611,9 +624,11 @@
   }
 
   function addPositionedPreviewMedia(item, fabricCoordinates = false) {
-    if (!item?.src) return;
-    const node = document.createElement(item.type === "video" || item.mediaType === "video" ? "video" : "img");
-    node.src = item.src;
+    if (!item?.src && !item?.youtubeId) return;
+    const isYoutube = item.type === "youtube" || item.mediaType === "youtube";
+    const node = isYoutube ? window.SnapKeyYouTube.frame(item) : document.createElement(item.type === "video" || item.mediaType === "video" ? "video" : "img");
+    if (!node) return;
+    if (!isYoutube) node.src = item.src;
     const left = fabricCoordinates ? ((item.left || 0) / 1280) * 100 : Number(item.x || 0);
     const top = fabricCoordinates ? ((item.top || 0) / 720) * 100 : Number(item.y || 0);
     const width = fabricCoordinates ? (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100 : Number(item.width || 100);
@@ -630,6 +645,7 @@
     }
     $("#controllerPreviewMedia").append(node);
     if (node.tagName === "VIDEO") monitorPreviewMedia(node);
+    if (isYoutube) { window.SnapKeyYouTube.sync(node, { volume: videoVolume, muted: !previewAudioEnabled }); updatePreviewMediaState(); }
     return node;
   }
 
@@ -653,8 +669,8 @@
 
     if (data.fabric) {
       const scene = JSON.parse(JSON.stringify(data.fabric));
-      const videos = (scene.objects || []).filter(object => object.mediaType === "video" && object.src);
-      scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
+      const videos = (scene.objects || []).filter(object => ["video", "youtube"].includes(object.mediaType) && (object.src || object.youtubeId));
+      scene.objects = (scene.objects || []).filter(object => !["video", "youtube"].includes(object.mediaType));
       previewCanvas.loadFromJSON(scene, finish);
       videos.forEach(video => addPositionedPreviewMedia(video, true));
     } else {

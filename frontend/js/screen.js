@@ -145,23 +145,27 @@
     canvas.backgroundColor = data.background || "#f8f4ea";
     if (data.fabric) {
       const scene = JSON.parse(JSON.stringify(data.fabric));
-      const videos = (scene.objects || []).filter(object => object.mediaType === "video" && object.src);
-      scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
+      const videos = (scene.objects || []).filter(object => ["video", "youtube"].includes(object.mediaType) && (object.src || object.youtubeId));
+      scene.objects = (scene.objects || []).filter(object => !["video", "youtube"].includes(object.mediaType));
       canvas.loadFromJSON(scene, () => { canvas.getObjects().forEach(object => { object.selectable = false; object.evented = false; }); canvas.renderAll(); });
       videos.forEach(object => {
-        const video = document.createElement("video");
-        video.src = object.src;
+        const isYoutube = object.mediaType === "youtube";
+        const video = isYoutube ? window.SnapKeyYouTube.frame(object) : document.createElement("video");
+        if (!video) return;
+        if (!isYoutube) video.src = object.src;
         video.className = "live-output-positioned-video";
         video.style.left = `${object.full_bleed ? 0 : ((object.left || 0) / 1280) * 100}%`;
         video.style.top = `${object.full_bleed ? 0 : ((object.top || 0) / 720) * 100}%`;
         video.style.width = `${object.full_bleed ? 100 : (((object.width || 0) * (object.scaleX || 1)) / 1280) * 100}%`;
         video.style.height = `${object.full_bleed ? 100 : (((object.height || 0) * (object.scaleY || 1)) / 720) * 100}%`;
         video.style.objectFit = object.fit || (object.full_bleed ? "fill" : "contain");
-        Object.assign(video, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
-        video.volume = presentationVolume(video);
+        if (!isYoutube) {
+          Object.assign(video, { autoplay: true, playsInline: true, loop: object.loop !== false, muted: !audioUnlocked || Boolean(currentState?.muted) });
+          video.volume = presentationVolume(video);
+        }
         mediaLayer.append(video);
-        activeMedia = video;
-        video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
+        if (isYoutube) window.SnapKeyYouTube.sync(video, { volume: presentationVolume({ tagName: "VIDEO" }), muted: !audioUnlocked || Boolean(currentState?.muted) });
+        else { activeMedia = video; video.play().catch(() => { video.muted = true; video.play().catch(() => {}); }); }
       });
       const slideAudioSrc = data.audio?.src;
       playLinkedAudio(slideAudioSrc);
@@ -186,6 +190,9 @@
   function control(action, position) {
     const mediaItems = [...mediaLayer.querySelectorAll("video,audio")];
     if (action === "stop") { stopMedia(); mediaLayer.replaceChildren(); canvasWrap.hidden = true; stage.classList.remove("output-enter"); return; }
+    mediaLayer.querySelectorAll("iframe[data-youtube-id]").forEach(frame => {
+      if (["play", "pause", "replay"].includes(action)) window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }), muted: !audioUnlocked || Boolean(currentState?.muted), playing: action !== "pause", position: action === "replay" ? 0 : undefined });
+    });
     if (!mediaItems.length) return;
     mediaItems.forEach(media => {
       if (["play", "pause"].includes(action) && Number.isFinite(Number(position))) {
@@ -394,5 +401,6 @@
       else renderSlide(slide);
     }
     [...mediaLayer.querySelectorAll("video,audio")].forEach(media => correctMediaDrift(media, state));
+    mediaLayer.querySelectorAll("iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }, state), muted: !audioUnlocked || Boolean(state.muted), playing: typeof state.playing === "boolean" ? state.playing : undefined, position: Number.isFinite(Number(state.position)) ? expectedPosition(state) : undefined }));
   }
 })();

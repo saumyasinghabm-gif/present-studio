@@ -39,8 +39,10 @@
   }
 
   function addMediaNode(item) {
-    const node = document.createElement(item.type === "video" ? "video" : "img");
-    node.src = item.src;
+    const isYoutube = item.type === "youtube";
+    const node = isYoutube ? window.SnapKeyYouTube?.frame(item, true) : document.createElement(item.type === "video" ? "video" : "img");
+    if (!node) return;
+    if (!isYoutube) node.src = item.src;
     node.className = `slide-media ${item.full_bleed ? "full-bleed" : ""}`;
     node.style.left = `${item.x || 0}%`;
     node.style.top = `${item.y || 0}%`;
@@ -57,6 +59,7 @@
       });
     }
     byId("previewMedia").append(node);
+    if (isYoutube) window.SnapKeyYouTube?.sync(node, { volume: 1, muted: !audioEnabled });
     if (item.type === "video") node.play().catch(() => {
       node.muted = true;
       audioEnabled = false;
@@ -79,7 +82,16 @@
       fit: item.fit || (item.full_bleed ? "fill" : "contain"),
       muted: item.muted
     }));
-    return [...legacy, ...fabricVideos].filter((item) => item.src);
+    const fabricYoutube = (slide.canvas?.fabric?.objects || []).filter((item) => item.mediaType === "youtube").map((item) => ({
+      type: "youtube",
+      youtubeId: item.youtubeId,
+      src: item.src,
+      x: ((item.left || 0) / 1280) * 100,
+      y: ((item.top || 0) / 720) * 100,
+      width: (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100,
+      height: (((item.height || 0) * (item.scaleY || 1)) / 720) * 100
+    }));
+    return [...legacy, ...fabricVideos, ...fabricYoutube].filter((item) => item.type === "youtube" ? window.SnapKeyYouTube?.idFor(item) : item.src);
   }
 
   function renderMedia(slide) {
@@ -149,7 +161,7 @@
     (scene.objects || []).forEach((object) => {
       if (object.textBaseline === "alphabetical") object.textBaseline = "alphabetic";
     });
-    scene.objects = (scene.objects || []).filter((object) => object.mediaType !== "video");
+    scene.objects = (scene.objects || []).filter((object) => !["video", "youtube"].includes(object.mediaType));
     return scene;
   }
 
@@ -202,6 +214,7 @@
       media.muted = !audioEnabled;
       if (audioEnabled) media.play().catch(() => {});
     });
+    byId("previewMedia").querySelectorAll("iframe[data-youtube-id]").forEach((frame) => window.SnapKeyYouTube?.sync(frame, { volume: 1, muted: !audioEnabled, playing: audioEnabled ? true : undefined }));
     syncAudioControl();
   }
 

@@ -7,7 +7,7 @@ const authToken = localStorage.getItem("presentStudio.accessToken") || "";
 const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 let canvas;
 const $ = (id) => document.getElementById(id);
-let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
+let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let audioUnlockNeeded = false; let audioUnlockInProgress = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
 function activeSlide() { return presentation.slides[currentSlideIndex]; }
 function playback() { return presentation.slides[0]?.canvas?.presentation_playback || { mode: "manual", interval_ms: 5000, slide_ids: [], media_mode: "all", media_cycle: "all", media_interval_ms: 5000, loop_videos: true }; }
 function setVisible(element, visible) { if (element) element.hidden = !visible; }
@@ -23,11 +23,17 @@ function mediaItems(slide) {
     height: (((item.height || 0) * (item.scaleY || 1)) / 720) * 100,
     loop: item.loop, muted: item.muted, fit: item.fit || "contain"
   }));
-  return [...legacy, ...fabricVideos].filter(item => config.media_mode === "all" || config.media_mode === `${item.type}s`);
+  const youtubeVideos = (slide.canvas?.fabric?.objects || []).filter(item => item.mediaType === "youtube" && window.SnapKeyYouTube?.idFor(item)).map(item => ({
+    type: "youtube", youtubeId: window.SnapKeyYouTube.idFor(item), src: item.src, full_bleed: item.full_bleed,
+    x: ((item.left || 0) / 1280) * 100, y: ((item.top || 0) / 720) * 100,
+    width: (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100,
+    height: (((item.height || 0) * (item.scaleY || 1)) / 720) * 100
+  }));
+  return [...legacy, ...fabricVideos, ...youtubeVideos].filter(item => config.media_mode === "all" || config.media_mode === "videos" && item.type === "youtube" || config.media_mode === `${item.type}s`);
 }
-function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || liveState?.muted); }
+function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || audioUnlockNeeded || liveState?.muted); }
 function presentationVolume(media, state = liveState) { const raw = media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume; const value = raw == null ? NaN : Number(raw); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
-function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; audioEnabled = false; syncAudioButton(); media.play().catch(() => {}); }); }
+function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; if (permission === "presenter") audioEnabled = false; else audioUnlockNeeded = true; syncAudioButton(); media.play().catch(() => {}); }); }
 function renderMedia(slide) {
   const layer = $("presentMedia");
   layer.replaceChildren();
@@ -36,8 +42,9 @@ function renderMedia(slide) {
   if (items.length > 1 && config.media_cycle === "sequential") items = [items[mediaIndex % items.length]];
   if (items.length > 1 && config.media_cycle === "random") items = [items[Math.floor(Math.random() * items.length)]];
   items.forEach(item => {
-    const node = document.createElement(item.type === "video" ? "video" : "img");
-    node.src = item.src;
+    const node = item.type === "youtube" ? window.SnapKeyYouTube.frame(item) : document.createElement(item.type === "video" ? "video" : "img");
+    if (!node) return;
+    if (item.type !== "youtube") node.src = item.src;
     node.className = `slide-media ${item.full_bleed ? "full-bleed" : ""}`;
     node.style.left = `${item.x || 0}%`;
     node.style.top = `${item.y || 0}%`;
@@ -51,6 +58,7 @@ function renderMedia(slide) {
     }
     layer.append(node);
     if (item.type === "video") startPresentationMedia(node);
+    if (item.type === "youtube") window.SnapKeyYouTube.sync(node, { volume: presentationVolume({ tagName: "VIDEO" }), muted: mediaMuted() });
   });
   const track = slide.canvas?.audio;
   if (track?.src) {
@@ -62,46 +70,48 @@ function renderMedia(slide) {
     layer.append(audio);
     startPresentationMedia(audio);
   }
-  const hasAudio = items.some(item => item.type === "video") || Boolean(track?.src);
+  const hasAudio = items.some(item => ["video", "youtube"].includes(item.type)) || Boolean(track?.src);
   setVisible($("audioToggle"), hasAudio);
   syncAudioButton();
 }
 function syncAudioButton() {
   const button = $("audioToggle");
   if (button) { button.textContent = audioEnabled ? "🔊 Mute audio" : "🔇 Enable audio"; button.setAttribute("aria-label", audioEnabled ? "Mute presentation audio" : "Enable presentation audio"); }
-  const prejoinButton = document.querySelector("[data-presentation-audio]");
-  if (prejoinButton) {
-    prejoinButton.innerHTML = audioEnabled ? '<span aria-hidden="true">🔊</span> Mute presentation sound' : '<span aria-hidden="true">🔇</span> Enable presentation sound';
-    prejoinButton.setAttribute("aria-label", audioEnabled ? "Mute presentation sound" : "Enable presentation sound");
-    prejoinButton.setAttribute("aria-pressed", String(audioEnabled));
-  }
 }
 async function enablePresentationAudio() {
   audioEnabled = true;
+  audioUnlockNeeded = false;
+  document.querySelectorAll("#presentMedia iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }), muted: mediaMuted(), playing: liveState?.playing !== false }));
   const attempts = [...document.querySelectorAll("#presentMedia video, #presentMedia audio")].map(media => {
     media.muted = mediaMuted(media.dataset.authoredMuted === "true");
-    return media.play();
+    return media.paused && liveState?.playing === false ? Promise.resolve() : media.play();
   });
   syncAudioButton();
   const results = await Promise.allSettled(attempts);
   const ready = results.every(result => result.status === "fulfilled");
   if (!ready) {
-    audioEnabled = false;
+    if (permission === "presenter") audioEnabled = false;
+    else audioUnlockNeeded = true;
     document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = true; });
+    document.querySelectorAll("#presentMedia iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }), muted: true }));
     syncAudioButton();
   }
   return ready;
 }
-function toggleAudio() { audioEnabled = !audioEnabled; document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = mediaMuted(media.dataset.authoredMuted === "true"); if (audioEnabled) media.play().catch(() => { audioEnabled = false; media.muted = true; syncAudioButton(); }); }); syncAudioButton(); }
-async function togglePrejoinAudio() {
-  const status = document.querySelector("[data-presentation-audio-status]");
-  if (audioEnabled) {
-    toggleAudio();
-    if (status) status.textContent = "Presentation sound is muted. You can enable it again at any time.";
-    return;
-  }
-  const ready = await enablePresentationAudio();
-  if (status) status.textContent = !ready ? "Your browser blocked sound. Select Enable presentation sound again or check this tab’s sound setting." : liveState?.muted ? "The presenter has muted presentation sound. Your audio is ready when it resumes." : "Presentation sound is on. You can watch and listen while you wait.";
+function toggleAudio() { audioEnabled = !audioEnabled; document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => { media.muted = mediaMuted(media.dataset.authoredMuted === "true"); if (audioEnabled) media.play().catch(() => { audioEnabled = false; media.muted = true; syncAudioButton(); }); }); document.querySelectorAll("#presentMedia iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }), muted: mediaMuted(), playing: audioEnabled && liveState?.playing !== false ? true : undefined })); syncAudioButton(); }
+function tryUnlockAudienceAudio() {
+  if (permission === "presenter" || audioUnlockInProgress) return;
+  const youtubeFrames = [...document.querySelectorAll("#presentMedia iframe[data-youtube-id]")];
+  if (!audioUnlockNeeded && !youtubeFrames.length) return;
+  audioUnlockInProgress = true;
+  youtubeFrames.forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }), muted: mediaMuted(), playing: liveState?.playing !== false }));
+  enablePresentationAudio().then(ready => {
+    if (!ready) return;
+    const status = document.querySelector("[data-presentation-audio-status]");
+    if (status) status.textContent = liveState?.muted ? "The presenter has muted live sound; it will resume when they unmute it." : "Live presentation sound is on while you wait.";
+    window.removeEventListener("pointerdown", tryUnlockAudienceAudio, true);
+    window.removeEventListener("keydown", tryUnlockAudienceAudio, true);
+  }).finally(() => { audioUnlockInProgress = false; });
 }
 function annotationCanvases() { return [...document.querySelectorAll("[data-audience-annotation-canvas]")]; }
 function annotationTextLayers() { return [...document.querySelectorAll("[data-audience-annotation-text]")]; }
@@ -174,7 +184,7 @@ function renderSlide() {
   const done = () => { canvas.getObjects().forEach(object => { object.selectable = false; object.evented = false; }); canvas.renderAll(); animateObjects(); };
   if (data.fabric) {
     const scene = sanitizeFabricScene(JSON.parse(JSON.stringify(data.fabric)));
-    scene.objects = (scene.objects || []).filter(object => object.mediaType !== "video");
+    scene.objects = (scene.objects || []).filter(object => !["video", "youtube"].includes(object.mediaType));
     canvas.loadFromJSON(scene, done);
   } else {
     (data.elements || []).filter(item => item.type === "text").forEach(item => canvas.add(textObject(item)));
@@ -288,6 +298,7 @@ function applyPresentationState(rawState, forceRender = false) {
     else renderSlide();
   }
   document.querySelectorAll("#presentMedia video, #presentMedia audio").forEach(media => syncMediaToState(media, state));
+  document.querySelectorAll("#presentMedia iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: presentationVolume({ tagName: "VIDEO" }, state), muted: mediaMuted(), playing: typeof state.playing === "boolean" ? state.playing : undefined, position: Number.isFinite(Number(state.position)) ? expectedMediaPosition(state) : undefined }));
 }
 function emitSlide() { socket?.emit("slide_changed", { presentationId: presentation.id, slideId: activeSlide().id, authToken, shareToken }); }
 function nextAutoplayIndex() { const config = playback(); if (config.mode === "random") return Math.floor(Math.random() * presentation.slides.length); if (config.mode === "selected") { const selected = presentation.slides.map((slide, index) => config.slide_ids.includes(slide.id) ? index : -1).filter(index => index >= 0); if (selected.length) return selected[(selected.indexOf(currentSlideIndex) + 1 + selected.length) % selected.length]; } return (currentSlideIndex + 1) % presentation.slides.length; }
@@ -348,7 +359,7 @@ async function init() {
   if (!presentation.slides.length) throw new Error("This presentation has no slides.");
   const live = await api.getLiveSession(presentation.id);
   const presenter = permission === "presenter";
-  audioEnabled = presenter;
+  audioEnabled = true;
   document.body.classList.toggle("audience-live-view", !presenter);
   document.title = presenter ? `${presentation.title} — Presenter` : `${presentation.title} — Live presentation`;
   const welcomePresentation = document.querySelector("[data-live-welcome-presentation]");
@@ -363,8 +374,10 @@ async function init() {
   $("nextSlide").onclick = () => go(1);
   $("autoplayToggle").onclick = () => setAutoplay(!autoplayRunning);
   $("audioToggle").onclick = toggleAudio;
-  const prejoinAudioButton = document.querySelector("[data-presentation-audio]");
-  if (prejoinAudioButton) prejoinAudioButton.onclick = togglePrejoinAudio;
+  if (!presenter) {
+    window.addEventListener("pointerdown", tryUnlockAudienceAudio, true);
+    window.addEventListener("keydown", tryUnlockAudienceAudio, true);
+  }
   $("endLive").onclick = endLive;
   document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "f" && presenter) $("fullscreenToggle").click(); if (event.key === "ArrowLeft") go(-1); if (event.key === "ArrowRight") go(1); });
   $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen();

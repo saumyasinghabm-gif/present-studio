@@ -21,6 +21,7 @@
     const leaveButton = root.querySelector("[data-live-leave]");
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
     const panelRestore = root.querySelector("[data-live-panel-restore]");
+    const sheetHandle = root.querySelector("[data-live-sheet-handle]");
     const meetingSidebar = root.querySelector(".live-meeting-sidebar");
     const audienceControls = !options.controller && meetingSidebar?.querySelector(".audience-meeting-controls");
     let audienceFeedback = null;
@@ -369,7 +370,7 @@
     }
 
     function presentationVisualNodes() {
-      return presentationSource.media ? [...presentationSource.media.children].filter(node => ["IMG", "VIDEO"].includes(node.tagName)) : [];
+      return presentationSource.media ? [...presentationSource.media.children].filter(node => ["IMG", "VIDEO", "IFRAME"].includes(node.tagName)) : [];
     }
 
     function syncPresentationMedia(sourceNodes) {
@@ -381,9 +382,11 @@
           const clone = source.cloneNode(false);
           clone.removeAttribute("controls");
           if (clone.tagName === "VIDEO") Object.assign(clone, { autoplay: true, muted: true, playsInline: true });
+          if (clone.tagName === "IFRAME" && clone.dataset.youtubeId) clone.src = window.SnapKeyYouTube.embedUrl(clone.dataset.youtubeId);
           return clone;
         });
         presentationMedia.replaceChildren(...clones);
+        clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0 }));
       }
       const clones = [...presentationMedia.children];
       sourceNodes.forEach((source, index) => {
@@ -629,6 +632,9 @@
       screenShareRenderSignature = renderSignature;
       detachNodeTracks(screenShareMedia);
       screenShareMedia.replaceChildren();
+      const gallery = document.createElement("div");
+      gallery.className = "live-screen-share-gallery";
+      gallery.setAttribute("aria-label", "Other shared screens");
       activeShares.forEach(({ participant, track }) => {
         const figure = document.createElement("figure");
         figure.dataset.participantIdentity = participant.identity;
@@ -644,7 +650,10 @@
           const select = document.createElement("button");
           select.type = "button";
           const controllerLocked = controllerOverrideActive && !isController;
-          select.textContent = participant.identity === featuredIdentity ? "Showing" : controllerLocked ? "Controller selected another" : (isController ? "Show for everyone" : "Focus screen");
+          const selectLabel = participant.identity === featuredIdentity ? `${participant.name || "Guest"}'s screen is showing` : controllerLocked ? "The controller has selected another screen" : (isController ? `Show ${participant.name || "Guest"}'s screen to everyone` : `Focus ${participant.name || "Guest"}'s screen`);
+          select.textContent = participant.identity === featuredIdentity ? "●" : controllerLocked ? "🔒" : "◎";
+          select.setAttribute("aria-label", selectLabel);
+          select.title = selectLabel;
           select.disabled = participant.identity === featuredIdentity || controllerLocked;
           select.addEventListener("click", () => {
             selectedShareIdentity = participant.identity;
@@ -658,22 +667,28 @@
         }
         const fullscreen = document.createElement("button");
         fullscreen.type = "button";
-        fullscreen.textContent = "Fullscreen";
+        fullscreen.textContent = "⛶";
+        fullscreen.setAttribute("aria-label", `View ${participant.name || "Guest"}'s screen fullscreen`);
+        fullscreen.title = fullscreen.getAttribute("aria-label");
         fullscreen.addEventListener("click", () => figure.requestFullscreen?.().catch(() => {}));
         actions.append(fullscreen);
         if (isController && participant !== room.localParticipant) {
           const revoke = document.createElement("button");
           revoke.type = "button";
           revoke.className = "is-danger";
-          revoke.textContent = "Stop share";
+          revoke.textContent = "×";
+          revoke.setAttribute("aria-label", `Stop ${participant.name || "Guest"}'s screen share`);
+          revoke.title = revoke.getAttribute("aria-label");
           revoke.addEventListener("click", () => options.socket?.emit("meeting_screen_share_revoke", {
             ...moderationCredentials(), targetIdentity: participant.identity
           }));
           actions.append(revoke);
         }
         figure.append(video, caption, actions);
-        screenShareMedia.append(figure);
+        if (participant.identity === featuredIdentity) screenShareMedia.append(figure);
+        else gallery.append(figure);
       });
+      if (gallery.childElementCount) screenShareMedia.append(gallery);
     }
 
     function participantRenderSignature(participant, isLocal) {
@@ -1038,6 +1053,29 @@
     });
     panelToggle?.addEventListener("click", () => setAudienceSidebarHidden(true, true));
     panelRestore?.addEventListener("click", () => setAudienceSidebarHidden(false, true));
+    if (sheetHandle && !isController) {
+      let startY = null;
+      sheetHandle.addEventListener("pointerdown", event => {
+        startY = event.clientY;
+        sheetHandle.setPointerCapture?.(event.pointerId);
+      });
+      sheetHandle.addEventListener("pointerup", event => {
+        if (startY === null) return;
+        const distance = event.clientY - startY;
+        startY = null;
+        if (distance > 36) setAudienceSidebarHidden(true, true);
+        else if (distance < -36) setAudienceSidebarHidden(false, true);
+        else setAudienceSidebarHidden(!root.classList.contains("is-sidebar-hidden"), true);
+      });
+      sheetHandle.addEventListener("pointercancel", () => { startY = null; });
+      sheetHandle.addEventListener("click", event => {
+        if (event.detail === 0) setAudienceSidebarHidden(!root.classList.contains("is-sidebar-hidden"), true);
+      });
+      sheetHandle.addEventListener("keydown", event => {
+        if (event.key === "ArrowDown") { event.preventDefault(); setAudienceSidebarHidden(true, true); }
+        if (event.key === "ArrowUp") { event.preventDefault(); setAudienceSidebarHidden(false, true); }
+      });
+    }
     options.socket?.on("meeting_control_state", applyControllerState);
     options.socket?.on("meeting_participant_audio_command", applyParticipantAudioCommand);
     options.socket?.on("meeting_chat_message", message => { if (message?.presentationId === options.presentationId) appendChatMessage(message); });
