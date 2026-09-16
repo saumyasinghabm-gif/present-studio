@@ -95,6 +95,9 @@
     let unreadMessages = 0;
     let raisedHands = new Map();
     let soundContext = null;
+    let joinSoundEnabled = localStorage.getItem("presentStudio.joinSoundEnabled") !== "false";
+    let joinSoundButton = null;
+    let joinNotificationArmed = false;
     let admissionState = isController ? "approved" : "idle";
     let screenShareRequestPending = false;
     let screenShareApproved = false;
@@ -295,6 +298,82 @@
         if (!AudioContextClass) return;
         soundContext ||= new AudioContextClass();
         soundContext.resume?.();
+      } catch {}
+    }
+
+    function syncJoinSoundButton() {
+      if (!joinSoundButton) return;
+      joinSoundButton.setAttribute("aria-pressed", String(joinSoundEnabled));
+      const labelNode = joinSoundButton.querySelector("[data-live-control-label]");
+      if (labelNode) labelNode.textContent = joinSoundEnabled ? "Join sound" : "Join muted";
+      const title = joinSoundEnabled
+        ? "Participant join sound is on. Select to turn it off"
+        : "Participant join sound is off. Select to turn it on";
+      joinSoundButton.setAttribute("aria-label", title);
+      joinSoundButton.title = title;
+    }
+
+    function ensureJoinSoundControl() {
+      if (joinSoundButton) return;
+      const dock = root.querySelector(".live-media-actions");
+      if (!dock) return;
+
+      joinSoundButton = document.createElement("button");
+      joinSoundButton.type = "button";
+      joinSoundButton.className = "live-control-button is-join-sound";
+      joinSoundButton.innerHTML =
+        '<span class="live-control-icon" aria-hidden="true">🔔</span>' +
+        '<span data-live-control-label>Join sound</span>';
+
+      const leaveControl = dock.querySelector("[data-live-leave]");
+      if (leaveControl) dock.insertBefore(joinSoundButton, leaveControl);
+      else dock.append(joinSoundButton);
+
+      joinSoundButton.addEventListener("click", () => {
+        unlockReactionAudio();
+        joinSoundEnabled = !joinSoundEnabled;
+        localStorage.setItem("presentStudio.joinSoundEnabled", String(joinSoundEnabled));
+        syncJoinSoundButton();
+        setStatus(
+          joinSoundEnabled ? "Participant join sound enabled" : "Participant join sound muted",
+          "success"
+        );
+      });
+
+      syncJoinSoundButton();
+    }
+
+    function playParticipantJoinSound(participant) {
+      if (!joinNotificationArmed || !joinSoundEnabled) return;
+      if (participant?.identity === currentIdentity()) return;
+
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        soundContext ||= new AudioContextClass();
+        soundContext.resume?.();
+
+        const now = soundContext.currentTime;
+
+        [660, 880].forEach((frequency, index) => {
+          const oscillator = soundContext.createOscillator();
+          const gain = soundContext.createGain();
+
+          oscillator.type = "sine";
+          oscillator.frequency.setValueAtTime(frequency, now);
+
+          const start = now + index * 0.13;
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.14, start + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
+
+          oscillator.connect(gain);
+          gain.connect(soundContext.destination);
+
+          oscillator.start(start);
+          oscillator.stop(start + 0.13);
+        });
       } catch {}
     }
 
@@ -839,9 +918,16 @@
 
     function bindRoomEvents() {
       const events = livekit.RoomEvent;
-      [events.ParticipantConnected, events.ParticipantDisconnected, events.TrackSubscribed, events.TrackUnsubscribed,
+      [events.ParticipantDisconnected, events.TrackSubscribed, events.TrackUnsubscribed,
         events.TrackPublished, events.TrackUnpublished, events.TrackMuted, events.TrackUnmuted]
         .filter(Boolean).forEach(eventName => room.on(eventName, scheduleParticipantRender));
+
+      if (events.ParticipantConnected) {
+        room.on(events.ParticipantConnected, participant => {
+          scheduleParticipantRender();
+          playParticipantJoinSound(participant);
+        });
+      }
       room.on(events.LocalTrackPublished, () => { syncLocalPublishedState(); syncButtons(true); scheduleParticipantRender(); });
       room.on(events.LocalTrackUnpublished, publication => {
         const stoppedScreenShare = isSource(publication, "ScreenShare") || isSource(publication, "ScreenShareAudio");
@@ -854,6 +940,7 @@
       room.on(events.Reconnecting, () => setStatus("Reconnecting…"));
       room.on(events.Reconnected, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); syncAudioRecovery(); setStatus("Connected", "success"); });
       room.on(events.Disconnected, () => {
+        joinNotificationArmed = false;
         microphoneEnabled = false; cameraEnabled = false; screenShareEnabled = false; audioPlaybackBlocked = false; detachMountedTracks(); room = null;
         backgroundProcessor = null; backgroundProcessorTrack = null;
         tiles.replaceChildren(); screenShareMedia.replaceChildren(); screenShareViewer.hidden = true; enableAudioButton.hidden = true;
@@ -916,6 +1003,7 @@
         });
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
+        joinNotificationArmed = true;
         if (!isController) setAudienceSidebarHidden(false);
       } catch (error) {
         room?.disconnect(); room = null;
@@ -991,17 +1079,22 @@
       activeRoom.disconnect();
     }
 
-    function leaveOnPageHide() {
-      if (presentationSyncTimer) window.clearInterval(presentationSyncTimer);
-      const activeRoom = room;
-      if (!activeRoom) return;
-      if (handRaised) options.socket?.emit("meeting_hand", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), raised: false });
-      activeRoom.localParticipant.setMicrophoneEnabled(false).catch(() => {});
-      activeRoom.localParticipant.setCameraEnabled(false).catch(() => {});
-      activeRoom.localParticipant.setScreenShareEnabled(false).catch(() => {});
-      detachMountedTracks();
-      activeRoom.disconnect();
+    async function recoverMeetingAfterBackground() {
+      if (!room || document.visibilityState !== "visible") return;
+
+      try {
+        await room.startAudio();
+        audioPlaybackBlocked = false;
+      } catch {
+        audioPlaybackBlocked = room?.canPlayAudio === false;
+      }
+
+      syncLocalPublishedState();
+      syncButtons(true);
+      renderParticipants();
+      syncAudioRecovery();
     }
+
     joinButton.addEventListener("click", join);
     nameInput.addEventListener("keydown", event => {
       if (event.key !== "Enter") return;
@@ -1144,7 +1237,18 @@
       else if (admissionState === "waiting") emitAdmissionRequest();
     });
     if (options.socket?.connected) registerController();
-    window.addEventListener("pagehide", leaveOnPageHide, { once: true });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        recoverMeetingAfterBackground().catch(() => {});
+      }
+    });
+
+    window.addEventListener("pageshow", () => {
+      recoverMeetingAfterBackground().catch(() => {});
+    });
+
+    ensureJoinSoundControl();
     syncButtons(false);
     setSidebarTab("people");
     return { join, leave };
