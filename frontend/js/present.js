@@ -1,6 +1,7 @@
 const api = window.PresentStudioApi;
 const params = new URLSearchParams(location.search);
 const shortJoinMatch = location.pathname.match(/^\/join\/([^/]+)\/?$/);
+const audienceJoinLink = Boolean(shortJoinMatch);
 let presentationId = params.get("id") || "";
 const shareToken = params.get("token") || (shortJoinMatch ? decodeURIComponent(shortJoinMatch[1]) : "");
 const authToken = localStorage.getItem("presentStudio.accessToken") || "";
@@ -331,20 +332,21 @@ function setupSocket() {
   if (socket.connected) joinRoom();
 }
 async function loadPresentationAccess() {
+  const audienceRequest = audienceJoinLink ? { publicAccess: true } : {};
   if (!presentationId && shareToken) {
-    const resolved = await api.resolveShareLink(shareToken);
+    const resolved = await api.resolveShareLink(shareToken, audienceRequest);
     presentationId = resolved.presentationId;
   }
   if (!presentationId) presentationId = "pres_demo";
   if (!shareToken) return api.getPresentation(presentationId);
 
-  const result = await api.getPresentation(presentationId, shareToken);
+  const result = await api.getPresentation(presentationId, shareToken, audienceRequest);
   if (result.permission === "presenter") {
     screenCodeRequired = false;
-    return result;
+    return audienceJoinLink ? { ...result, permission: "viewer" } : result;
   }
 
-  const access = await api.getScreenAccessRequirements(presentationId, shareToken);
+  const access = await api.getScreenAccessRequirements(presentationId, shareToken, audienceRequest);
   screenCodeRequired = Boolean(access.requiresCode);
   return result;
 }
@@ -353,7 +355,7 @@ async function validateMeetingAccessCode() {
   const input = document.querySelector("[data-screen-code]");
   const code = input?.value.trim() || "";
   if (!/^\d{4}$/.test(code)) { input?.focus(); throw new Error("Enter the four-digit meeting access code."); }
-  await api.verifyScreenAccessCode(presentationId, shareToken, code);
+  await api.verifyScreenAccessCode(presentationId, shareToken, code, audienceJoinLink ? { publicAccess: true } : {});
   screenAccessCode = code;
   return true;
 }
@@ -390,12 +392,13 @@ async function init() {
   $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen();
   applyPresentationState(live, true);
   liveMediaSession = window.SnapKeyLiveMedia?.create({
-    root: $("presentLiveMedia"), presentationId, shareToken, authToken, screenAccessCode, socket,
+    root: $("presentLiveMedia"), presentationId, shareToken, authToken: audienceJoinLink ? "" : authToken, screenAccessCode, socket,
     admissionBypass: presenter,
     displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
     onEnableAudio: enablePresentationAudio,
     onValidateAdmission: validateMeetingAccessCode,
     getScreenAccessCode: () => screenAccessCode,
+    requestOptions: audienceJoinLink ? { publicAccess: true } : {},
     presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => currentOutputLabel || activeSlide()?.title || presentation.title }
   });
   if (presenter) {
