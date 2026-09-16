@@ -422,6 +422,7 @@
 
       const proxiedOptions = {
         ...options,
+        stableClientId,
         socket: makeSocketProxy(ctx, options.socket)
       };
       ctx.options = proxiedOptions;

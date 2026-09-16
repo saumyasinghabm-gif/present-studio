@@ -100,6 +100,7 @@
     let joinSoundButton = null;
     let joinNotificationArmed = false;
     let admissionState = admissionBypass ? "approved" : "idle";
+    let admissionClientIds = new Set([meetingClientId, options.stableClientId].filter(Boolean).map(String));
     let screenShareRequestPending = false;
     let screenShareApproved = false;
     let participantRegistry = new Map();
@@ -979,6 +980,10 @@
       });
     }
 
+    function isAdmissionMessageForThisClient(message) {
+      return message?.presentationId === options.presentationId && admissionClientIds.has(String(message.clientId || ""));
+    }
+
     async function join(approved = false) {
       if (!admissionBypass && approved !== true) { requestAdmission(); return; }
       if (joining || room) return;
@@ -1203,7 +1208,7 @@
     });
     options.socket?.on("meeting_lobby_state", renderLobby);
     options.socket?.on("meeting_admission_decision", message => {
-      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
+      if (isController || !isAdmissionMessageForThisClient(message)) return;
       if (message.accepted) {
         admissionState = "approved";
         setStatus("The presenter admitted you. Joining…", "success");
@@ -1215,7 +1220,7 @@
       }
     });
     options.socket?.on("meeting_removed_by_controller", async message => {
-      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
+      if (isController || !isAdmissionMessageForThisClient(message)) return;
       admissionState = "waiting";
       screenShareRequestPending = false;
       screenShareApproved = false;
@@ -1224,7 +1229,7 @@
       syncButtons(false);
     });
     options.socket?.on("meeting_screen_share_decision", message => {
-      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
+      if (isController || !isAdmissionMessageForThisClient(message)) return;
       screenShareRequestPending = false;
       if (message.accepted) {
         screenShareApproved = true;
