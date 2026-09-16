@@ -2614,3 +2614,47 @@ button.present-back {
   }
   .audience-live-view .present-live-media.is-connected.is-sidebar-hidden .audience-meeting-sidebar { transform: translateX(105%); }
 }
+
+
+/* 2026-09-16: mobile reactions + desktop meeting status placement */
+
+/*
+ * Mobile audience:
+ * Keep Raise Hand / Clap / Celebrate / Love available after joining.
+ * Some earlier responsive rules hide this bar.
+ */
+@media (max-width: 680px) {
+  .audience-live-view
+  .present-live-media.is-connected
+  .live-engagement-bar {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .audience-live-view
+  .present-live-media.is-connected
+  .audience-meeting-sidebar {
+    grid-template-rows:
+      auto
+      auto
+      auto
+      minmax(0, 1fr);
+  }
+}
+
+/*
+ * Desktop audience:
+ * Keep status feedback away from the chat composer.
+ * It now appears at the top-right of the meeting area instead of
+ * floating above the message input.
+ */
+@media (min-width: 681px) {
+  .audience-live-view
+  .present-live-media.is-connected
+  > .audience-control-feedback {
+    top: 72px;
+    right: 8px;
+    bottom: auto;
+    width: min(334px, calc(100% - 16px));
+  }
+}
