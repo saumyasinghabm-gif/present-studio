@@ -40,3 +40,429 @@
     revokeUser: (userId) => request(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" })
   };
 })();
+
+/* MEETING_V2_BRIDGE
+ * Persistent guest admission, co-host controls and approved-share UX.
+ * Loaded from api.js before live-media.js so existing meeting code stays intact.
+ */
+(function installMeetingV2Bridge() {
+  "use strict";
+
+  const api = window.PresentStudioApi;
+  if (!api || api.__meetingV2Installed) return;
+  api.__meetingV2Installed = true;
+
+  const contexts = new Map();
+  const GUEST_KEY = "presentStudio.meetingGuestId";
+  let fallbackGuestId = "";
+
+  function newGuestId() {
+    const value = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return `guest-${value}`.slice(0, 128);
+  }
+
+  function stableGuestId() {
+    try {
+      let value = localStorage.getItem(GUEST_KEY);
+      if (!value) {
+        value = newGuestId();
+        localStorage.setItem(GUEST_KEY, value);
+      }
+      return String(value).slice(0, 128);
+    } catch {
+      fallbackGuestId ||= newGuestId();
+      return fallbackGuestId;
+    }
+  }
+
+  function escapeSelector(value) {
+    if (window.CSS?.escape) return CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, "\\$&");
+  }
+
+  function installStyle() {
+    if (document.getElementById("meetingV2Styles")) return;
+    const style = document.createElement("style");
+    style.id = "meetingV2Styles";
+    style.textContent = `
+      .meeting-v2-role-badge {
+        display:inline-flex;align-items:center;margin-left:6px;border:1px solid #d3aa0d;
+        border-radius:999px;padding:2px 6px;background:#ffd54a;color:#171713;
+        font:800 .5rem var(--mono,monospace);text-transform:uppercase;letter-spacing:.04em;
+      }
+      .live-participant-actions .meeting-v2-role-button {
+        min-height:30px;border:1px solid #665f43;border-radius:6px;padding:4px 7px;
+        background:#2c2a22;color:#ffe48a;font:700 .54rem var(--mono,monospace);
+      }
+      .live-participant-actions .meeting-v2-role-button.is-cohost {
+        border-color:#8c6b00;background:#3b3214;color:#ffd54a;
+      }
+      .meeting-v2-cohost-control {
+        border-color:#d3aa0d !important;background:#332c13 !important;color:#ffd54a !important;
+      }
+      dialog.meeting-v2-share-dialog {
+        max-width:min(420px,calc(100vw - 28px));border:1px solid #4a483f;border-radius:14px;
+        padding:0;background:#1b1b18;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.5);
+      }
+      dialog.meeting-v2-share-dialog::backdrop { background:rgba(0,0,0,.62); }
+      .meeting-v2-share-dialog > div { padding:20px; }
+      .meeting-v2-share-dialog h3 { margin:0 0 8px;font-size:1rem; }
+      .meeting-v2-share-dialog p { margin:0 0 18px;color:#c9c6bc;font-size:.82rem;line-height:1.5; }
+      .meeting-v2-share-dialog footer { display:flex;justify-content:flex-end;gap:8px; }
+      .meeting-v2-share-dialog button { min-height:40px;border:1px solid #57544b;border-radius:8px;padding:0 13px;background:#282823;color:#fff; }
+      .meeting-v2-share-dialog button[data-meeting-v2-start-share] { border-color:#d3aa0d;background:#ffd54a;color:#171713;font-weight:800; }
+      .meeting-v2-revoked-overlay {
+        position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:24px;
+        background:rgba(10,10,9,.94);color:#fff;text-align:center;
+      }
+      .meeting-v2-revoked-overlay > div { max-width:520px; }
+      .meeting-v2-revoked-overlay h2 { margin:0 0 10px; }
+      .meeting-v2-revoked-overlay p { color:#c9c6bc;line-height:1.55; }
+      body[data-meeting-cohost="1"] #backToEditor { display:none !important; }
+    `;
+    document.head.append(style);
+  }
+
+  installStyle();
+
+  const originalGetLiveMediaToken = api.getLiveMediaToken.bind(api);
+  api.getLiveMediaToken = async function meetingV2MediaToken(id, payload = {}) {
+    const ctx = contexts.get(String(id));
+    const nextPayload = ctx?.stableClientId
+      ? { ...payload, clientId: ctx.stableClientId }
+      : payload;
+    return originalGetLiveMediaToken(id, nextPayload);
+  };
+
+  function translateOutgoing(ctx, event, raw) {
+    const data = raw && typeof raw === "object" ? { ...raw } : raw;
+    if (!data || typeof data !== "object") return data;
+
+    if (!ctx.isController && [
+      "meeting_admission_request",
+      "meeting_participant_joined",
+      "meeting_participant_left",
+      "meeting_screen_share_request"
+    ].includes(event)) {
+      if (data.clientId) ctx.ephemeralClientId = String(data.clientId);
+      data.clientId = ctx.stableClientId;
+    }
+
+    if (ctx.isCohostController && event === "meeting_controller_register") {
+      data.cohostGuestId = ctx.stableClientId;
+    }
+
+    if (ctx.isController && event === "meeting_screen_share_decide" && data.accepted === true) {
+      const rawIds = Array.isArray(data.clientIds) ? data.clientIds : [data.clientId];
+      const requests = Array.isArray(ctx.lastLobby?.screenShareRequests) ? ctx.lastLobby.screenShareRequests : [];
+      const chosen = rawIds
+        .map(clientId => requests.find(item => String(item.clientId) === String(clientId)))
+        .find(item => item?.identity);
+      if (chosen?.identity) ctx.preferredShareIdentity = String(chosen.identity);
+    }
+    return data;
+  }
+
+  function translateIncoming(ctx, event, raw) {
+    if (!raw || typeof raw !== "object") return raw;
+    const data = { ...raw };
+    if (!ctx.isController && [
+      "meeting_admission_decision",
+      "meeting_removed_by_controller",
+      "meeting_screen_share_decision"
+    ].includes(event) && String(data.clientId || "") === ctx.stableClientId && ctx.ephemeralClientId) {
+      data.clientId = ctx.ephemeralClientId;
+    }
+    return data;
+  }
+
+  function makeSocketProxy(ctx, socket) {
+    if (!socket) return socket;
+    return new Proxy(socket, {
+      get(target, property) {
+        if (property === "emit") {
+          return (event, data, ...rest) =>
+            target.emit(event, translateOutgoing(ctx, event, data), ...rest);
+        }
+        if (property === "on") {
+          return (event, handler) => {
+            target.on(event, (...args) => {
+              const original = args[0];
+              const translated = translateIncoming(ctx, event, original);
+              handler(translated, ...args.slice(1));
+
+              if (event === "meeting_lobby_state" && ctx.isController) {
+                ctx.lastLobby = original;
+                queueMicrotask(() => decorateControllerParticipants(ctx));
+              }
+              if (event === "meeting_admission_decision" && !ctx.isController && original?.accepted) {
+                applyLocalRole(ctx, original);
+              }
+              if (event === "meeting_screen_share_decision" && !ctx.isController && original?.accepted) {
+                queueMicrotask(() => showApprovedShareDialog(ctx));
+              }
+            });
+            return target;
+          };
+        }
+        const value = Reflect.get(target, property, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      }
+    });
+  }
+
+  function roleButton(ctx, item) {
+    const button = document.createElement("button");
+    const isCohost = item.role === "cohost";
+    button.type = "button";
+    button.className = `meeting-v2-role-button${isCohost ? " is-cohost" : ""}`;
+    button.dataset.meetingV2Role = String(item.clientId);
+    button.textContent = isCohost ? "Remove co-host" : "Make co-host";
+    button.title = isCohost
+      ? `Remove co-host access from ${item.name || "participant"}`
+      : `Give ${item.name || "participant"} co-host controls`;
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      ctx.socket.emit("meeting_role_update", {
+        presentationId: ctx.presentationId,
+        authToken: ctx.options.authToken || "",
+        shareToken: ctx.options.shareToken || "",
+        clientId: item.clientId,
+        role: isCohost ? "audience" : "cohost"
+      });
+    });
+    return button;
+  }
+
+  function decorateControllerParticipants(ctx) {
+    if (!ctx.isController || !ctx.root || !ctx.lastLobby) return;
+    const active = Array.isArray(ctx.lastLobby.active) ? ctx.lastLobby.active : [];
+    active.forEach(item => {
+      if (!item.identity) return;
+      const tile = ctx.root.querySelector(
+        `[data-participant-identity="${escapeSelector(item.identity)}"]`
+      );
+      if (!tile) return;
+
+      const footer = tile.querySelector("footer");
+      const label = footer?.querySelector("strong");
+      let badge = footer?.querySelector(".meeting-v2-role-badge");
+      if (item.role === "cohost") {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "meeting-v2-role-badge";
+          badge.textContent = "Co-host";
+          label?.after(badge);
+        }
+        const state = footer?.querySelector("span:not(.meeting-v2-role-badge):not(.live-raised-hand)");
+        if (state?.textContent?.startsWith("Audience")) {
+          state.textContent = state.textContent.replace(/^Audience/, "Co-host");
+        }
+      } else {
+        badge?.remove();
+      }
+
+      const actions = tile.querySelector(".live-participant-actions");
+      if (!actions) return;
+      actions.querySelector(`[data-meeting-v2-role="${escapeSelector(item.clientId)}"]`)?.remove();
+      actions.prepend(roleButton(ctx, item));
+    });
+
+    maybeAutoFeatureApprovedShare(ctx);
+  }
+
+  function applyLocalRole(ctx, message) {
+    const role = String(message?.role || "audience");
+    ctx.role = role;
+    ctx.controllerUrl = message?.controllerUrl || "";
+
+    const existing = ctx.root?.querySelector("[data-meeting-v2-cohost-control]");
+    if (role !== "cohost" || !ctx.controllerUrl) {
+      existing?.remove();
+      return;
+    }
+    if (existing) {
+      existing.dataset.controllerUrl = ctx.controllerUrl;
+      return;
+    }
+
+    const dock = ctx.root?.querySelector(".live-media-actions");
+    if (!dock) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "live-control-button meeting-v2-cohost-control";
+    button.dataset.meetingV2CohostControl = "";
+    button.dataset.controllerUrl = ctx.controllerUrl;
+    button.innerHTML =
+      '<span class="live-control-icon" aria-hidden="true">★</span>' +
+      '<span data-live-control-label>Co-host</span>';
+    button.title = "Open full co-host controller and interactive controls";
+    button.addEventListener("click", () => {
+      const url = new URL(button.dataset.controllerUrl, location.origin);
+      window.open(url.href, "_blank", "noopener");
+    });
+    const leave = dock.querySelector("[data-live-leave]");
+    if (leave) dock.insertBefore(button, leave);
+    else dock.append(button);
+  }
+
+  function showApprovedShareDialog(ctx) {
+    if (!ctx.root || ctx.isController) return;
+    let dialog = ctx.root.querySelector("[data-meeting-v2-share-dialog]");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.className = "meeting-v2-share-dialog";
+      dialog.dataset.meetingV2ShareDialog = "";
+      dialog.innerHTML = `
+        <div>
+          <h3>Screen sharing approved</h3>
+          <p>The host approved your request. Select <strong>Start sharing</strong>, then choose the screen, window or tab you want to share.</p>
+          <footer>
+            <button type="button" data-meeting-v2-cancel-share>Not now</button>
+            <button type="button" data-meeting-v2-start-share>Start sharing</button>
+          </footer>
+        </div>`;
+      dialog.querySelector("[data-meeting-v2-cancel-share]").addEventListener("click", () => dialog.close?.());
+      dialog.querySelector("[data-meeting-v2-start-share]").addEventListener("click", () => {
+        dialog.close?.();
+        ctx.root.querySelector("[data-live-screen-share]")?.click();
+      });
+      ctx.root.append(dialog);
+    }
+
+    if (typeof dialog.showModal === "function") {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      const start = window.confirm("Screen sharing approved. Start sharing now?");
+      if (start) ctx.root.querySelector("[data-live-screen-share]")?.click();
+    }
+  }
+
+  function maybeAutoFeatureApprovedShare(ctx) {
+    if (!ctx.isController || !ctx.preferredShareIdentity || !ctx.root) return;
+    const figure = ctx.root.querySelector(
+      `[data-live-screen-share-media] figure[data-participant-identity="${escapeSelector(ctx.preferredShareIdentity)}"]`
+    );
+    if (!figure) return;
+    if (figure.classList.contains("is-featured")) {
+      ctx.preferredShareIdentity = "";
+      return;
+    }
+    const select = [...figure.querySelectorAll("button")].find(button =>
+      /show .*screen to everyone/i.test(button.getAttribute("aria-label") || "")
+    );
+    if (select && !select.disabled) {
+      ctx.preferredShareIdentity = "";
+      select.click();
+    }
+  }
+
+  function revokedOverlay(ctx, reason) {
+    if (!ctx.isCohostController) return;
+    ctx.session?.leave?.().catch?.(() => {});
+    ctx.socket?.disconnect?.();
+    if (document.querySelector(".meeting-v2-revoked-overlay")) return;
+    const overlay = document.createElement("div");
+    overlay.className = "meeting-v2-revoked-overlay";
+    overlay.innerHTML = `<div><h2>Co-host access ended</h2><p></p></div>`;
+    overlay.querySelector("p").textContent =
+      reason === "session-ended"
+        ? "The live meeting has ended. You can close this controller tab."
+        : "The host removed your co-host permission. This controller can no longer change the meeting.";
+    document.body.append(overlay);
+    document.querySelectorAll("button,input,select,textarea").forEach(control => {
+      control.disabled = true;
+    });
+  }
+
+  function enhanceLiveMedia(value) {
+    if (!value?.create || value.__meetingV2Enhanced) return value;
+    const originalCreate = value.create.bind(value);
+    value.create = function meetingV2Create(options) {
+      const params = new URLSearchParams(location.search);
+      const isCohostController = options.controller === true && params.get("cohost") === "1";
+      const stableClientId = options.controller
+        ? (isCohostController ? String(params.get("cohostGuestId") || "").slice(0, 128) : "")
+        : stableGuestId();
+
+      if (isCohostController) {
+        document.body.dataset.meetingCohost = "1";
+        const name = String(params.get("cohostName") || "").trim().slice(0, 80);
+        if (name) options = { ...options, displayName: name };
+      }
+
+      const ctx = {
+        presentationId: String(options.presentationId),
+        root: options.root,
+        options,
+        socket: options.socket,
+        isController: options.controller === true,
+        isCohostController,
+        stableClientId,
+        ephemeralClientId: "",
+        role: isCohostController ? "cohost" : "audience",
+        controllerUrl: "",
+        lastLobby: null,
+        preferredShareIdentity: "",
+        session: null
+      };
+      contexts.set(ctx.presentationId, ctx);
+
+      const proxiedOptions = {
+        ...options,
+        socket: makeSocketProxy(ctx, options.socket)
+      };
+      ctx.options = proxiedOptions;
+      ctx.session = originalCreate(proxiedOptions);
+
+      if (!ctx.isController) {
+        options.socket?.on("meeting_role_changed", message => {
+          if (
+            message?.presentationId === ctx.presentationId &&
+            String(message.clientId || "") === ctx.stableClientId
+          ) {
+            applyLocalRole(ctx, message);
+          }
+        });
+      }
+
+      if (ctx.isController) {
+        const observer = new MutationObserver(() => {
+          decorateControllerParticipants(ctx);
+          maybeAutoFeatureApprovedShare(ctx);
+        });
+        observer.observe(ctx.root, { childList: true, subtree: true });
+        ctx.observer = observer;
+      }
+
+      if (ctx.isCohostController) {
+        options.socket?.on("meeting_controller_revoked", message => {
+          if (
+            message?.presentationId === ctx.presentationId &&
+            String(message.clientId || "") === ctx.stableClientId
+          ) revokedOverlay(ctx, message.reason);
+        });
+      }
+
+      return ctx.session;
+    };
+    value.__meetingV2Enhanced = true;
+    return value;
+  }
+
+  let liveMediaValue = window.SnapKeyLiveMedia;
+  if (liveMediaValue) {
+    window.SnapKeyLiveMedia = enhanceLiveMedia(liveMediaValue);
+  } else {
+    Object.defineProperty(window, "SnapKeyLiveMedia", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return liveMediaValue;
+      },
+      set(value) {
+        liveMediaValue = enhanceLiveMedia(value);
+      }
+    });
+  }
+})();

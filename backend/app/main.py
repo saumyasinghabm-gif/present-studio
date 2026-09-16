@@ -7,10 +7,14 @@ from sqlalchemy import inspect, text
 from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .models import User
+from .socket_manager import sio
+from . import meeting_v2
 from .routers import admin, auth, media, presentations
 from .security import admin_user
 from .seed import seed_demo_data
-from .socket_manager import sio
+
+
+meeting_v2.install_router_guards(presentations)
 
 
 settings = get_settings()
@@ -106,6 +110,7 @@ def live_session_repair_statements(dialect_name: str, columns: set[str]) -> list
     bool_default = "0" if is_sqlite else "FALSE"
     timestamp_type = "DATETIME" if is_sqlite else "TIMESTAMP WITH TIME ZONE"
     definitions = {
+        "meeting_instance_id": "VARCHAR(64)",
         "active_media_id": "VARCHAR(128)",
         "active_media_kind": "VARCHAR(16) DEFAULT 'slide' NOT NULL",
         "media_position": "FLOAT DEFAULT 0 NOT NULL",

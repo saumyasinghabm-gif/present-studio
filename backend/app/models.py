@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -85,6 +85,7 @@ class LiveSession(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     presentation_id: Mapped[str] = mapped_column(ForeignKey("presentations.id"), unique=True, index=True)
+    meeting_instance_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     active_slide_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     active_media_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     active_media_kind: Mapped[str] = mapped_column(String(16), default="slide", server_default="slide")
@@ -101,3 +102,30 @@ class LiveSession(Base):
     audience_count: Mapped[int] = mapped_column(Integer, default=0)
     is_live: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class MeetingParticipantGrant(Base):
+    __tablename__ = "meeting_participant_grants"
+    __table_args__ = (
+        UniqueConstraint(
+            "presentation_id",
+            "meeting_instance_id",
+            "guest_id",
+            name="uq_meeting_participant_grant",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), index=True
+    )
+    meeting_instance_id: Mapped[str] = mapped_column(String(64), index=True)
+    guest_id: Mapped[str] = mapped_column(String(128), index=True)
+    display_name: Mapped[str] = mapped_column(String(80), default="Guest", server_default="Guest")
+    role: Mapped[str] = mapped_column(String(16), default="audience", server_default="audience")
+    status: Mapped[str] = mapped_column(String(16), default="approved", server_default="approved")
+    cohost_share_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    admitted_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

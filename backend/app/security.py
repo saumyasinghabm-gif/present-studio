@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from .config import get_settings
 from .database import get_db
-from .models import Presentation, PresentationMember, ShareLink, User
+from .models import LiveSession, MeetingParticipantGrant, Presentation, PresentationMember, ShareLink, User
 
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -111,6 +111,29 @@ def resolve_share_permission(db: Session, presentation_id: str, token: str) -> s
     ).first()
     if not share:
         return None
+
+    expires_at = share.expires_at
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at and expires_at <= datetime.now(timezone.utc):
+        return None
+
+    cohost_grant = db.query(MeetingParticipantGrant).filter(
+        MeetingParticipantGrant.cohost_share_id == share.id
+    ).first()
+    if cohost_grant:
+        live = db.query(LiveSession).filter(
+            LiveSession.presentation_id == presentation_id
+        ).first()
+        if (
+            not live
+            or not live.is_live
+            or live.meeting_instance_id != cohost_grant.meeting_instance_id
+            or cohost_grant.status != "approved"
+            or cohost_grant.role != "cohost"
+        ):
+            return None
+
     if share.permission not in {"viewer", "presenter"}:
         return "viewer"
     return share.permission

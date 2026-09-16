@@ -3,7 +3,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import LiveSession, MediaAsset, Presentation, PresentationMember, ShareLink, Slide, User
+from ..models import LiveSession, MediaAsset, MeetingParticipantGrant, Presentation, PresentationMember, ShareLink, Slide, User
 from ..schemas import PresentationLimitUpdate, StorageLimitUpdate
 from ..security import admin_user
 
@@ -137,6 +137,7 @@ def revoke_user(
                 PresentationMember.presentation_id.in_(presentation_ids),
             )
         ).delete(synchronize_session=False)
+        db.query(MeetingParticipantGrant).filter(MeetingParticipantGrant.presentation_id.in_(presentation_ids)).delete(synchronize_session=False)
         db.query(ShareLink).filter(ShareLink.presentation_id.in_(presentation_ids)).delete(synchronize_session=False)
         db.query(LiveSession).filter(LiveSession.presentation_id.in_(presentation_ids)).delete(synchronize_session=False)
         db.query(Slide).filter(Slide.presentation_id.in_(presentation_ids)).delete(synchronize_session=False)

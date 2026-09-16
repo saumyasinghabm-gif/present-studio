@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
 from ..live_state import apply_controller_state, live_session_payload
-from ..models import LiveSession, Presentation, PresentationMember, ShareLink, Slide, User
+from ..models import LiveSession, MeetingParticipantGrant, Presentation, PresentationMember, ShareLink, Slide, User
 from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, ShareLinkResolveOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, new_share_token, optional_current_user, resolve_share_permission, verify_password
 from ..socket_manager import meeting_admission_required, meeting_client_is_admitted, sio
@@ -509,6 +509,7 @@ async def delete_presentation(
         raise HTTPException(status_code=404, detail="Presentation not found")
 
     db.query(PresentationMember).filter(PresentationMember.presentation_id == presentation_id).delete()
+    db.query(MeetingParticipantGrant).filter(MeetingParticipantGrant.presentation_id == presentation_id).delete()
     db.query(ShareLink).filter(ShareLink.presentation_id == presentation_id).delete()
     db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).delete()
     db.delete(presentation)
