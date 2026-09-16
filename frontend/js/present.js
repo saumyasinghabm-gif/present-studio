@@ -1,14 +1,13 @@
 const api = window.PresentStudioApi;
 const params = new URLSearchParams(location.search);
 const shortJoinMatch = location.pathname.match(/^\/join\/([^/]+)\/?$/);
-const audienceJoinLink = Boolean(shortJoinMatch);
 let presentationId = params.get("id") || "";
 const shareToken = params.get("token") || (shortJoinMatch ? decodeURIComponent(shortJoinMatch[1]) : "");
 const authToken = localStorage.getItem("presentStudio.accessToken") || "";
 const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 let canvas;
 const $ = (id) => document.getElementById(id);
-let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let audioUnlockNeeded = false; let audioUnlockInProgress = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = ""; let activeMeetingInstanceId = "";
+let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let audioUnlockNeeded = false; let audioUnlockInProgress = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
 function activeSlide() { return presentation.slides[currentSlideIndex]; }
 function playback() { return presentation.slides[0]?.canvas?.presentation_playback || { mode: "manual", interval_ms: 5000, slide_ids: [], media_mode: "all", media_cycle: "all", media_interval_ms: 5000, loop_videos: true }; }
 function setVisible(element, visible) { if (element) element.hidden = !visible; }
@@ -279,7 +278,6 @@ function applyPresentationState(rawState, forceRender = false) {
   if (state.presentationId && state.presentationId !== presentation.id) return;
   const found = presentation.slides.findIndex(slide => slide.id === state.slideId);
   if (found < 0) return;
-  if (state.meetingInstanceId) activeMeetingInstanceId = String(state.meetingInstanceId);
   liveState = state;
   currentSlideIndex = found;
   const frame = $("presentFrame");
@@ -329,29 +327,24 @@ function setupSocket() {
   });
   socket.on("presentation_deleted", event => { if (event.presentationId === presentation.id) { setAutoplay(false); liveMediaSession?.leave(); showError("This presentation has been deleted."); } });
   socket.on("presenter_rejected", event => showError(event.message || "Presenter permission required."));
-  socket.on("session_ended", event => {
-    if (event?.presentationId && event.presentationId !== presentationId) return;
-    if (event?.meetingInstanceId && activeMeetingInstanceId && event.meetingInstanceId !== activeMeetingInstanceId) return;
-    setAutoplay(false); liveMediaSession?.leave(); showError("This live session has ended.");
-  });
+  socket.on("session_ended", () => { setAutoplay(false); liveMediaSession?.leave(); showError("This live session has ended."); });
   if (socket.connected) joinRoom();
 }
 async function loadPresentationAccess() {
-  const audienceRequest = audienceJoinLink ? { publicAccess: true } : {};
   if (!presentationId && shareToken) {
-    const resolved = await api.resolveShareLink(shareToken, audienceRequest);
+    const resolved = await api.resolveShareLink(shareToken);
     presentationId = resolved.presentationId;
   }
   if (!presentationId) presentationId = "pres_demo";
   if (!shareToken) return api.getPresentation(presentationId);
 
-  const result = await api.getPresentation(presentationId, shareToken, audienceRequest);
+  const result = await api.getPresentation(presentationId, shareToken);
   if (result.permission === "presenter") {
     screenCodeRequired = false;
-    return audienceJoinLink ? { ...result, permission: "viewer" } : result;
+    return result;
   }
 
-  const access = await api.getScreenAccessRequirements(presentationId, shareToken, audienceRequest);
+  const access = await api.getScreenAccessRequirements(presentationId, shareToken);
   screenCodeRequired = Boolean(access.requiresCode);
   return result;
 }
@@ -360,7 +353,7 @@ async function validateMeetingAccessCode() {
   const input = document.querySelector("[data-screen-code]");
   const code = input?.value.trim() || "";
   if (!/^\d{4}$/.test(code)) { input?.focus(); throw new Error("Enter the four-digit meeting access code."); }
-  await api.verifyScreenAccessCode(presentationId, shareToken, code, audienceJoinLink ? { publicAccess: true } : {});
+  await api.verifyScreenAccessCode(presentationId, shareToken, code);
   screenAccessCode = code;
   return true;
 }
@@ -397,13 +390,12 @@ async function init() {
   $("fullscreenToggle").onclick = () => document.fullscreenElement ? document.exitFullscreen() : $("presentStage").requestFullscreen();
   applyPresentationState(live, true);
   liveMediaSession = window.SnapKeyLiveMedia?.create({
-    root: $("presentLiveMedia"), presentationId, shareToken, authToken: audienceJoinLink ? "" : authToken, screenAccessCode, socket,
+    root: $("presentLiveMedia"), presentationId, shareToken, authToken, screenAccessCode, socket,
     admissionBypass: presenter,
     displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
     onEnableAudio: enablePresentationAudio,
     onValidateAdmission: validateMeetingAccessCode,
     getScreenAccessCode: () => screenAccessCode,
-    requestOptions: audienceJoinLink ? { publicAccess: true } : {},
     presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => currentOutputLabel || activeSlide()?.title || presentation.title }
   });
   if (presenter) {

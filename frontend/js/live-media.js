@@ -100,8 +100,6 @@
     let joinSoundButton = null;
     let joinNotificationArmed = false;
     let admissionState = admissionBypass ? "approved" : "idle";
-    const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    let admissionClientIds = new Set([meetingClientId, options.stableClientId].filter(Boolean).map(String));
     let screenShareRequestPending = false;
     let screenShareApproved = false;
     let participantRegistry = new Map();
@@ -111,6 +109,7 @@
     let backgroundApplyQueue = Promise.resolve();
     let selectedBackground = localStorage.getItem("presentStudio.cameraBackground") || "none";
     if (!backgroundOptions.some(button => button.dataset.liveBackgroundOption === selectedBackground)) selectedBackground = "none";
+    const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     const reactionMeta = {
       clap: { emoji: "👏", label: "applauded" },
@@ -469,7 +468,7 @@
           return clone;
         });
         presentationMedia.replaceChildren(...clones);
-        clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0, playing: true }));
+        clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0 }));
       }
       const clones = [...presentationMedia.children];
       sourceNodes.forEach((source, index) => {
@@ -481,9 +480,6 @@
         }
         if (source.paused || source.ended) clone.pause?.();
         else clone.play?.().catch(() => {});
-      });
-      clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => {
-        window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0, playing: true });
       });
     }
 
@@ -969,19 +965,10 @@
       emitAdmissionRequest();
     }
 
-    function ensurePresentationSocketRoom() {
-      options.socket?.emit("join_presentation", { presentationId: options.presentationId });
-    }
-
     function emitAdmissionRequest() {
-      ensurePresentationSocketRoom();
       options.socket?.emit("meeting_admission_request", {
         presentationId: options.presentationId, clientId: meetingClientId, name: nameInput.value.trim()
       });
-    }
-
-    function isAdmissionMessageForThisClient(message) {
-      return message?.presentationId === options.presentationId && admissionClientIds.has(String(message.clientId || ""));
     }
 
     async function join(approved = false) {
@@ -994,7 +981,6 @@
       try { options.onEnableAudio?.(); } catch {}
       unlockReactionAudio();
       if (options.fullscreenTarget && options.fullscreenOnJoin !== false && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
-      ensurePresentationSocketRoom();
       joining = true; joinButton.disabled = true; nameInput.disabled = true; setStatus("Joining…");
       try {
         room = new livekit.Room({ adaptiveStream: true, dynacast: true });
@@ -1006,7 +992,7 @@
         const credentials = await api.getLiveMediaToken(options.presentationId, {
           displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.getScreenAccessCode?.() || options.screenAccessCode || undefined,
           clientId: meetingClientId
-        }, options.requestOptions || {});
+        });
         await room.connect(credentials.url, credentials.token, { autoSubscribe: true });
         const gestureUnlocked = await audioUnlock;
         const connectedAudioReady = await enableAudio(false);
@@ -1208,7 +1194,7 @@
     });
     options.socket?.on("meeting_lobby_state", renderLobby);
     options.socket?.on("meeting_admission_decision", message => {
-      if (isController || !isAdmissionMessageForThisClient(message)) return;
+      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
       if (message.accepted) {
         admissionState = "approved";
         setStatus("The presenter admitted you. Joining…", "success");
@@ -1220,7 +1206,7 @@
       }
     });
     options.socket?.on("meeting_removed_by_controller", async message => {
-      if (isController || !isAdmissionMessageForThisClient(message)) return;
+      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
       admissionState = "waiting";
       screenShareRequestPending = false;
       screenShareApproved = false;
@@ -1229,7 +1215,7 @@
       syncButtons(false);
     });
     options.socket?.on("meeting_screen_share_decision", message => {
-      if (isController || !isAdmissionMessageForThisClient(message)) return;
+      if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
       screenShareRequestPending = false;
       if (message.accepted) {
         screenShareApproved = true;

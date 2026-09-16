@@ -5,14 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import jwt
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from .. import meeting_v2
 from ..config import get_settings
 from ..database import get_db
 from ..live_state import apply_controller_state, live_session_payload
 from ..models import LiveSession, MeetingParticipantGrant, Presentation, PresentationMember, ShareLink, Slide, User
 from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, ShareLinkResolveOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, new_share_token, optional_current_user, resolve_share_permission, verify_password
-from ..socket_manager import meeting_admission_required, sio
+from ..socket_manager import meeting_admission_required, meeting_client_is_admitted, sio
 
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
@@ -160,22 +159,6 @@ def current_share_bundle(
     return presenter, viewer if distance <= 10 else None
 
 
-def paired_screen_share(db: Session, presenter_share: ShareLink) -> ShareLink | None:
-    if presenter_share.permission != "presenter" or not presenter_share.screen_access_code_hash:
-        return None
-    return (
-        db.query(ShareLink)
-        .filter(
-            ShareLink.presentation_id == presenter_share.presentation_id,
-            ShareLink.permission == "viewer",
-            ShareLink.is_active == True,  # noqa: E712
-            ShareLink.screen_access_code_hash == presenter_share.screen_access_code_hash,
-        )
-        .order_by(ShareLink.created_at.desc(), ShareLink.id.desc())
-        .first()
-    )
-
-
 def serialize_presentation(presentation: Presentation) -> PresentationOut:
     slides = sorted(presentation.slides, key=lambda item: item.order)
     return PresentationOut(
@@ -316,6 +299,12 @@ def get_presentation(
     auth_header = request.headers.get("authorization", "")
     has_explicit_auth = auth_header.lower().startswith("bearer ") and bool(auth_header[7:].strip())
 
+    if user and has_explicit_auth and can_edit_presentation(db, presentation, user) and not is_screen_output:
+        return PresentationPayload(
+            presentation=serialize_presentation(presentation),
+            permission="presenter",
+        )
+
     token = request.query_params.get("token")
     if token:
         share = active_share_link(db, presentation.id, token)
@@ -329,12 +318,6 @@ def get_presentation(
                 raise HTTPException(status_code=403, detail="Enter the 4-digit screen access code")
         permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
         return PresentationPayload(presentation=serialize_presentation(presentation), permission=permission)
-
-    if user and has_explicit_auth and can_edit_presentation(db, presentation, user) and not is_screen_output:
-        return PresentationPayload(
-            presentation=serialize_presentation(presentation),
-            permission="presenter",
-        )
 
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -428,35 +411,8 @@ def get_current_share_link(
     )
 
 
-@router.get("/{presentation_id}/share/screen")
-def get_paired_screen_link(
-    presentation_id: str,
-    request: Request,
-    token: str = "",
-    db: Session = Depends(get_db),
-) -> ShareLinkOut:
-    share = active_share_link(db, presentation_id, token)
-    if not share or share.permission != "presenter":
-        raise HTTPException(status_code=403, detail="A trusted presenter link is required")
-
-    screen_share = paired_screen_share(db, share)
-    if not screen_share:
-        raise HTTPException(status_code=404, detail="No paired screen link is available")
-
-    base = public_share_base_url(request)
-    return ShareLinkOut(
-        url=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}",
-        token=screen_share.token,
-        permission="viewer",
-        requiresScreenCode=bool(screen_share.screen_access_code_hash),
-        screenUrl=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}",
-        screenToken=screen_share.token,
-        audienceUrl=f"{base}/join/{screen_share.token}",
-    )
-
-
 @router.post("/{presentation_id}/share")
-async def create_share_link(
+def create_share_link(
     presentation_id: str,
     request: Request,
     payload: ShareLinkCreate = ShareLinkCreate(),
@@ -470,11 +426,6 @@ async def create_share_link(
         raise HTTPException(status_code=422, detail="Shared presentation links require a 4-digit screen access code")
 
     if payload.permission == "presenter":
-        # Creating a new owner bundle is an explicit meeting restart. End the
-        # current meeting first so old participants, grants and media room do
-        # not leak into the replacement session.
-        await meeting_v2.restart_meeting(db, presentation.id)
-
         # Keep exactly one owner-generated protected meeting bundle active.
         # Temporary co-host presenter tokens have no screen-access hash, so this
         # cleanup intentionally leaves them alone.
@@ -546,23 +497,16 @@ def create_live_media_token(
                 raise HTTPException(status_code=403, detail="Screen access code is required")
     if not permission:
         raise HTTPException(status_code=403, detail="A valid presentation session is required")
-    if permission == "viewer" and meeting_admission_required(presentation_id) and not meeting_v2.meeting_client_is_admitted(presentation_id, payload.clientId):
+    if permission == "viewer" and meeting_admission_required(presentation_id) and not meeting_client_is_admitted(presentation_id, payload.clientId):
         raise HTTPException(status_code=403, detail="Waiting for presenter approval")
 
     participant_name = " ".join((payload.displayName or default_name).strip().split())[:80] or default_name
     participant_identity = new_id("participant")
-
-    # A new meeting instance gets a physically separate LiveKit room. This
-    # prevents already-issued tokens from the previous meeting from remaining
-    # connected to the replacement meeting for the same presentation.
-    live = meeting_v2.ensure_meeting_instance(db, presentation_id)
-    db.commit()
-    room_name = f"{presentation_id}--{live.meeting_instance_id}"
-    token = create_livekit_join_token(room_name, participant_identity, participant_name, permission)
+    token = create_livekit_join_token(presentation_id, participant_identity, participant_name, permission)
     return LiveMediaTokenOut(
         url=settings.livekit_url,
         token=token,
-        roomName=room_name,
+        roomName=presentation_id,
         participantIdentity=participant_identity,
         participantName=participant_name,
         permission=permission,

@@ -84,54 +84,6 @@ def _ensure_meeting_instance(db, presentation_id: str) -> LiveSession:
     return live
 
 
-def ensure_meeting_instance(db, presentation_id: str) -> LiveSession:
-    # Return the active meeting instance, creating a fresh one when needed.
-    return _ensure_meeting_instance(db, presentation_id)
-
-
-async def restart_meeting(db, presentation_id: str) -> None:
-    # Hard-stop the active meeting before a new owner link bundle is created.
-    # The presentation remains; old guest approvals, co-host credentials and
-    # moderation state do not.
-    live = _current_live(db, presentation_id)
-    old_instance_id = live.meeting_instance_id if live and live.meeting_instance_id else ""
-    had_previous_meeting = bool(old_instance_id or (live and live.is_live))
-
-    if old_instance_id:
-        _revoke_instance(db, presentation_id, old_instance_id)
-
-    if live:
-        live.is_live = False
-        live.meeting_instance_id = None
-        live.media_playing = False
-        live.media_position = 0
-        live.featured_share_identity = None
-        live.meeting_muted = False
-        live.muted_participant_identities = "[]"
-        live.audience_count = 0
-        live.media_updated_at = utc_now()
-
-    # Persist the closed state before notifying clients. If generating new links
-    # later fails, the old meeting still remains safely closed.
-    db.commit()
-
-    if had_previous_meeting:
-        await sm.sio.emit(
-            "session_ended",
-            {"presentationId": presentation_id, "meetingInstanceId": old_instance_id, "reason": "restarted"},
-            room=presentation_id,
-        )
-
-        for guest_id in list(cohost_controller_sids.get(presentation_id, {})):
-            await _revoke_cohost_controller(presentation_id, guest_id, "session-restarted")
-
-    sm.waiting_participants.pop(presentation_id, None)
-    sm.active_participants.pop(presentation_id, None)
-    sm.screen_share_requests.pop(presentation_id, None)
-    sm.controller_sids.pop(presentation_id, None)
-    cohost_controller_sids.pop(presentation_id, None)
-
-
 def _upsert_grant(
     db,
     presentation_id: str,
@@ -284,21 +236,20 @@ async def _emit_decision(
     presentation_id: str,
     guest_id: str,
     accepted: bool,
-    grant_id: str | None = None,
+    grant: MeetingParticipantGrant | None = None,
 ) -> None:
     payload = {
         "presentationId": presentation_id,
         "clientId": guest_id,
         "accepted": accepted,
     }
-    if accepted and grant_id:
+    if accepted and grant:
         with SessionLocal() as db:
-            fresh = db.get(MeetingParticipantGrant, grant_id)
+            fresh = db.get(MeetingParticipantGrant, grant.id)
             if fresh:
                 payload.update(_grant_payload(db, fresh))
                 db.commit()
     await sm.sio.emit("meeting_admission_decision", payload, room=sid)
-    await sm.sio.emit("meeting_admission_decision", payload, room=presentation_id, skip_sid=sid)
 
 
 def _cohost_sid_for(presentation_id: str, guest_id: str) -> str | None:
@@ -362,12 +313,8 @@ async def meeting_admission_request(sid, data):
     presentation_id = data.get("presentationId")
     guest_id = str(data.get("clientId") or "").strip()[:128]
     _, name = sm._clean_meeting_identity(data)
-    if not presentation_id or not guest_id:
+    if not presentation_id or not guest_id or presentation_id not in sm.sio.rooms(sid):
         return
-    try:
-        await sm.sio.enter_room(sid, presentation_id)
-    except ValueError:
-        pass
 
     with SessionLocal() as db:
         if not db.get(Presentation, presentation_id):
@@ -385,9 +332,8 @@ async def meeting_admission_request(sid, data):
             sm.active_participants.setdefault(presentation_id, {})[guest_id] = active
             grant.display_name = name
             grant.updated_at = utc_now()
-            grant_id = grant.id
             db.commit()
-            await _emit_decision(sid, presentation_id, guest_id, True, grant_id)
+            await _emit_decision(sid, presentation_id, guest_id, True, grant)
             await sm._emit_lobby_state(presentation_id)
             return
 
@@ -406,9 +352,8 @@ async def meeting_admission_request(sid, data):
                 "sid": sid,
                 "name": name,
             }
-            grant_id = grant.id
             db.commit()
-            await _emit_decision(sid, presentation_id, guest_id, True, grant_id)
+            await _emit_decision(sid, presentation_id, guest_id, True, grant)
             return
 
         sm.waiting_participants.setdefault(presentation_id, {})[guest_id] = {
@@ -453,11 +398,11 @@ async def meeting_admission_decide(sid, data):
             _revoke_cohost_share(db, grant)
             if accepted:
                 active[guest_id] = item
-            decisions.append((item["sid"], guest_id, grant.id if accepted else None))
+            decisions.append((item["sid"], guest_id, grant if accepted else None))
         db.commit()
 
-    for target_sid, guest_id, grant_id in decisions:
-        await _emit_decision(target_sid, presentation_id, guest_id, accepted, grant_id)
+    for target_sid, guest_id, grant in decisions:
+        await _emit_decision(target_sid, presentation_id, guest_id, accepted, grant)
     await sm._emit_lobby_state(presentation_id)
 
 

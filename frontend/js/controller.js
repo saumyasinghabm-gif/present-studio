@@ -30,8 +30,6 @@
   let volumeEmitTimer;
   let restoredMediaState = null;
   let outputBlanked = false;
-  let sessionEnded = false;
-  let activeMeetingInstanceId = "";
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -542,7 +540,6 @@
   }
 
   function emitControllerState() {
-    if (sessionEnded) return;
     const state = controllerStatePayload();
     if (state && socket?.connected) socket.emit("controller_state", state);
   }
@@ -888,7 +885,6 @@
     ]);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
-    activeMeetingInstanceId = String(live.meetingInstanceId || "");
     videoVolume = normalizedVolume(live.videoVolume);
     audioVolume = normalizedVolume(live.audioVolume);
     syncVolumeControls();
@@ -908,14 +904,6 @@
         label: () => $("#previewTitle").textContent || presentation.title
       }
     });
-    const controllerJoinButton = $("#controllerLiveMedia")?.querySelector("[data-live-join]");
-    const controllerJoinStatus = $("#controllerLiveMedia")?.querySelector("[data-live-status]");
-    if (controllerJoinButton) {
-      controllerJoinButton.textContent = "Connecting owner…";
-      controllerJoinButton.setAttribute("aria-label", "Connecting owner to the interactive meeting");
-    }
-    if (controllerJoinStatus) controllerJoinStatus.textContent = "Connecting owner to the interactive meeting…";
-    queueMicrotask(() => liveMediaSession?.join?.(true));
     previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
     renderControllerTargets();
@@ -945,13 +933,8 @@
     };
     $("#openScreen").onclick = async () => {
       if (shareToken) {
-        try {
-          const link = await api.getPairedScreenLink(presentation.id, shareToken, { publicAccess: true });
-          window.open(link.screenUrl || link.url, "_blank", "noopener");
-          return;
-        } catch (error) {
-          toast(error.message || "Could not open the paired screen link.");
-        }
+        window.open(secureAppUrl(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`), "_blank", "noopener");
+        return;
       }
       const screenCode = window.prompt("Choose a 4-digit code for the presentation screen.", "");
       if (screenCode === null) return;
@@ -973,25 +956,8 @@
     socket?.on("connect_error", () => setConnectionStatus("Sync backup"));
     socket?.on("disconnect", () => setConnectionStatus("Sync backup"));
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
-    socket?.on("session_ended", event => {
-      if (event?.presentationId && event.presentationId !== presentationId) return;
-      if (event?.meetingInstanceId && activeMeetingInstanceId && event.meetingInstanceId !== activeMeetingInstanceId) return;
-      sessionEnded = true;
-      stopLoop();
-      clearTimeout(volumeEmitTimer);
-      liveMediaSession?.leave();
-      setConnectionStatus("Ended");
-      showPreviewPlaceholder(
-        event?.reason === "restarted"
-          ? "This meeting was replaced. Open the latest Remote Control link from Share."
-          : "This live meeting has ended."
-      );
-      document.querySelectorAll("button").forEach(button => { button.disabled = true; });
-      socket?.disconnect();
-    });
     socket?.on("presentation_state", state => {
       if (state.presentationId && state.presentationId !== presentationId) return;
-      if (state.meetingInstanceId) activeMeetingInstanceId = String(state.meetingInstanceId);
       videoVolume = normalizedVolume(state.videoVolume);
       audioVolume = normalizedVolume(state.audioVolume);
       applyPreviewVolumes();

@@ -2,12 +2,11 @@ from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 import jwt
-from app import meeting_v2
 from app.database import SessionLocal
 from app.config import get_settings
 from app.main import fastapi_app, live_session_repair_statements, share_link_repair_statements
 from app.live_state import meeting_control_payload
-from app.models import LiveSession, MeetingParticipantGrant, Presentation, User
+from app.models import LiveSession, Presentation, User
 from app.security import hash_password
 
 
@@ -144,78 +143,13 @@ def test_live_media_token_uses_presentation_as_room_and_protects_viewer_links():
     assert denied.status_code == 403
     assert invalid.status_code == 403
     assert accepted.status_code == 200
-    room_name = accepted.json()["roomName"]
-    assert room_name.startswith("pres_demo--meeting_")
+    assert accepted.json()["roomName"] == "pres_demo"
     assert accepted.json()["participantName"] == "Audience Member"
     assert accepted.json()["permission"] == "viewer"
     assert accepted.json()["token"] == "signed-token"
     assert accepted.json()["participantIdentity"].startswith("participant_")
-    assert signer.call_args.args[0] == room_name
+    assert signer.call_args.args[0] == "pres_demo"
 
-
-
-def test_approved_meeting_guest_can_receive_livekit_token_without_in_memory_active_state():
-    settings = get_settings()
-    client_id = f"guest-{uuid4().hex}"
-    meeting_instance_id = f"meeting_{uuid4().hex}"
-    with TestClient(fastapi_app) as client:
-        login = client.post("/api/auth/login", json={"email": "owner@presentstudio.local", "password": "password123"})
-        headers = {"Authorization": f"Bearer {login.json()['accessToken']}"}
-        link = client.post(
-            "/api/presentations/pres_demo/share",
-            json={"permission": "viewer", "screenAccessCode": "8642"},
-            headers=headers,
-        ).json()
-
-    meeting_v2.sm.controller_sids["pres_demo"] = {"host-sid"}
-    meeting_v2.sm.active_participants.pop("pres_demo", None)
-    try:
-        with SessionLocal() as db:
-            live = db.query(LiveSession).filter(LiveSession.presentation_id == "pres_demo").first()
-            if not live:
-                live = LiveSession(id=f"live_{uuid4().hex}", presentation_id="pres_demo")
-                db.add(live)
-            live.meeting_instance_id = meeting_instance_id
-            live.is_live = True
-            db.query(MeetingParticipantGrant).filter(
-                MeetingParticipantGrant.presentation_id == "pres_demo",
-                MeetingParticipantGrant.guest_id == client_id,
-            ).delete(synchronize_session=False)
-            db.add(
-                MeetingParticipantGrant(
-                    id=f"meetinggrant_{uuid4().hex}",
-                    presentation_id="pres_demo",
-                    meeting_instance_id=meeting_instance_id,
-                    guest_id=client_id,
-                    display_name="Approved Guest",
-                    role="audience",
-                    status="approved",
-                )
-            )
-            db.commit()
-
-        with TestClient(fastapi_app) as client:
-            with patch.object(settings, "livekit_url", "wss://example.livekit.cloud"), patch.object(settings, "livekit_api_key", "key"), patch.object(settings, "livekit_api_secret", "secret"), patch("app.routers.presentations.create_livekit_join_token", return_value="signed-token"):
-                accepted = client.post(
-                    "/api/presentations/pres_demo/live/media-token",
-                    json={
-                        "displayName": "Approved Guest",
-                        "shareToken": link["token"],
-                        "screenAccessCode": "8642",
-                        "clientId": client_id,
-                    },
-                )
-        assert accepted.status_code == 200
-        assert accepted.json()["token"] == "signed-token"
-        assert accepted.json()["roomName"] == f"pres_demo--{meeting_instance_id}"
-    finally:
-        meeting_v2.sm.controller_sids.pop("pres_demo", None)
-        with SessionLocal() as db:
-            db.query(MeetingParticipantGrant).filter(
-                MeetingParticipantGrant.presentation_id == "pres_demo",
-                MeetingParticipantGrant.guest_id == client_id,
-            ).delete(synchronize_session=False)
-            db.commit()
 
 def test_livekit_tokens_publish_without_room_admin():
     from app.routers.presentations import create_livekit_join_token
