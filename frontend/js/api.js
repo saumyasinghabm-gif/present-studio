@@ -177,6 +177,23 @@
     return data;
   }
 
+  function scheduleControllerDecoration(ctx) {
+    if (!ctx.isController || !ctx.root) return;
+
+    (ctx.decorationTimers || []).forEach(timer => clearTimeout(timer));
+    ctx.decorationTimers = [];
+
+    // Lobby state can arrive just before LiveKit creates the participant tile.
+    // Retry a few times, then stop. This is intentionally bounded: never watch
+    // the live DOM continuously.
+    [0, 80, 200, 500, 1000].forEach(delay => {
+      const timer = window.setTimeout(() => {
+        decorateControllerParticipants(ctx);
+      }, delay);
+      ctx.decorationTimers.push(timer);
+    });
+  }
+
   function makeSocketProxy(ctx, socket) {
     if (!socket) return socket;
     return new Proxy(socket, {
@@ -194,7 +211,7 @@
 
               if (event === "meeting_lobby_state" && ctx.isController) {
                 ctx.lastLobby = original;
-                queueMicrotask(() => decorateControllerParticipants(ctx));
+                scheduleControllerDecoration(ctx);
               }
               if (event === "meeting_admission_decision" && !ctx.isController && original?.accepted) {
                 applyLocalRole(ctx, original);
@@ -420,6 +437,7 @@
         controllerUrl: "",
         lastLobby: null,
         preferredShareIdentity: "",
+        decorationTimers: [],
         session: null
       };
       contexts.set(ctx.presentationId, ctx);
@@ -442,20 +460,10 @@
         });
       }
 
-      if (ctx.isController) {
-        let observerFrame = 0;
-        const observer = new MutationObserver(() => {
-          // LiveKit can mutate several participant nodes in one burst.
-          // Collapse those mutations into one decoration pass per frame.
-          if (observerFrame) return;
-          observerFrame = requestAnimationFrame(() => {
-            observerFrame = 0;
-            decorateControllerParticipants(ctx);
-          });
-        });
-        observer.observe(ctx.root, { childList: true, subtree: true });
-        ctx.observer = observer;
-      }
+      // Do not use a MutationObserver here. This live-media root contains
+      // participant tiles, attached media and presentation preview DOM. Watching
+      // the whole subtree can create a feedback/render storm when a participant
+      // connects. Co-host decoration is driven by lobby events instead.
 
       if (ctx.isCohostController) {
         options.socket?.on("meeting_controller_revoked", message => {
