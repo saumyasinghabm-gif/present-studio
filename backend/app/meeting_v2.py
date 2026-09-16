@@ -84,6 +84,54 @@ def _ensure_meeting_instance(db, presentation_id: str) -> LiveSession:
     return live
 
 
+def ensure_meeting_instance(db, presentation_id: str) -> LiveSession:
+    # Return the active meeting instance, creating a fresh one when needed.
+    return _ensure_meeting_instance(db, presentation_id)
+
+
+async def restart_meeting(db, presentation_id: str) -> None:
+    # Hard-stop the active meeting before a new owner link bundle is created.
+    # The presentation remains; old guest approvals, co-host credentials and
+    # moderation state do not.
+    live = _current_live(db, presentation_id)
+    old_instance_id = live.meeting_instance_id if live and live.meeting_instance_id else ""
+    had_previous_meeting = bool(old_instance_id or (live and live.is_live))
+
+    if old_instance_id:
+        _revoke_instance(db, presentation_id, old_instance_id)
+
+    if live:
+        live.is_live = False
+        live.meeting_instance_id = None
+        live.media_playing = False
+        live.media_position = 0
+        live.featured_share_identity = None
+        live.meeting_muted = False
+        live.muted_participant_identities = "[]"
+        live.audience_count = 0
+        live.media_updated_at = utc_now()
+
+    # Persist the closed state before notifying clients. If generating new links
+    # later fails, the old meeting still remains safely closed.
+    db.commit()
+
+    if had_previous_meeting:
+        await sm.sio.emit(
+            "session_ended",
+            {"presentationId": presentation_id, "reason": "restarted"},
+            room=presentation_id,
+        )
+
+        for guest_id in list(cohost_controller_sids.get(presentation_id, {})):
+            await _revoke_cohost_controller(presentation_id, guest_id, "session-restarted")
+
+    sm.waiting_participants.pop(presentation_id, None)
+    sm.active_participants.pop(presentation_id, None)
+    sm.screen_share_requests.pop(presentation_id, None)
+    sm.controller_sids.pop(presentation_id, None)
+    cohost_controller_sids.pop(presentation_id, None)
+
+
 def _upsert_grant(
     db,
     presentation_id: str,

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import jwt
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from .. import meeting_v2
 from ..config import get_settings
 from ..database import get_db
 from ..live_state import apply_controller_state, live_session_payload
@@ -412,7 +413,7 @@ def get_current_share_link(
 
 
 @router.post("/{presentation_id}/share")
-def create_share_link(
+async def create_share_link(
     presentation_id: str,
     request: Request,
     payload: ShareLinkCreate = ShareLinkCreate(),
@@ -426,6 +427,11 @@ def create_share_link(
         raise HTTPException(status_code=422, detail="Shared presentation links require a 4-digit screen access code")
 
     if payload.permission == "presenter":
+        # Creating a new owner bundle is an explicit meeting restart. End the
+        # current meeting first so old participants, grants and media room do
+        # not leak into the replacement session.
+        await meeting_v2.restart_meeting(db, presentation.id)
+
         # Keep exactly one owner-generated protected meeting bundle active.
         # Temporary co-host presenter tokens have no screen-access hash, so this
         # cleanup intentionally leaves them alone.
@@ -502,11 +508,18 @@ def create_live_media_token(
 
     participant_name = " ".join((payload.displayName or default_name).strip().split())[:80] or default_name
     participant_identity = new_id("participant")
-    token = create_livekit_join_token(presentation_id, participant_identity, participant_name, permission)
+
+    # A new meeting instance gets a physically separate LiveKit room. This
+    # prevents already-issued tokens from the previous meeting from remaining
+    # connected to the replacement meeting for the same presentation.
+    live = meeting_v2.ensure_meeting_instance(db, presentation_id)
+    db.commit()
+    room_name = f"{presentation_id}--{live.meeting_instance_id}"
+    token = create_livekit_join_token(room_name, participant_identity, participant_name, permission)
     return LiveMediaTokenOut(
         url=settings.livekit_url,
         token=token,
-        roomName=presentation_id,
+        roomName=room_name,
         participantIdentity=participant_identity,
         participantName=participant_name,
         permission=permission,

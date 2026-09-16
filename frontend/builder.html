@@ -172,8 +172,8 @@
       <div class="modal-body">
         <label class="form-row">Link type<strong>Remote Control</strong><input id="sharePermission" type="hidden" value="presenter"></label>
         <label class="form-row" id="shareScreenCodeRow">Screen code<input id="shareScreenCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" placeholder="4 digits" required></label>
-        <p class="share-help">Generate the remote link first. The presenter opens the presentation screen from the remote, and the screen stays locked until this code is entered.</p>
-        <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Generate Remote Link</span></button>
+        <p class="share-help">Existing meeting links are shown automatically. Starting a new meeting ends the current meeting for everyone and disables its previous Remote, Screen and Audience links.</p>
+        <button class="tool-button" id="generateLink" type="button"><i class="bi bi-link-45deg"></i><span>Start Meeting</span></button>
         <div class="share-results" id="shareResults" role="status" aria-live="polite">
           <p class="share-status" id="shareStatus"></p>
           <p class="share-status" id="screenShareStatus"></p>
@@ -230,6 +230,6 @@
   <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
   <script src="/js/editor.js?v=20260915-youtube-media"></script>
   <script src="/js/builder-ribbon.js?v=20260915-youtube-media"></script>
-  <script src="/js/builder-ui.js?v=20260916-meeting-regressions"></script>
+  <script src="/js/builder-ui.js?v=20260916-meeting-restart"></script>
 </body>
 </html>

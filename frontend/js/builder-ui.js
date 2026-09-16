@@ -1977,7 +1977,23 @@
     shareModal.hidden = false;
     const generateButton = byId("generateLink");
     const generateLabel = generateButton?.querySelector("span");
-    if (generateLabel) generateLabel.textContent = "Generate Remote Link";
+    if (generateLabel) generateLabel.textContent = "Start Meeting";
+    if (generateButton) {
+      delete generateButton.dataset.restartMeeting;
+      if (!generateButton.dataset.restartGuardBound) {
+        generateButton.dataset.restartGuardBound = "1";
+        generateButton.addEventListener("click", event => {
+          if (generateButton.dataset.restartMeeting !== "1") return;
+          const confirmed = window.confirm(
+            "Start a new meeting? This will end the current meeting for everyone and disable its existing Remote, Screen and Audience links."
+          );
+          if (!confirmed) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      }
+    }
     if (typeof setShareLink === "function") setShareLink("", "");
 
     if (!window.PresentStudioApi?.getCurrentShareLink || !presentation?.id) return;
@@ -1994,7 +2010,8 @@
       }
       const shareStatus = byId("shareStatus");
       if (shareStatus) shareStatus.textContent = `Existing Remote Control: ${existing.url}`;
-      if (generateLabel) generateLabel.textContent = "Create New Remote Links";
+      if (generateLabel) generateLabel.textContent = "Start New Meeting";
+      if (generateButton) generateButton.dataset.restartMeeting = "1";
     } catch (error) {
       console.warn("Could not load existing meeting links", error);
     }

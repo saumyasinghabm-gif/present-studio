@@ -143,12 +143,13 @@ def test_live_media_token_uses_presentation_as_room_and_protects_viewer_links():
     assert denied.status_code == 403
     assert invalid.status_code == 403
     assert accepted.status_code == 200
-    assert accepted.json()["roomName"] == "pres_demo"
+    room_name = accepted.json()["roomName"]
+    assert room_name.startswith("pres_demo--meeting_")
     assert accepted.json()["participantName"] == "Audience Member"
     assert accepted.json()["permission"] == "viewer"
     assert accepted.json()["token"] == "signed-token"
     assert accepted.json()["participantIdentity"].startswith("participant_")
-    assert signer.call_args.args[0] == "pres_demo"
+    assert signer.call_args.args[0] == room_name
 
 
 def test_livekit_tokens_publish_without_room_admin():

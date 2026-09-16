@@ -30,6 +30,7 @@
   let volumeEmitTimer;
   let restoredMediaState = null;
   let outputBlanked = false;
+  let sessionEnded = false;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -540,6 +541,7 @@
   }
 
   function emitControllerState() {
+    if (sessionEnded) return;
     const state = controllerStatePayload();
     if (state && socket?.connected) socket.emit("controller_state", state);
   }
@@ -956,6 +958,21 @@
     socket?.on("connect_error", () => setConnectionStatus("Sync backup"));
     socket?.on("disconnect", () => setConnectionStatus("Sync backup"));
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
+    socket?.on("session_ended", event => {
+      if (event?.presentationId && event.presentationId !== presentationId) return;
+      sessionEnded = true;
+      stopLoop();
+      clearTimeout(volumeEmitTimer);
+      liveMediaSession?.leave();
+      setConnectionStatus("Ended");
+      showPreviewPlaceholder(
+        event?.reason === "restarted"
+          ? "This meeting was replaced. Open the latest Remote Control link from Share."
+          : "This live meeting has ended."
+      );
+      document.querySelectorAll("button").forEach(button => { button.disabled = true; });
+      socket?.disconnect();
+    });
     socket?.on("presentation_state", state => {
       if (state.presentationId && state.presentationId !== presentationId) return;
       videoVolume = normalizedVolume(state.videoVolume);
