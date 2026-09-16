@@ -965,7 +965,12 @@
       emitAdmissionRequest();
     }
 
+    function ensurePresentationSocketRoom() {
+      options.socket?.emit("join_presentation", { presentationId: options.presentationId });
+    }
+
     function emitAdmissionRequest() {
+      ensurePresentationSocketRoom();
       options.socket?.emit("meeting_admission_request", {
         presentationId: options.presentationId, clientId: meetingClientId, name: nameInput.value.trim()
       });
@@ -981,6 +986,7 @@
       try { options.onEnableAudio?.(); } catch {}
       unlockReactionAudio();
       if (options.fullscreenTarget && options.fullscreenOnJoin !== false && !document.fullscreenElement) options.fullscreenTarget.requestFullscreen?.().catch(() => {});
+      ensurePresentationSocketRoom();
       joining = true; joinButton.disabled = true; nameInput.disabled = true; setStatus("Joining…");
       try {
         room = new livekit.Room({ adaptiveStream: true, dynacast: true });

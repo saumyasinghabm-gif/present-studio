@@ -12,7 +12,7 @@ from ..live_state import apply_controller_state, live_session_payload
 from ..models import LiveSession, MeetingParticipantGrant, Presentation, PresentationMember, ShareLink, Slide, User
 from ..schemas import LiveMediaTokenOut, LiveMediaTokenRequest, LiveSessionOut, LiveSlideUpdate, PresentationCreate, PresentationOut, PresentationPayload, PresentationSave, ScreenAccessRequest, ShareLinkCreate, ShareLinkOut, ShareLinkResolveOut, SlideOut
 from ..security import can_edit_presentation, can_view_presentation, current_user, hash_password, new_id, new_share_token, optional_current_user, resolve_share_permission, verify_password
-from ..socket_manager import meeting_admission_required, meeting_client_is_admitted, sio
+from ..socket_manager import meeting_admission_required, sio
 
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
@@ -503,7 +503,7 @@ def create_live_media_token(
                 raise HTTPException(status_code=403, detail="Screen access code is required")
     if not permission:
         raise HTTPException(status_code=403, detail="A valid presentation session is required")
-    if permission == "viewer" and meeting_admission_required(presentation_id) and not meeting_client_is_admitted(presentation_id, payload.clientId):
+    if permission == "viewer" and meeting_admission_required(presentation_id) and not meeting_v2.meeting_client_is_admitted(presentation_id, payload.clientId):
         raise HTTPException(status_code=403, detail="Waiting for presenter approval")
 
     participant_name = " ".join((payload.displayName or default_name).strip().split())[:80] or default_name
