@@ -100,6 +100,7 @@
     let joinSoundButton = null;
     let joinNotificationArmed = false;
     let admissionState = admissionBypass ? "approved" : "idle";
+    const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     let admissionClientIds = new Set([meetingClientId, options.stableClientId].filter(Boolean).map(String));
     let screenShareRequestPending = false;
     let screenShareApproved = false;
@@ -110,7 +111,6 @@
     let backgroundApplyQueue = Promise.resolve();
     let selectedBackground = localStorage.getItem("presentStudio.cameraBackground") || "none";
     if (!backgroundOptions.some(button => button.dataset.liveBackgroundOption === selectedBackground)) selectedBackground = "none";
-    const meetingClientId = window.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     const reactionMeta = {
       clap: { emoji: "👏", label: "applauded" },
