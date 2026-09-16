@@ -908,6 +908,14 @@
         label: () => $("#previewTitle").textContent || presentation.title
       }
     });
+    const controllerJoinButton = $("#controllerLiveMedia")?.querySelector("[data-live-join]");
+    const controllerJoinStatus = $("#controllerLiveMedia")?.querySelector("[data-live-status]");
+    if (controllerJoinButton) {
+      controllerJoinButton.textContent = "Connecting owner…";
+      controllerJoinButton.setAttribute("aria-label", "Connecting owner to the interactive meeting");
+    }
+    if (controllerJoinStatus) controllerJoinStatus.textContent = "Connecting owner to the interactive meeting…";
+    queueMicrotask(() => liveMediaSession?.join?.(true));
     previewCanvas = new fabric.StaticCanvas("controllerPreviewCanvas", { width: 1280, height: 720, selection: false, renderOnAddRemove: false });
     $("#backToEditor").href = `/builder.html?id=${encodeURIComponent(presentation.id)}`;
     renderControllerTargets();
