@@ -148,6 +148,85 @@ def test_approved_guest_rejoins_without_second_host_admission():
         _cleanup(ids)
 
 
+def test_admission_request_enters_room_before_waiting_lobby():
+    ids = _create_meeting(approved=False)
+    try:
+        meeting_v2.sm.controller_sids[ids["presentation"]] = {"host-sid"}
+
+        with patch.object(
+            meeting_v2.sm.sio, "enter_room", new_callable=AsyncMock
+        ) as enter_room, patch.object(
+            meeting_v2.sm, "_emit_lobby_state", new_callable=AsyncMock
+        ):
+            asyncio.run(
+                meeting_v2.meeting_admission_request(
+                    "audience-sid",
+                    {
+                        "presentationId": ids["presentation"],
+                        "clientId": ids["guest"],
+                        "name": "First Time Guest",
+                    },
+                )
+            )
+
+        enter_room.assert_awaited_once_with("audience-sid", ids["presentation"])
+        assert ids["guest"] in meeting_v2.sm.waiting_participants[ids["presentation"]]
+    finally:
+        _cleanup(ids)
+
+
+def test_admission_decision_is_delivered_directly_and_to_room_backup():
+    ids = _create_meeting(approved=False)
+    try:
+        meeting_v2.sm.controller_sids[ids["presentation"]] = {"host-sid"}
+        meeting_v2.sm.waiting_participants[ids["presentation"]] = {
+            ids["guest"]: {
+                "clientId": ids["guest"],
+                "sid": "audience-sid",
+                "name": "First Time Guest",
+            }
+        }
+
+        with patch.object(
+            meeting_v2.sm, "_presenter_allowed", return_value=True
+        ), patch.object(
+            meeting_v2.sm.sio, "emit", new_callable=AsyncMock
+        ) as emit:
+            asyncio.run(
+                meeting_v2.meeting_admission_decide(
+                    "host-sid",
+                    {
+                        "presentationId": ids["presentation"],
+                        "authToken": "owner-token",
+                        "clientId": ids["guest"],
+                        "accepted": True,
+                    },
+                )
+            )
+
+        decision_calls = [
+            call for call in emit.await_args_list
+            if call.args and call.args[0] == "meeting_admission_decision"
+        ]
+        assert len(decision_calls) >= 2
+        assert any(
+            call.kwargs.get("room") == "audience-sid"
+            for call in decision_calls
+        )
+        assert any(
+            call.kwargs.get("room") == ids["presentation"]
+            for call in decision_calls
+        )
+
+        # The successful host decision must be persisted, so this exact client
+        # may rejoin later without asking the host a second time.
+        assert meeting_v2.meeting_client_is_admitted(
+            ids["presentation"], ids["guest"]
+        ) is True
+    finally:
+        _cleanup(ids)
+
+
 def test_controller_remove_revokes_persistent_guest_admission():
     ids = _create_meeting(approved=True)
     try:
