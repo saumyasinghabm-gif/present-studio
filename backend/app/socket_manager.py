@@ -435,20 +435,26 @@ async def meeting_admission_request(sid, data):
     presentation_id = data.get("presentationId")
     client_id = str(data.get("clientId") or "").strip()[:128]
     _, name = _clean_meeting_identity(data)
-    if not presentation_id or not client_id or presentation_id not in sio.rooms(sid):
+    if not presentation_id or not client_id:
         return
+    try:
+        await sio.enter_room(sid, presentation_id)
+    except ValueError:
+        pass
     with SessionLocal() as db:
         if not db.get(Presentation, presentation_id):
             return
     active = active_participants.get(presentation_id, {}).get(client_id)
     if active and active.get("sid") == sid:
         await sio.emit("meeting_admission_decision", {"presentationId": presentation_id, "clientId": client_id, "accepted": True}, room=sid)
+        await sio.emit("meeting_admission_decision", {"presentationId": presentation_id, "clientId": client_id, "accepted": True}, room=presentation_id, skip_sid=sid)
         return
     if not controller_sids.get(presentation_id):
         active_participants.setdefault(presentation_id, {})[client_id] = {
             "clientId": client_id, "sid": sid, "name": name,
         }
         await sio.emit("meeting_admission_decision", {"presentationId": presentation_id, "clientId": client_id, "accepted": True}, room=sid)
+        await sio.emit("meeting_admission_decision", {"presentationId": presentation_id, "clientId": client_id, "accepted": True}, room=presentation_id, skip_sid=sid)
         return
     waiting_participants.setdefault(presentation_id, {})[client_id] = {
         "clientId": client_id, "sid": sid, "name": name,
@@ -478,6 +484,12 @@ async def meeting_admission_decide(sid, data):
             "meeting_admission_decision",
             {"presentationId": presentation_id, "clientId": client_id, "accepted": accepted},
             room=item["sid"],
+        )
+        await sio.emit(
+            "meeting_admission_decision",
+            {"presentationId": presentation_id, "clientId": client_id, "accepted": accepted},
+            room=presentation_id,
+            skip_sid=item["sid"],
         )
     await _emit_lobby_state(presentation_id)
 
