@@ -76,6 +76,7 @@
     const approveSharesButton = root.querySelector("[data-live-approve-shares]");
     const presentationSource = options.presentationSource || {};
     const isController = options.controller === true;
+    const admissionBypass = isController || options.admissionBypass === true;
     let room = null;
     let microphoneEnabled = false;
     let cameraEnabled = false;
@@ -98,7 +99,7 @@
     let joinSoundEnabled = localStorage.getItem("presentStudio.joinSoundEnabled") !== "false";
     let joinSoundButton = null;
     let joinNotificationArmed = false;
-    let admissionState = isController ? "approved" : "idle";
+    let admissionState = admissionBypass ? "approved" : "idle";
     let screenShareRequestPending = false;
     let screenShareApproved = false;
     let participantRegistry = new Map();
@@ -971,7 +972,7 @@
     }
 
     async function join(approved = false) {
-      if (!isController && approved !== true) { requestAdmission(); return; }
+      if (!admissionBypass && approved !== true) { requestAdmission(); return; }
       if (joining || room) return;
       if (!livekit?.Room) { setStatus("Audio/video library could not be loaded", "error"); return; }
       if (!api?.getLiveMediaToken) { setStatus("This page is out of date. Refresh it and try again.", "error"); return; }
@@ -1040,7 +1041,7 @@
         setStatus("This browser cannot capture your screen. You can share your camera here, or use a desktop browser to share a screen.", "error");
         return;
       }
-      if (enable && !isController && !screenShareApproved) {
+      if (enable && !admissionBypass && !screenShareApproved) {
         screenShareRequestPending = true;
         setStatus("Waiting for the presenter to allow screen sharing…");
         syncButtons(true);

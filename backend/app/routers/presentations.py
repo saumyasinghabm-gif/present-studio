@@ -90,6 +90,75 @@ def screen_code_share(db: Session, presentation_id: str, share: ShareLink | None
     return share if share and share.screen_access_code_hash else None
 
 
+def _aware_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def current_share_bundle(
+    db: Session,
+    presentation_id: str,
+) -> tuple[ShareLink | None, ShareLink | None]:
+    # Return the current protected presenter link and its paired screen link.
+    # New bundles reuse the exact same password hash on both rows, which makes
+    # pairing deterministic. Co-host presenter links have no screen code hash.
+    presenter = (
+        db.query(ShareLink)
+        .filter(
+            ShareLink.presentation_id == presentation_id,
+            ShareLink.permission == "presenter",
+            ShareLink.is_active == True,  # noqa: E712
+            ShareLink.screen_access_code_hash.isnot(None),
+        )
+        .order_by(ShareLink.created_at.desc(), ShareLink.id.desc())
+        .first()
+    )
+    if not presenter:
+        return None, None
+
+    screen = (
+        db.query(ShareLink)
+        .filter(
+            ShareLink.presentation_id == presentation_id,
+            ShareLink.permission == "viewer",
+            ShareLink.is_active == True,  # noqa: E712
+            ShareLink.screen_access_code_hash == presenter.screen_access_code_hash,
+        )
+        .order_by(ShareLink.created_at.desc(), ShareLink.id.desc())
+        .first()
+    )
+    if screen:
+        return presenter, screen
+
+    viewers = (
+        db.query(ShareLink)
+        .filter(
+            ShareLink.presentation_id == presentation_id,
+            ShareLink.permission == "viewer",
+            ShareLink.is_active == True,  # noqa: E712
+            ShareLink.screen_access_code_hash.isnot(None),
+        )
+        .order_by(ShareLink.created_at.desc(), ShareLink.id.desc())
+        .limit(20)
+        .all()
+    )
+    presenter_created = _aware_datetime(presenter.created_at)
+    if not presenter_created or not viewers:
+        return presenter, None
+
+    candidates: list[tuple[float, ShareLink]] = []
+    for viewer in viewers:
+        viewer_created = _aware_datetime(viewer.created_at)
+        if viewer_created:
+            candidates.append((abs((viewer_created - presenter_created).total_seconds()), viewer))
+    if not candidates:
+        return presenter, None
+
+    distance, viewer = min(candidates, key=lambda item: item[0])
+    return presenter, viewer if distance <= 10 else None
+
+
 def serialize_presentation(presentation: Presentation) -> PresentationOut:
     slides = sorted(presentation.slides, key=lambda item: item.order)
     return PresentationOut(
@@ -225,12 +294,23 @@ def get_presentation(
     if not presentation:
         raise HTTPException(status_code=404, detail="Presentation not found")
 
+    user = optional_current_user(request, db)
+    is_screen_output = request.query_params.get("screen") == "1"
+    auth_header = request.headers.get("authorization", "")
+    has_explicit_auth = auth_header.lower().startswith("bearer ") and bool(auth_header[7:].strip())
+
+    if user and has_explicit_auth and can_edit_presentation(db, presentation, user) and not is_screen_output:
+        return PresentationPayload(
+            presentation=serialize_presentation(presentation),
+            permission="presenter",
+        )
+
     token = request.query_params.get("token")
     if token:
         share = active_share_link(db, presentation.id, token)
         if not share:
             raise HTTPException(status_code=403, detail="Share link is not valid")
-        if request.query_params.get("screen") == "1":
+        if is_screen_output:
             required_code_share = screen_code_share(db, presentation.id, share)
             if not required_code_share:
                 raise HTTPException(status_code=403, detail="This unprotected screen link is no longer valid. Generate a new protected link")
@@ -239,7 +319,6 @@ def get_presentation(
         permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
         return PresentationPayload(presentation=serialize_presentation(presentation), permission=permission)
 
-    user = optional_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
     if not can_view_presentation(db, presentation, user):
@@ -301,6 +380,37 @@ async def save_presentation(
     return PresentationPayload(presentation=serialized, permission="presenter")
 
 
+@router.get("/{presentation_id}/share/current")
+def get_current_share_link(
+    presentation_id: str,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ShareLinkOut | None:
+    presentation = db.get(Presentation, presentation_id)
+    if not presentation or not can_edit_presentation(db, presentation, user):
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    share, screen_share = current_share_bundle(db, presentation_id)
+    if not share:
+        return None
+
+    base = public_share_base_url(request)
+    return ShareLinkOut(
+        url=f"{base}/controller.html?id={presentation_id}&token={share.token}",
+        token=share.token,
+        permission="presenter",
+        requiresScreenCode=bool(share.screen_access_code_hash),
+        screenUrl=(
+            f"{base}/screen.html?id={presentation_id}&token={screen_share.token}"
+            if screen_share
+            else None
+        ),
+        screenToken=screen_share.token if screen_share else None,
+        audienceUrl=f"{base}/join/{screen_share.token}" if screen_share else None,
+    )
+
+
 @router.post("/{presentation_id}/share")
 def create_share_link(
     presentation_id: str,
@@ -314,6 +424,16 @@ def create_share_link(
         raise HTTPException(status_code=404, detail="Presentation not found")
     if not payload.screenAccessCode:
         raise HTTPException(status_code=422, detail="Shared presentation links require a 4-digit screen access code")
+
+    if payload.permission == "presenter":
+        # Keep exactly one owner-generated protected meeting bundle active.
+        # Temporary co-host presenter tokens have no screen-access hash, so this
+        # cleanup intentionally leaves them alone.
+        db.query(ShareLink).filter(
+            ShareLink.presentation_id == presentation.id,
+            ShareLink.is_active == True,  # noqa: E712
+            ShareLink.screen_access_code_hash.isnot(None),
+        ).update({ShareLink.is_active: False}, synchronize_session=False)
 
     share = ShareLink(
         id=new_id("share"),
@@ -330,7 +450,7 @@ def create_share_link(
             presentation_id=presentation.id,
             token=new_share_token(),
             permission="viewer",
-            screen_access_code_hash=hash_password(payload.screenAccessCode),
+            screen_access_code_hash=share.screen_access_code_hash,
         )
         db.add(screen_share)
     db.commit()

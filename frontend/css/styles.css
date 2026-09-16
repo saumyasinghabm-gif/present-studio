@@ -2652,9 +2652,11 @@ button.present-back {
   .audience-live-view
   .present-live-media.is-connected
   > .audience-control-feedback {
-    top: 72px;
-    right: 8px;
-    bottom: auto;
-    width: min(334px, calc(100% - 16px));
+    top: auto;
+    right: auto;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    max-width: min(480px, calc(100% - 390px));
   }
 }

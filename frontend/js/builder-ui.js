@@ -1973,7 +1973,32 @@
   byId("zoomIn").addEventListener("click", () => updateZoom(zoom + 10));
   byId("fitToWindow").addEventListener("click", () => updateZoom(100));
 
-  function openShare() { shareModal.hidden = false; }
+  async function openShare() {
+    shareModal.hidden = false;
+    const generateButton = byId("generateLink");
+    const generateLabel = generateButton?.querySelector("span");
+    if (generateLabel) generateLabel.textContent = "Generate Remote Link";
+    if (typeof setShareLink === "function") setShareLink("", "");
+
+    if (!window.PresentStudioApi?.getCurrentShareLink || !presentation?.id) return;
+    try {
+      const existing = await window.PresentStudioApi.getCurrentShareLink(presentation.id);
+      if (!existing?.url) return;
+      if (typeof setShareLink === "function") {
+        setShareLink(
+          existing.url,
+          existing.permission || "presenter",
+          existing.screenUrl || "",
+          existing.audienceUrl || ""
+        );
+      }
+      const shareStatus = byId("shareStatus");
+      if (shareStatus) shareStatus.textContent = `Existing Remote Control: ${existing.url}`;
+      if (generateLabel) generateLabel.textContent = "Create New Remote Links";
+    } catch (error) {
+      console.warn("Could not load existing meeting links", error);
+    }
+  }
   function closeShare() { shareModal.hidden = true; }
   byId("quickShare").addEventListener("click", openShare);
   byId("closeShare").addEventListener("click", closeShare);

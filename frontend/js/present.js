@@ -337,9 +337,16 @@ async function loadPresentationAccess() {
   }
   if (!presentationId) presentationId = "pres_demo";
   if (!shareToken) return api.getPresentation(presentationId);
+
+  const result = await api.getPresentation(presentationId, shareToken);
+  if (result.permission === "presenter") {
+    screenCodeRequired = false;
+    return result;
+  }
+
   const access = await api.getScreenAccessRequirements(presentationId, shareToken);
   screenCodeRequired = Boolean(access.requiresCode);
-  return api.getPresentation(presentationId, shareToken);
+  return result;
 }
 async function validateMeetingAccessCode() {
   if (!screenCodeRequired) return true;
@@ -384,12 +391,23 @@ async function init() {
   applyPresentationState(live, true);
   liveMediaSession = window.SnapKeyLiveMedia?.create({
     root: $("presentLiveMedia"), presentationId, shareToken, authToken, screenAccessCode, socket,
+    admissionBypass: presenter,
     displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
     onEnableAudio: enablePresentationAudio,
     onValidateAdmission: validateMeetingAccessCode,
     getScreenAccessCode: () => screenAccessCode,
     presentationSource: { canvas: $("presentCanvas"), media: $("presentMedia"), label: () => currentOutputLabel || activeSlide()?.title || presentation.title }
   });
+  if (presenter) {
+    const joinButton = $("presentLiveMedia")?.querySelector("[data-live-join]");
+    if (joinButton) {
+      joinButton.textContent = "Join meeting";
+      joinButton.setAttribute("aria-label", "Join meeting as owner");
+    }
+    const joinStatus = $("presentLiveMedia")?.querySelector("[data-live-status]");
+    if (joinStatus) joinStatus.textContent = "Joining as presentation owner…";
+    queueMicrotask(() => liveMediaSession?.join?.(true));
+  }
   setVisible($("presentLoading"), false);
   setVisible($("presentStage"), true);
   setAutoplay(playback().mode !== "manual");
