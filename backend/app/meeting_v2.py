@@ -118,7 +118,7 @@ async def restart_meeting(db, presentation_id: str) -> None:
     if had_previous_meeting:
         await sm.sio.emit(
             "session_ended",
-            {"presentationId": presentation_id, "reason": "restarted"},
+            {"presentationId": presentation_id, "meetingInstanceId": old_instance_id, "reason": "restarted"},
             room=presentation_id,
         )
 

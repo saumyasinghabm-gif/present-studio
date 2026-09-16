@@ -42,6 +42,7 @@ def live_session_payload(live: LiveSession | None, presentation_id: str) -> dict
         "videoVolume": normalized_volume(live.video_volume) if live else 1.0,
         "audioVolume": normalized_volume(live.audio_volume) if live else 1.0,
         "isLive": bool(live and live.is_live),
+        "meetingInstanceId": live.meeting_instance_id if live else None,
         "serverTime": int(now.timestamp() * 1000),
     }
 

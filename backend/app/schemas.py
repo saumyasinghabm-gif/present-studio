@@ -134,6 +134,7 @@ class LiveSessionOut(BaseModel):
     presentationId: str
     activeSlideId: str | None = None
     isLive: bool
+    meetingInstanceId: str | None = None
     kind: str = "slide"
     mediaId: str | None = None
     position: float = 0.0

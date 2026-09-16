@@ -468,7 +468,7 @@
           return clone;
         });
         presentationMedia.replaceChildren(...clones);
-        clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0 }));
+        clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0, playing: true }));
       }
       const clones = [...presentationMedia.children];
       sourceNodes.forEach((source, index) => {
@@ -480,6 +480,9 @@
         }
         if (source.paused || source.ended) clone.pause?.();
         else clone.play?.().catch(() => {});
+      });
+      clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => {
+        window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0, playing: true });
       });
     }
 

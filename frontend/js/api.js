@@ -267,8 +267,17 @@
 
       const actions = tile.querySelector(".live-participant-actions");
       if (!actions) return;
-      actions.querySelector(`[data-meeting-v2-role="${escapeSelector(item.clientId)}"]`)?.remove();
-      actions.prepend(roleButton(ctx, item));
+      let button = actions.querySelector(`[data-meeting-v2-role="${escapeSelector(item.clientId)}"]`);
+      const isCohost = item.role === "cohost";
+      if (!button) {
+        actions.prepend(roleButton(ctx, item));
+        return;
+      }
+      button.classList.toggle("is-cohost", isCohost);
+      button.textContent = isCohost ? "Remove co-host" : "Make co-host";
+      button.title = isCohost
+        ? `Remove co-host access from ${item.name || "participant"}`
+        : `Give ${item.name || "participant"} co-host controls`;
     });
 
     maybeAutoFeatureApprovedShare(ctx);

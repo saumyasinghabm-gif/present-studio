@@ -582,6 +582,7 @@ async def end_session(sid, data):
     share_token = data.get("shareToken") or ""
     if not presentation_id:
         return
+    meeting_instance_id = ""
     with SessionLocal() as db:
         presentation = db.get(Presentation, presentation_id)
         if not presentation or not can_present_with_credentials(db, presentation, auth_token=auth_token, share_token=share_token):
@@ -589,6 +590,7 @@ async def end_session(sid, data):
             return
         live = db.query(LiveSession).filter(LiveSession.presentation_id == presentation_id).first()
         if live:
+            meeting_instance_id = live.meeting_instance_id or ""
             live.is_live = False
             live.media_playing = False
             live.media_updated_at = utc_now()
@@ -599,4 +601,4 @@ async def end_session(sid, data):
     waiting_participants.pop(presentation_id, None)
     active_participants.pop(presentation_id, None)
     screen_share_requests.pop(presentation_id, None)
-    await sio.emit("session_ended", {"presentationId": presentation_id}, room=presentation_id)
+    await sio.emit("session_ended", {"presentationId": presentation_id, "meetingInstanceId": meeting_instance_id}, room=presentation_id)

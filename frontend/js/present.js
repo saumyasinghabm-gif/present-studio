@@ -8,7 +8,7 @@ const authToken = localStorage.getItem("presentStudio.accessToken") || "";
 const socket = window.io ? window.io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 700 }) : null;
 let canvas;
 const $ = (id) => document.getElementById(id);
-let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let audioUnlockNeeded = false; let audioUnlockInProgress = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = "";
+let presentation; let permission = "viewer"; let currentSlideIndex = 0; let autoplayTimer; let mediaTimer; let mediaIndex = 0; let autoplayRunning = false; let audioEnabled = false; let audioUnlockNeeded = false; let audioUnlockInProgress = false; let screenAccessCode = ""; let screenCodeRequired = false; let liveMediaSession = null; let liveState = null; let currentOutputLabel = ""; let activeMeetingInstanceId = "";
 function activeSlide() { return presentation.slides[currentSlideIndex]; }
 function playback() { return presentation.slides[0]?.canvas?.presentation_playback || { mode: "manual", interval_ms: 5000, slide_ids: [], media_mode: "all", media_cycle: "all", media_interval_ms: 5000, loop_videos: true }; }
 function setVisible(element, visible) { if (element) element.hidden = !visible; }
@@ -279,6 +279,7 @@ function applyPresentationState(rawState, forceRender = false) {
   if (state.presentationId && state.presentationId !== presentation.id) return;
   const found = presentation.slides.findIndex(slide => slide.id === state.slideId);
   if (found < 0) return;
+  if (state.meetingInstanceId) activeMeetingInstanceId = String(state.meetingInstanceId);
   liveState = state;
   currentSlideIndex = found;
   const frame = $("presentFrame");
@@ -328,7 +329,11 @@ function setupSocket() {
   });
   socket.on("presentation_deleted", event => { if (event.presentationId === presentation.id) { setAutoplay(false); liveMediaSession?.leave(); showError("This presentation has been deleted."); } });
   socket.on("presenter_rejected", event => showError(event.message || "Presenter permission required."));
-  socket.on("session_ended", () => { setAutoplay(false); liveMediaSession?.leave(); showError("This live session has ended."); });
+  socket.on("session_ended", event => {
+    if (event?.presentationId && event.presentationId !== presentationId) return;
+    if (event?.meetingInstanceId && activeMeetingInstanceId && event.meetingInstanceId !== activeMeetingInstanceId) return;
+    setAutoplay(false); liveMediaSession?.leave(); showError("This live session has ended.");
+  });
   if (socket.connected) joinRoom();
 }
 async function loadPresentationAccess() {

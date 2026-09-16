@@ -31,6 +31,7 @@
   let restoredMediaState = null;
   let outputBlanked = false;
   let sessionEnded = false;
+  let activeMeetingInstanceId = "";
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -887,6 +888,7 @@
     ]);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
+    activeMeetingInstanceId = String(live.meetingInstanceId || "");
     videoVolume = normalizedVolume(live.videoVolume);
     audioVolume = normalizedVolume(live.audioVolume);
     syncVolumeControls();
@@ -965,6 +967,7 @@
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
     socket?.on("session_ended", event => {
       if (event?.presentationId && event.presentationId !== presentationId) return;
+      if (event?.meetingInstanceId && activeMeetingInstanceId && event.meetingInstanceId !== activeMeetingInstanceId) return;
       sessionEnded = true;
       stopLoop();
       clearTimeout(volumeEmitTimer);
@@ -980,6 +983,7 @@
     });
     socket?.on("presentation_state", state => {
       if (state.presentationId && state.presentationId !== presentationId) return;
+      if (state.meetingInstanceId) activeMeetingInstanceId = String(state.meetingInstanceId);
       videoVolume = normalizedVolume(state.videoVolume);
       audioVolume = normalizedVolume(state.audioVolume);
       applyPreviewVolumes();
