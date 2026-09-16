@@ -34,7 +34,7 @@ def ensure_demo_live(db, *, meeting_instance_id: str | None, is_live: bool) -> L
     return live
 
 
-def test_logged_in_owner_is_not_downgraded_by_viewer_link():
+def test_viewer_link_stays_audience_even_for_logged_in_owner():
     with TestClient(fastapi_app) as client:
         headers = owner_headers(client)
         viewer_link = client.post(
@@ -48,7 +48,7 @@ def test_logged_in_owner_is_not_downgraded_by_viewer_link():
             headers=headers,
         )
     assert result.status_code == 200
-    assert result.json()["permission"] == "presenter"
+    assert result.json()["permission"] == "viewer"
 
 
 def test_current_meeting_links_are_returned_before_generating_another_bundle():
@@ -70,6 +70,25 @@ def test_current_meeting_links_are_returned_before_generating_another_bundle():
     assert payload["url"] == created.json()["url"]
     assert payload["screenToken"] == created.json()["screenToken"]
     assert payload["audienceUrl"] == created.json()["audienceUrl"]
+
+
+def test_presenter_link_can_resolve_its_paired_screen_link():
+    with TestClient(fastapi_app) as client:
+        headers = owner_headers(client)
+        created = client.post(
+            "/api/presentations/pres_demo/share",
+            json={"permission": "presenter", "screenAccessCode": "2468"},
+            headers=headers,
+        )
+        assert created.status_code == 200
+        paired = client.get(
+            f"/api/presentations/pres_demo/share/screen?token={created.json()['token']}"
+        )
+    assert paired.status_code == 200
+    assert paired.json()["permission"] == "viewer"
+    assert paired.json()["token"] == created.json()["screenToken"]
+    assert paired.json()["screenUrl"] == created.json()["screenUrl"]
+    assert paired.json()["audienceUrl"] == created.json()["audienceUrl"]
 
 
 def test_current_meeting_link_lookup_requires_owner_access():

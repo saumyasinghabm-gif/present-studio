@@ -160,6 +160,22 @@ def current_share_bundle(
     return presenter, viewer if distance <= 10 else None
 
 
+def paired_screen_share(db: Session, presenter_share: ShareLink) -> ShareLink | None:
+    if presenter_share.permission != "presenter" or not presenter_share.screen_access_code_hash:
+        return None
+    return (
+        db.query(ShareLink)
+        .filter(
+            ShareLink.presentation_id == presenter_share.presentation_id,
+            ShareLink.permission == "viewer",
+            ShareLink.is_active == True,  # noqa: E712
+            ShareLink.screen_access_code_hash == presenter_share.screen_access_code_hash,
+        )
+        .order_by(ShareLink.created_at.desc(), ShareLink.id.desc())
+        .first()
+    )
+
+
 def serialize_presentation(presentation: Presentation) -> PresentationOut:
     slides = sorted(presentation.slides, key=lambda item: item.order)
     return PresentationOut(
@@ -300,12 +316,6 @@ def get_presentation(
     auth_header = request.headers.get("authorization", "")
     has_explicit_auth = auth_header.lower().startswith("bearer ") and bool(auth_header[7:].strip())
 
-    if user and has_explicit_auth and can_edit_presentation(db, presentation, user) and not is_screen_output:
-        return PresentationPayload(
-            presentation=serialize_presentation(presentation),
-            permission="presenter",
-        )
-
     token = request.query_params.get("token")
     if token:
         share = active_share_link(db, presentation.id, token)
@@ -319,6 +329,12 @@ def get_presentation(
                 raise HTTPException(status_code=403, detail="Enter the 4-digit screen access code")
         permission = share.permission if share.permission in {"viewer", "presenter"} else "viewer"
         return PresentationPayload(presentation=serialize_presentation(presentation), permission=permission)
+
+    if user and has_explicit_auth and can_edit_presentation(db, presentation, user) and not is_screen_output:
+        return PresentationPayload(
+            presentation=serialize_presentation(presentation),
+            permission="presenter",
+        )
 
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -409,6 +425,33 @@ def get_current_share_link(
         ),
         screenToken=screen_share.token if screen_share else None,
         audienceUrl=f"{base}/join/{screen_share.token}" if screen_share else None,
+    )
+
+
+@router.get("/{presentation_id}/share/screen")
+def get_paired_screen_link(
+    presentation_id: str,
+    request: Request,
+    token: str = "",
+    db: Session = Depends(get_db),
+) -> ShareLinkOut:
+    share = active_share_link(db, presentation_id, token)
+    if not share or share.permission != "presenter":
+        raise HTTPException(status_code=403, detail="A trusted presenter link is required")
+
+    screen_share = paired_screen_share(db, share)
+    if not screen_share:
+        raise HTTPException(status_code=404, detail="No paired screen link is available")
+
+    base = public_share_base_url(request)
+    return ShareLinkOut(
+        url=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}",
+        token=screen_share.token,
+        permission="viewer",
+        requiresScreenCode=bool(screen_share.screen_access_code_hash),
+        screenUrl=f"{base}/screen.html?id={presentation_id}&token={screen_share.token}",
+        screenToken=screen_share.token,
+        audienceUrl=f"{base}/join/{screen_share.token}",
     )
 
 

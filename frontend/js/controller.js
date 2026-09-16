@@ -935,8 +935,13 @@
     };
     $("#openScreen").onclick = async () => {
       if (shareToken) {
-        window.open(secureAppUrl(`/screen.html?id=${encodeURIComponent(presentation.id)}&token=${encodeURIComponent(shareToken)}`), "_blank", "noopener");
-        return;
+        try {
+          const link = await api.getPairedScreenLink(presentation.id, shareToken, { publicAccess: true });
+          window.open(link.screenUrl || link.url, "_blank", "noopener");
+          return;
+        } catch (error) {
+          toast(error.message || "Could not open the paired screen link.");
+        }
       }
       const screenCode = window.prompt("Choose a 4-digit code for the presentation screen.", "");
       if (screenCode === null) return;
