@@ -265,8 +265,23 @@
 
       const actions = tile.querySelector(".live-participant-actions");
       if (!actions) return;
-      actions.querySelector(`[data-meeting-v2-role="${escapeSelector(item.clientId)}"]`)?.remove();
-      actions.prepend(roleButton(ctx, item));
+
+      // IMPORTANT: keep this decoration idempotent.
+      // The controller watches participant DOM mutations. Replacing this button
+      // on every pass triggers the observer again and creates an infinite
+      // mutation loop as soon as an active participant appears.
+      const selector = `[data-meeting-v2-role="${escapeSelector(item.clientId)}"]`;
+      const existingButton = actions.querySelector(selector);
+      const expectedLabel = item.role === "cohost" ? "Remove co-host" : "Make co-host";
+
+      if (!existingButton) {
+        actions.prepend(roleButton(ctx, item));
+      } else if (existingButton.textContent !== expectedLabel) {
+        // Role actually changed (audience <-> co-host), so rebuild once to
+        // refresh the click handler's captured role. The next observer pass is
+        // stable and performs no DOM mutation.
+        existingButton.replaceWith(roleButton(ctx, item));
+      }
     });
 
     maybeAutoFeatureApprovedShare(ctx);
@@ -428,9 +443,15 @@
       }
 
       if (ctx.isController) {
+        let observerFrame = 0;
         const observer = new MutationObserver(() => {
-          decorateControllerParticipants(ctx);
-          maybeAutoFeatureApprovedShare(ctx);
+          // LiveKit can mutate several participant nodes in one burst.
+          // Collapse those mutations into one decoration pass per frame.
+          if (observerFrame) return;
+          observerFrame = requestAnimationFrame(() => {
+            observerFrame = 0;
+            decorateControllerParticipants(ctx);
+          });
         });
         observer.observe(ctx.root, { childList: true, subtree: true });
         ctx.observer = observer;
