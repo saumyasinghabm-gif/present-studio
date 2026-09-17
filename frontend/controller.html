@@ -89,7 +89,7 @@
               <section class="controller-library-panel controller-loop-section" id="controllerLoopsPanel" role="tabpanel" data-controller-library-panel="loops" aria-label="Media loops" hidden>
                 <div class="controller-section-heading"><div><p class="eyebrow">Loop control</p><h2>Selected media loops</h2></div><span id="loopStatus">No loop running</span></div>
                 <div class="controller-loop-grid"><article><div><strong>Images</strong><button type="button" id="startImageLoop">Start</button></div><div class="controller-loop-list" id="imageLoopList"></div></article><article><div><strong>Videos</strong><button type="button" id="startVideoLoop">Start</button></div><div class="controller-loop-list" id="videoLoopList"></div></article></div>
-                <label class="controller-duration">Change item every <select id="loopInterval"><option value="5000">5 seconds</option><option value="8000" selected>8 seconds</option><option value="12000">12 seconds</option><option value="20000">20 seconds</option></select></label><button class="button button-soft" type="button" id="stopLoop">Stop Loop</button>
+                <label class="controller-duration">Change image every <select id="loopInterval"><option value="5000">5 seconds</option><option value="8000" selected>8 seconds</option><option value="12000">12 seconds</option><option value="20000">20 seconds</option></select></label><button class="button button-soft" type="button" id="stopLoop">Stop Loop</button>
               </section>
               </div>
             </section>
@@ -163,6 +163,6 @@
     <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
     <script src="/js/live-media.js?v=20260915-camera-scenes"></script>
-    <script src="/js/controller.js?v=20260915-youtube-media"></script>
+    <script src="/js/controller.js?v=20260917-video-ended-loop"></script>
   </body>
 </html>

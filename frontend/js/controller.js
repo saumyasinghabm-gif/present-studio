@@ -11,6 +11,7 @@
   let loopTimer = null;
   let loopRunning = false;
   let loopGeneration = 0;
+  let loopKind = "";
   let activeTargetId = "";
   let previewCanvas;
   let previewRenderVersion = 0;
@@ -862,28 +863,51 @@
     return ids.map(id => targets.find(target => target.id === id)).filter(target => target?.kind === kind);
   }
 
+  function playVideoLoopItem(items, index, generation) {
+    if (!loopRunning || loopKind !== "video" || generation !== loopGeneration) return;
+    selectTarget(items[index]);
+    const video = primaryPreviewMedia();
+    if (video?.tagName !== "VIDEO") {
+      stopLoop(false);
+      return;
+    }
+    video.loop = false;
+    video.addEventListener("ended", () => {
+      if (!loopRunning || loopKind !== "video" || generation !== loopGeneration) return;
+      playVideoLoopItem(items, (index + 1) % items.length, generation);
+    }, { once: true });
+  }
+
   function startLoop(kind, selector) {
     const items = selectedLoopTargets(kind, selector);
     if (!items.length) return toast(`Select at least one ${kind}.`);
     clearInterval(loopTimer);
     loopTimer = null;
     loopRunning = true;
+    loopKind = kind;
     const generation = ++loopGeneration;
     let index = 0;
-    selectTarget(items[index]);
     $("#loopStatus").textContent = `${kind === "image" ? "Image" : "Video"} loop running · ${items.length} selected`;
+    if (kind === "video") {
+      playVideoLoopItem(items, index, generation);
+      return;
+    }
+    selectTarget(items[index]);
     loopTimer = setInterval(() => {
-      if (!loopRunning || generation !== loopGeneration) return;
+      if (!loopRunning || loopKind !== "image" || generation !== loopGeneration) return;
       index = (index + 1) % items.length;
       selectTarget(items[index]);
     }, Number($("#loopInterval").value) || 8000);
   }
 
-  function stopLoop() {
+  function stopLoop(stopCurrentVideo = true) {
+    const shouldStopVideo = stopCurrentVideo && loopRunning && loopKind === "video";
     loopRunning = false;
+    loopKind = "";
     loopGeneration += 1;
     clearInterval(loopTimer);
     loopTimer = null;
+    if (shouldStopVideo) sendMediaControl("stop");
     $("#loopStatus").textContent = "No loop running";
   }
 
@@ -933,12 +957,12 @@
     }
     $("#startImageLoop").onclick = () => startLoop("image", "#imageLoopList");
     $("#startVideoLoop").onclick = () => startLoop("video", "#videoLoopList");
-    $("#stopLoop").onclick = stopLoop;
+    $("#stopLoop").onclick = () => stopLoop();
     $("#pauseMedia").onclick = () => sendMediaControl("toggle");
     $("#previewAudio").onclick = togglePreviewAudio;
     $("#replayMedia").onclick = () => sendMediaControl("replay");
     $("#stopMedia").onclick = () => {
-      stopLoop();
+      stopLoop(false);
       outputBlanked = true;
       restoredMediaState = null;
       $("#previewTitle").textContent = "Screen cleared";
@@ -994,7 +1018,7 @@
     });
     socket?.on("presentation_deleted", event => {
       if (event.presentationId !== presentationId) return;
-      stopLoop();
+      stopLoop(false);
       liveMediaSession?.leave();
       $("#controllerTitle").textContent = "Presentation deleted";
       showPreviewPlaceholder("This presentation is no longer available.");
