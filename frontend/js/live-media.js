@@ -855,6 +855,7 @@
       count.textContent = `${total} connected`;
       if (peopleBadge) peopleBadge.textContent = String(total);
       if (restoreCount) restoreCount.textContent = String(total);
+      options.onParticipantTilesRendered?.();
     }
 
     function scheduleParticipantRender() {

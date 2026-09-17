@@ -208,10 +208,12 @@
             target.on(event, (...args) => {
               const original = args[0];
               const translated = translateIncoming(ctx, event, original);
+              if (event === "meeting_lobby_state" && ctx.isController) {
+                ctx.lastLobby = original;
+              }
               handler(translated, ...args.slice(1));
 
               if (event === "meeting_lobby_state" && ctx.isController) {
-                ctx.lastLobby = original;
                 scheduleControllerDecoration(ctx);
               }
               if (event === "meeting_admission_decision" && !ctx.isController && original?.accepted) {
@@ -442,10 +444,15 @@
         session: null
       };
       contexts.set(ctx.presentationId, ctx);
+      const onParticipantTilesRendered = options.onParticipantTilesRendered;
 
       const proxiedOptions = {
         ...options,
-        socket: makeSocketProxy(ctx, options.socket)
+        socket: makeSocketProxy(ctx, options.socket),
+        onParticipantTilesRendered: () => {
+          onParticipantTilesRendered?.();
+          decorateControllerParticipants(ctx);
+        }
       };
       ctx.options = proxiedOptions;
       ctx.session = originalCreate(proxiedOptions);
