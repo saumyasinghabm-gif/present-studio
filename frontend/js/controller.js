@@ -8,7 +8,9 @@
   const $ = (selector) => document.querySelector(selector);
   let presentation;
   let targets = [];
-  let loopTimer;
+  let loopTimer = null;
+  let loopRunning = false;
+  let loopGeneration = 0;
   let activeTargetId = "";
   let previewCanvas;
   let previewRenderVersion = 0;
@@ -864,13 +866,26 @@
     const items = selectedLoopTargets(kind, selector);
     if (!items.length) return toast(`Select at least one ${kind}.`);
     clearInterval(loopTimer);
+    loopTimer = null;
+    loopRunning = true;
+    const generation = ++loopGeneration;
     let index = 0;
     selectTarget(items[index]);
     $("#loopStatus").textContent = `${kind === "image" ? "Image" : "Video"} loop running · ${items.length} selected`;
-    loopTimer = setInterval(() => { index = (index + 1) % items.length; selectTarget(items[index]); }, Number($("#loopInterval").value) || 8000);
+    loopTimer = setInterval(() => {
+      if (!loopRunning || generation !== loopGeneration) return;
+      index = (index + 1) % items.length;
+      selectTarget(items[index]);
+    }, Number($("#loopInterval").value) || 8000);
   }
 
-  function stopLoop() { clearInterval(loopTimer); loopTimer = null; $("#loopStatus").textContent = "No loop running"; }
+  function stopLoop() {
+    loopRunning = false;
+    loopGeneration += 1;
+    clearInterval(loopTimer);
+    loopTimer = null;
+    $("#loopStatus").textContent = "No loop running";
+  }
 
   bindControllerConsole();
   bindPreviewDock();
