@@ -992,7 +992,7 @@
         const credentials = await api.getLiveMediaToken(options.presentationId, {
           displayName: nameInput.value.trim(), shareToken: options.shareToken || "", screenAccessCode: options.getScreenAccessCode?.() || options.screenAccessCode || undefined,
           clientId: meetingClientId
-        });
+        }, options.requestOptions || {});
         await room.connect(credentials.url, credentials.token, { autoSubscribe: true });
         const gestureUnlocked = await audioUnlock;
         const connectedAudioReady = await enableAudio(false);
