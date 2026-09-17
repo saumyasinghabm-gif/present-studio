@@ -227,6 +227,66 @@ def test_admission_decision_is_delivered_directly_and_to_room_backup():
         _cleanup(ids)
 
 
+def test_participant_identity_rebinds_to_stable_guest_after_reconnect():
+    ids = _create_meeting(approved=True)
+    try:
+        meeting_v2.sm.active_participants[ids["presentation"]] = {
+            ids["guest"]: {
+                "clientId": ids["guest"],
+                "sid": "old-audience-sid",
+                "identity": "old-livekit-identity",
+                "name": "Returning Guest",
+            }
+        }
+
+        with patch.object(
+            meeting_v2.sm, "_emit_lobby_state", new_callable=AsyncMock
+        ) as emit_lobby:
+            asyncio.run(
+                meeting_v2.meeting_participant_joined(
+                    "new-audience-sid",
+                    {
+                        "presentationId": ids["presentation"],
+                        "clientId": ids["guest"],
+                        "identity": "new-livekit-identity",
+                        "name": "Returning Guest",
+                    },
+                )
+            )
+
+        item = meeting_v2.sm.active_participants[ids["presentation"]][ids["guest"]]
+        assert item["sid"] == "new-audience-sid"
+        assert item["identity"] == "new-livekit-identity"
+        emit_lobby.assert_awaited_once_with(ids["presentation"])
+    finally:
+        _cleanup(ids)
+
+
+def test_participant_identity_join_restores_missing_active_mapping():
+    ids = _create_meeting(approved=True)
+    try:
+        with patch.object(
+            meeting_v2.sm, "_emit_lobby_state", new_callable=AsyncMock
+        ):
+            asyncio.run(
+                meeting_v2.meeting_participant_joined(
+                    "audience-sid",
+                    {
+                        "presentationId": ids["presentation"],
+                        "clientId": ids["guest"],
+                        "identity": "livekit-identity",
+                        "name": "Returning Guest",
+                    },
+                )
+            )
+
+        item = meeting_v2.sm.active_participants[ids["presentation"]][ids["guest"]]
+        assert item["sid"] == "audience-sid"
+        assert item["identity"] == "livekit-identity"
+    finally:
+        _cleanup(ids)
+
+
 def test_controller_remove_revokes_persistent_guest_admission():
     ids = _create_meeting(approved=True)
     try:

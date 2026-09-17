@@ -437,18 +437,26 @@ async def meeting_participant_joined(sid, data):
     presentation_id = data.get("presentationId")
     guest_id = str(data.get("clientId") or "").strip()[:128]
     identity, name = sm._clean_meeting_identity(data)
-    item = sm.active_participants.get(presentation_id, {}).get(guest_id) if presentation_id else None
-    if not item or item.get("sid") != sid or not identity:
+    if not presentation_id or not guest_id or not identity:
         return
-    item.update({"identity": identity, "name": name})
     with SessionLocal() as db:
         live = _current_live(db, presentation_id)
-        if live and live.meeting_instance_id:
-            grant = _grant(db, presentation_id, live.meeting_instance_id, guest_id)
-            if grant:
-                grant.display_name = name
-                grant.updated_at = utc_now()
-                db.commit()
+        grant = (
+            _grant(db, presentation_id, live.meeting_instance_id, guest_id)
+            if live and live.is_live and live.meeting_instance_id
+            else None
+        )
+        if not grant or grant.status != "approved" or grant.role not in {"audience", "cohost"}:
+            return
+        item = sm.active_participants.setdefault(presentation_id, {}).setdefault(
+            guest_id,
+            {"clientId": guest_id, "sid": sid, "name": name},
+        )
+        item.update({"sid": sid, "identity": identity, "name": name})
+        sm.waiting_participants.get(presentation_id, {}).pop(guest_id, None)
+        grant.display_name = name
+        grant.updated_at = utc_now()
+        db.commit()
     await sm._emit_lobby_state(presentation_id)
 
 

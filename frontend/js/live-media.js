@@ -152,12 +152,34 @@
       if (isController) options.socket?.emit("meeting_controller_register", moderationCredentials());
     }
 
+    function updateParticipantRegistry(active) {
+      const activeClientIds = new Set(active.map(item => String(item.clientId || "")).filter(Boolean));
+      const connectedIdentities = new Set(
+        room ? [...room.remoteParticipants.values()].map(participant => String(participant.identity || "")) : []
+      );
+      const nextRegistry = new Map(
+        [...participantRegistry].filter(([identity, item]) =>
+          activeClientIds.has(String(item.clientId || "")) || connectedIdentities.has(identity)
+        )
+      );
+      active.forEach(item => {
+        const clientId = String(item.clientId || "");
+        const identity = String(item.identity || "");
+        if (!clientId || !identity) return;
+        [...nextRegistry].forEach(([knownIdentity, knownItem]) => {
+          if (String(knownItem.clientId || "") === clientId && knownIdentity !== identity) nextRegistry.delete(knownIdentity);
+        });
+        nextRegistry.set(identity, item);
+      });
+      participantRegistry = nextRegistry;
+    }
+
     function renderLobby(message) {
       if (!isController || !lobby || message?.presentationId !== options.presentationId) return;
       const pending = Array.isArray(message.pending) ? message.pending : [];
       const active = Array.isArray(message.active) ? message.active : [];
       const shareRequests = Array.isArray(message.screenShareRequests) ? message.screenShareRequests : [];
-      participantRegistry = new Map(active.filter(item => item.identity).map(item => [String(item.identity), item]));
+      updateParticipantRegistry(active);
       const peopleTab = sidebarTabs.find(button => button.dataset.liveTab === "people");
       peopleTab?.classList.toggle("has-pending", pending.length > 0 || shareRequests.length > 0);
       if (peopleTab) peopleTab.title = pending.length || shareRequests.length ? `${pending.length} waiting, ${shareRequests.length} screen share requests` : "";
@@ -669,7 +691,7 @@
         });
         participantActions.append(mute);
         const registryItem = participantRegistry.get(String(participant.identity));
-        if (registryItem?.clientId) {
+        if (registryItem?.clientId && participantRole(participant) !== "presenter") {
           const remove = document.createElement("button");
           remove.type = "button";
           remove.className = "live-participant-remove";
@@ -939,7 +961,7 @@
       room.on(events.ActiveSpeakersChanged, highlightSpeakers);
       if (events.AudioPlaybackStatusChanged) room.on(events.AudioPlaybackStatusChanged, syncAudioRecovery);
       room.on(events.Reconnecting, () => setStatus("Reconnecting…"));
-      room.on(events.Reconnected, () => { syncLocalPublishedState(); syncButtons(true); renderParticipants(); syncAudioRecovery(); setStatus("Connected", "success"); });
+      room.on(events.Reconnected, () => { announceParticipantIdentity({ refreshAdmission: true }); syncLocalPublishedState(); syncButtons(true); renderParticipants(); syncAudioRecovery(); setStatus("Connected", "success"); });
       room.on(events.Disconnected, () => {
         joinNotificationArmed = false;
         microphoneEnabled = false; cameraEnabled = false; screenShareEnabled = false; audioPlaybackBlocked = false; detachMountedTracks(); room = null;
@@ -971,6 +993,17 @@
       });
     }
 
+    function announceParticipantIdentity({ refreshAdmission = false } = {}) {
+      if (isController || !room?.localParticipant?.identity) return;
+      if (refreshAdmission) emitAdmissionRequest();
+      options.socket?.emit("meeting_participant_joined", {
+        presentationId: options.presentationId,
+        clientId: meetingClientId,
+        identity: room.localParticipant.identity,
+        name: currentName()
+      });
+    }
+
     async function join(approved = false) {
       if (!admissionBypass && approved !== true) { requestAdmission(); return; }
       if (joining || room) return;
@@ -998,10 +1031,7 @@
         const connectedAudioReady = await enableAudio(false);
         const audioReady = connectedAudioReady || (gestureUnlocked && !audioPlaybackBlocked && room.canPlayAudio !== false);
         admissionState = "approved";
-        if (!isController) options.socket?.emit("meeting_participant_joined", {
-          presentationId: options.presentationId, clientId: meetingClientId,
-          identity: room.localParticipant.identity, name: credentials.participantName
-        });
+        announceParticipantIdentity({ refreshAdmission: true });
         setStatus(audioReady ? `Connected as ${credentials.participantName}` : `Connected as ${credentials.participantName} · audio needs permission`, audioReady ? "success" : "error");
         syncButtons(true); renderParticipants();
         joinNotificationArmed = true;
@@ -1193,6 +1223,7 @@
       renderParticipants();
     });
     options.socket?.on("meeting_lobby_state", renderLobby);
+    options.socket?.on("connect", () => announceParticipantIdentity({ refreshAdmission: true }));
     options.socket?.on("meeting_admission_decision", message => {
       if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
       if (message.accepted) {
