@@ -1129,7 +1129,8 @@
     label.set({
       width: bounds.width,
       fontSize: requestedFontSize,
-      clipPath: new fabric.Rect({
+      splitByGrapheme: true,
+      clipPath: label.isEditing ? null : new fabric.Rect({
         originX: "center",
         originY: "center",
         width: bounds.width,
@@ -1165,6 +1166,7 @@
       fontWeight: "normal",
       fill: "#171717",
       textAlign: "center",
+      splitByGrapheme: true,
       lockScalingFlip: true
     });
     fitShapeLabel(shape, label);
@@ -1187,6 +1189,7 @@
       shapeText: true
     });
     fitShapeLabel(shape, label);
+    label.set("clipPath", null);
     label.setCoords();
   }
 
@@ -1198,7 +1201,7 @@
     // Fabric can otherwise reuse the empty group cache created before the
     // label was edited, which makes saved text disappear until the next edit.
     group.set({ lockScalingFlip: true, objectCaching: false, subTargetCheck: true, interactive: true, dirty: true });
-    parts.label.set({ objectCaching: false, dirty: true });
+    parts.label.set({ splitByGrapheme: true, objectCaching: false, dirty: true });
     fitShapeLabel(parts.shape, parts.label);
     // Corner resizing keeps the shape and its text proportional. Side-only
     // scaling would stretch the letters, so it stays disabled for this pair.
