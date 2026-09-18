@@ -7,6 +7,7 @@
     const api = window.PresentStudioApi;
     const livekit = window.LivekitClient;
     const nameInput = root.querySelector("[data-live-name]");
+    const screenCodeInput = root.querySelector("[data-screen-code]");
     const joinButton = root.querySelector("[data-live-join]");
     const microphoneButton = root.querySelector("[data-live-microphone]");
     const cameraButton = root.querySelector("[data-live-camera]");
@@ -1128,11 +1129,13 @@
     }
 
     joinButton.addEventListener("click", join);
-    nameInput.addEventListener("keydown", event => {
-      if (event.key !== "Enter") return;
+    function submitJoinOnEnter(event) {
+      if (event.key !== "Enter" || event.isComposing) return;
       event.preventDefault();
       joinButton.click();
-    });
+    }
+    nameInput.addEventListener("keydown", submitJoinOnEnter);
+    if (!isController) screenCodeInput?.addEventListener("keydown", submitJoinOnEnter);
     microphoneButton.addEventListener("click", toggleMicrophone);
     cameraButton.addEventListener("click", toggleCamera);
     screenShareButton.addEventListener("click", toggleScreenShare);
