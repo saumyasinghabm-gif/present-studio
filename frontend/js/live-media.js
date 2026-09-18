@@ -418,14 +418,20 @@
       const target = String(message.targetIdentity || "");
       if (target === "*" && isController) return;
       if (target !== "*" && target !== currentIdentity()) return;
-      const enabled = message.muted !== true;
+      const shouldMute = message.muted === true;
+      microphoneButton.classList.toggle("is-unmute-requested", !shouldMute);
+      if (!shouldMute) {
+        syncLocalPublishedState(); syncButtons(true);
+        setStatus("The presenter asked you to unmute. Select Unmute when you are ready.", "success");
+        return;
+      }
       try {
-        await room.localParticipant.setMicrophoneEnabled(enabled);
+        await room.localParticipant.setMicrophoneEnabled(false);
         syncLocalPublishedState(); syncButtons(true); renderParticipants();
-        setStatus(enabled ? "The presenter unmuted your microphone" : "The presenter muted your microphone", "success");
+        setStatus("The presenter muted your microphone", "success");
       } catch (error) {
         syncLocalPublishedState(); syncButtons(true);
-        setStatus(enabled ? "The presenter requested microphone access. Select Unmute to approve it." : (error.message || "Microphone control failed"), "error");
+        setStatus(error.message || "Microphone control failed", "error");
       }
     }
 
@@ -443,7 +449,7 @@
         audio.muted = participantAudioMuted(audio.dataset.liveAudioParticipant);
       });
       if (muteAllButton) {
-        setControlLabel(muteAllButton, meetingMuted ? "Unmute all" : "Mute all", meetingMuted ? "Everyone is muted. Select to unmute everyone" : "Everyone can speak. Select to mute everyone");
+        setControlLabel(muteAllButton, meetingMuted ? "Ask all" : "Mute all", meetingMuted ? "Everyone is muted. Select to ask everyone to unmute" : "Everyone can speak. Select to mute everyone");
         muteAllButton.setAttribute("aria-pressed", String(meetingMuted));
       }
     }
@@ -703,10 +709,10 @@
         mute.type = "button";
         mute.className = "live-participant-mute";
         mute.innerHTML = muted
-          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg>'
-          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>';
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg><span>Ask to unmute</span>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg><span>Mute</span>';
         mute.disabled = meetingMuted;
-        const muteLabel = meetingMuted ? "Everyone is muted. Turn off Mute all before changing one participant" : muted && !micOn ? `Ask ${participant.name || "participant"} to unmute their microphone` : `${muted ? "Unmute" : "Mute"} ${participant.name || "participant"}`;
+        const muteLabel = meetingMuted ? "Everyone is muted. Turn off Mute all before changing one participant" : muted ? `Ask ${participant.name || "participant"} to unmute their microphone` : `Mute ${participant.name || "participant"}`;
         mute.setAttribute("aria-label", muteLabel);
         mute.title = muteLabel;
         mute.setAttribute("aria-pressed", String(muted));
@@ -720,6 +726,7 @@
             presentationId: options.presentationId, authToken: options.authToken || "", shareToken: options.shareToken || "",
             targetIdentity: participant.identity, muted: !muted
           });
+          setStatus(muted ? `Asked ${participant.name || "participant"} to unmute` : `Muted ${participant.name || "participant"}`, "success");
         });
         participantActions.append(mute);
         const registryItem = participantRegistry.get(String(participant.identity));
@@ -1118,6 +1125,7 @@
 
     async function toggleMicrophone() {
       if (!room) return;
+      microphoneButton.classList.remove("is-unmute-requested");
       microphoneButton.disabled = true;
       try { await room.localParticipant.setMicrophoneEnabled(!microphoneEnabled); syncLocalPublishedState(); syncButtons(true); renderParticipants(); }
       catch (error) { syncLocalPublishedState(); setStatus(error.message || "Microphone permission was not granted", "error"); syncButtons(true); }
@@ -1226,6 +1234,7 @@
         presentationId: options.presentationId, authToken: options.authToken || "", shareToken: options.shareToken || "",
         targetIdentity: "*", muted: meetingMuted
       });
+      setStatus(meetingMuted ? "Muted everyone" : "Asked everyone to unmute", "success");
     });
     handButton?.addEventListener("click", () => {
       if (!room) return;

@@ -2180,6 +2180,16 @@ button.present-back {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute {
+  width: auto;
+  grid-auto-flow: column;
+  gap: 5px;
+  padding: 0 8px;
+}
+.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute span {
+  font: 800 .55rem var(--mono);
+  white-space: nowrap;
+}
 .interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute[aria-pressed="true"] {
   border-color: #9b8034;
   background: #37301d;

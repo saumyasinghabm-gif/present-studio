@@ -339,7 +339,7 @@ async def meeting_control(sid, data):
 
 @sio.event
 async def meeting_participant_audio(sid, data):
-    """Relay an authenticated presenter's mute/unmute instruction to room clients."""
+    """Relay a presenter's mute command or consent-based unmute request."""
     presentation_id = data.get("presentationId")
     auth_token = data.get("authToken") or ""
     share_token = data.get("shareToken") or ""
@@ -354,7 +354,12 @@ async def meeting_participant_audio(sid, data):
             return
     await sio.emit(
         "meeting_participant_audio_command",
-        {"presentationId": presentation_id, "targetIdentity": target_identity, "muted": data.get("muted") is True},
+        {
+            "presentationId": presentation_id,
+            "targetIdentity": target_identity,
+            "muted": data.get("muted") is True,
+            "requestUnmute": data.get("muted") is not True,
+        },
         room=presentation_id,
     )
 

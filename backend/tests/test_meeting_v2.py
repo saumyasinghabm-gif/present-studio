@@ -434,3 +434,34 @@ def test_unauthorized_role_change_is_rejected():
             assert grant.cohost_share_id is None
     finally:
         _cleanup(ids)
+
+
+def test_participant_audio_uses_consent_based_unmute_request():
+    ids = _create_meeting(approved=True)
+    try:
+        with patch.object(
+            meeting_v2.sm, "can_present_with_credentials", return_value=True
+        ), patch.object(meeting_v2.sm.sio, "emit", new_callable=AsyncMock) as emit:
+            asyncio.run(
+                meeting_v2.sm.meeting_participant_audio(
+                    "host-sid",
+                    {
+                        "presentationId": ids["presentation"],
+                        "targetIdentity": "participant-1",
+                        "muted": False,
+                    },
+                )
+            )
+
+        command = next(
+            call for call in emit.await_args_list
+            if call.args and call.args[0] == "meeting_participant_audio_command"
+        )
+        assert command.args[1] == {
+            "presentationId": ids["presentation"],
+            "targetIdentity": "participant-1",
+            "muted": False,
+            "requestUnmute": True,
+        }
+    finally:
+        _cleanup(ids)
