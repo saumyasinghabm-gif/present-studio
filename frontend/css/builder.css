@@ -792,6 +792,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .builder-page .slide-thumbnail-object.is-video::after { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(0,0,0,.18); font-family: bootstrap-icons; font-size: 20px; content: "\f4f4"; }
 .builder-page .slide-thumbnail-object.is-youtube { display: flex; align-items: center; justify-content: center; gap: 4px; background: #171717; color: #fff; font-size: 9px; font-weight: 800; }
 .builder-page .slide-thumbnail-object.is-youtube > span { color: #f43b32; font-size: 14px; }
+.builder-page .slide-thumbnail-object.is-screen-share { display: flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid #f5c842; border-radius: 3px; background: #171717; color: #fff; font-size: 8px; font-weight: 800; }
+.builder-page .slide-thumbnail-object.is-screen-share > i { color: #f5c842; font-size: 13px; }
 .builder-page .slide-thumbnail-object.is-shape { overflow: visible; }
 .builder-page .slide-thumbnail-shape-geometry { position: absolute; inset: 0; box-sizing: border-box; background: var(--thumbnail-shape-fill); border: 1px solid var(--thumbnail-shape-stroke); }
 .builder-page .slide-thumbnail-object.is-circle .slide-thumbnail-shape-geometry { border-radius: 50%; }

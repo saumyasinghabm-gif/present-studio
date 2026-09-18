@@ -32,6 +32,29 @@ function mediaItems(slide) {
   }));
   return [...legacy, ...fabricVideos, ...youtubeVideos].filter(item => config.media_mode === "all" || config.media_mode === "videos" && item.type === "youtube" || config.media_mode === `${item.type}s`);
 }
+function screenShareItems(slide) {
+  return (slide.canvas?.fabric?.objects || []).filter(item => item.mediaType === "screen-share").map((item, index) => ({
+    id: String(item.id || `screen-share-${index}`),
+    x: ((item.left || 0) / 1280) * 100, y: ((item.top || 0) / 720) * 100,
+    width: (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100,
+    height: (((item.height || 0) * (item.scaleY || 1)) / 720) * 100,
+    angle: Number(item.angle || 0)
+  }));
+}
+function addScreenShareSlots(layer, slide) {
+  screenShareItems(slide).forEach(item => {
+    const slot = document.createElement("div");
+    slot.className = "slide-media slide-screen-share-slot";
+    slot.dataset.slideScreenShare = item.id;
+    slot.setAttribute("aria-label", "Live screen share area");
+    Object.assign(slot.style, {
+      left: `${item.x}%`, top: `${item.y}%`, width: `${item.width}%`, height: `${item.height}%`,
+      transform: item.angle ? `rotate(${item.angle}deg)` : ""
+    });
+    slot.innerHTML = '<span aria-hidden="true">▣</span><strong>Live screen share</strong><small>Click here to select a screen</small>';
+    layer.append(slot);
+  });
+}
 function mediaMuted(authoredMuted = false) { return Boolean(authoredMuted || !audioEnabled || audioUnlockNeeded || liveState?.muted); }
 function presentationVolume(media, state = liveState) { const raw = media.tagName === "VIDEO" ? state?.videoVolume : state?.audioVolume; const value = raw == null ? NaN : Number(raw); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; }
 function startPresentationMedia(media) { media.play().catch(() => { media.muted = true; if (permission === "presenter") audioEnabled = false; else audioUnlockNeeded = true; syncAudioButton(); media.play().catch(() => {}); }); }
@@ -61,6 +84,7 @@ function renderMedia(slide) {
     if (item.type === "video") startPresentationMedia(node);
     if (item.type === "youtube") window.SnapKeyYouTube.sync(node, { volume: presentationVolume({ tagName: "VIDEO" }), muted: mediaMuted() });
   });
+  addScreenShareSlots(layer, slide);
   const track = slide.canvas?.audio;
   if (track?.src) {
     const audio = document.createElement("audio");

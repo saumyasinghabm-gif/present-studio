@@ -475,12 +475,27 @@
     }
 
     function presentationVisualNodes() {
-      return presentationSource.media ? [...presentationSource.media.children].filter(node => ["IMG", "VIDEO", "IFRAME"].includes(node.tagName)) : [];
+      return presentationSource.media ? [...presentationSource.media.children].filter(node => ["IMG", "VIDEO", "IFRAME"].includes(node.tagName) || node.matches?.("[data-slide-screen-share]")) : [];
+    }
+
+    function setScreenShareSlotEmpty(slot) {
+      slot.classList.remove("is-live");
+      slot.innerHTML = '<span aria-hidden="true">▣</span><strong>Live screen share</strong><small>Click here to select a screen</small>';
+    }
+
+    function startScreenShareFromSlide() {
+      if (screenShareEnabled) return;
+      if (!room) {
+        setStatus("Join audio/video before sharing your screen", "error");
+        joinButton.focus();
+        return;
+      }
+      toggleScreenShare();
     }
 
     function syncPresentationMedia(sourceNodes) {
       if (!presentationMedia) return;
-      const signature = sourceNodes.map(node => [node.tagName, node.currentSrc || node.src || "", node.className || "", node.getAttribute("style") || ""].join("|" )).join("::");
+      const signature = sourceNodes.map(node => [node.tagName, node.currentSrc || node.src || "", node.className || "", node.getAttribute("style") || "", node.dataset.slideScreenShare || ""].join("|" )).join("::");
       if (signature !== presentationMediaSignature) {
         presentationMediaSignature = signature;
         const clones = sourceNodes.map(source => {
@@ -488,10 +503,26 @@
           clone.removeAttribute("controls");
           if (clone.tagName === "VIDEO") Object.assign(clone, { autoplay: true, muted: true, playsInline: true });
           if (clone.tagName === "IFRAME" && clone.dataset.youtubeId) clone.src = window.SnapKeyYouTube.embedUrl(clone.dataset.youtubeId);
+          if (clone.matches?.("[data-slide-screen-share]")) {
+            setScreenShareSlotEmpty(clone);
+            if (admissionBypass) {
+              clone.classList.add("can-start-screen-share");
+              clone.tabIndex = 0;
+              clone.setAttribute("role", "button");
+              clone.setAttribute("aria-label", "Select a screen to share in this slide");
+              clone.addEventListener("click", startScreenShareFromSlide);
+              clone.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") { event.preventDefault(); startScreenShareFromSlide(); }
+              });
+            }
+          }
           return clone;
         });
+        detachNodeTracks(presentationMedia);
         presentationMedia.replaceChildren(...clones);
+        screenShareRenderSignature = "";
         clones.filter(node => node.tagName === "IFRAME" && node.dataset.youtubeId).forEach(frame => window.SnapKeyYouTube.sync(frame, { muted: true, volume: 0 }));
+        renderScreenShares();
       }
       const clones = [...presentationMedia.children];
       sourceNodes.forEach((source, index) => {
@@ -712,9 +743,11 @@
     }
 
     function renderScreenShares() {
+      const embeddedSlots = presentationMedia ? [...presentationMedia.querySelectorAll("[data-slide-screen-share]")] : [];
       if (!room) {
         detachNodeTracks(screenShareMedia);
         screenShareMedia.replaceChildren();
+        embeddedSlots.forEach(setScreenShareSlotEmpty);
         screenShareRenderSignature = "";
         screenShareViewer.hidden = true;
         root.classList.remove("has-screen-share");
@@ -734,10 +767,12 @@
       const requestedIdentity = controllerShareIdentity || selectedShareIdentity;
       const featuredIdentity = availableIdentities.has(requestedIdentity) ? requestedIdentity : (activeShares[0]?.participant.identity || "");
       if (!availableIdentities.has(selectedShareIdentity)) selectedShareIdentity = featuredIdentity;
-      const renderSignature = `${activeShares.map(({ participant, track }) => `${participant.identity}:${track.sid || track.mediaStreamTrack?.id || "share"}`).join("|")}::${featuredIdentity}::${controllerShareIdentity}`;
+      const embeddedSignature = embeddedSlots.map(slot => slot.dataset.slideScreenShare || "slot").join("|");
+      const renderSignature = `${activeShares.map(({ participant, track }) => `${participant.identity}:${track.sid || track.mediaStreamTrack?.id || "share"}`).join("|")}::${featuredIdentity}::${controllerShareIdentity}::${embeddedSignature}`;
       const visible = activeShares.length > 0;
-      screenShareViewer.hidden = !visible;
-      root.classList.toggle("has-screen-share", visible);
+      const embedded = embeddedSlots.length > 0;
+      screenShareViewer.hidden = !visible || embedded;
+      root.classList.toggle("has-screen-share", visible && !embedded);
       screenShareMedia.classList.toggle("has-multiple", activeShares.length > 1);
       if (visible) screenShareLabel.textContent = activeShares.length === 1 ? `${activeShares[0].participant.name || "Guest"} is sharing` : `${activeShares.length} shared screens`;
       if (screenShareMode) screenShareMode.textContent = controllerOverrideActive
@@ -747,6 +782,40 @@
       screenShareRenderSignature = renderSignature;
       detachNodeTracks(screenShareMedia);
       screenShareMedia.replaceChildren();
+      embeddedSlots.forEach(slot => {
+        detachNodeTracks(slot);
+        const featured = activeShares.find(item => item.participant.identity === featuredIdentity);
+        if (!featured) { setScreenShareSlotEmpty(slot); return; }
+        slot.replaceChildren();
+        slot.classList.add("is-live");
+        const video = featured.track.attach();
+        Object.assign(video, { autoplay: true, playsInline: true, muted: featured.participant === room.localParticipant });
+        rememberAttachedTrack(featured.track, video);
+        const label = document.createElement("span");
+        label.className = "slide-screen-share-label";
+        label.textContent = `${featured.participant.name || "Guest"}${featured.participant === room.localParticipant ? " (You)" : ""}`;
+        slot.append(video, label);
+        if (isController && activeShares.length > 1) {
+          const picker = document.createElement("div");
+          picker.className = "slide-screen-share-picker";
+          activeShares.forEach(({ participant }) => {
+            const select = document.createElement("button");
+            select.type = "button";
+            select.textContent = participant.name || "Guest";
+            select.disabled = participant.identity === featuredIdentity;
+            select.addEventListener("click", event => {
+              event.stopPropagation();
+              selectedShareIdentity = participant.identity;
+              controllerShareIdentity = participant.identity;
+              publishControllerState();
+              renderParticipants();
+            });
+            picker.append(select);
+          });
+          slot.append(picker);
+        }
+      });
+      if (embedded) return;
       const gallery = document.createElement("div");
       gallery.className = "live-screen-share-gallery";
       gallery.setAttribute("aria-label", "Other shared screens");

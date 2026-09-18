@@ -766,6 +766,18 @@ button.present-back {
 .present-media-layer:empty { display: none; }
 .present-media-layer .slide-media { position: absolute; display: block; object-fit: contain; max-width: none; pointer-events: auto; }
 .present-media-layer .slide-media.full-bleed { inset: 0 !important; width: 100% !important; height: 100% !important; }
+.slide-screen-share-slot { position: absolute; z-index: 3; box-sizing: border-box; display: grid; place-content: center; justify-items: center; gap: .45em; overflow: hidden; border: 3px solid #f5c842; border-radius: 12px; background: #11110f; color: #fff; text-align: center; transform-origin: center; }
+.slide-screen-share-slot > span:first-child { color: #f5c842; font-size: clamp(24px, 6vw, 72px); line-height: 1; }
+.slide-screen-share-slot > strong { font: 800 clamp(12px, 2.5vw, 30px) var(--sans); }
+.slide-screen-share-slot > small { padding: 0 10px; color: #aaa89f; font: 600 clamp(8px, 1.3vw, 15px) var(--sans); }
+.slide-screen-share-slot.can-start-screen-share { pointer-events: auto; cursor: pointer; }
+.slide-screen-share-slot.can-start-screen-share:focus-visible { outline: 4px solid rgba(245, 200, 66, .5); outline-offset: -4px; }
+.slide-screen-share-slot.is-live { display: block; border-color: #f5c842; background: #000; }
+.slide-screen-share-slot.is-live > video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
+.slide-screen-share-label { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); overflow: hidden; border-radius: 4px; padding: 4px 7px; background: rgba(0,0,0,.72); color: #fff; font: 700 11px var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+.slide-screen-share-picker { position: absolute; top: 8px; right: 8px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: calc(100% - 16px); pointer-events: auto; }
+.slide-screen-share-picker button { min-height: 27px; border: 1px solid rgba(255,255,255,.4); border-radius: 4px; padding: 3px 7px; background: rgba(10,10,10,.82); color: #fff; font: 700 10px var(--sans); }
+.slide-screen-share-picker button:disabled { border-color: #f5c842; color: #f5c842; }
 .present-frame .canvas-container { position: relative !important; z-index: 2; pointer-events: none; }
 .present-frame.transition-fade { animation: present-fade var(--transition-duration, 500ms) ease both; }
 .present-frame.transition-fade-left { animation: present-fade-left var(--transition-duration, 500ms) ease both; }
@@ -1063,6 +1075,7 @@ button.present-back {
 .live-presentation-feed-media { z-index: 2; overflow: hidden; pointer-events: none; }
 .live-presentation-feed-media > img, .live-presentation-feed-media > video { position: absolute; display: block; max-width: none; object-fit: contain; }
 .live-presentation-feed-media > .controller-preview-direct { inset: 0; width: 100%; height: 100%; }
+.controller-preview-media .slide-screen-share-slot, .live-presentation-feed-media .slide-screen-share-slot { position: absolute; }
 .live-presentation-feed-empty { position: absolute; z-index: 3; inset: 0; display: grid; place-items: center; padding: 20px; color: #8e8c85; font-size: .78rem; text-align: center; }
 .live-presentation-feed-empty[hidden] { display: none; }
 .live-media-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }

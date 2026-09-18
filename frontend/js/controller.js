@@ -652,6 +652,23 @@
     return node;
   }
 
+  function addScreenSharePreviewSlot(item, index) {
+    const slot = document.createElement("div");
+    const left = ((item.left || 0) / 1280) * 100;
+    const top = ((item.top || 0) / 720) * 100;
+    const width = (((item.width || 0) * (item.scaleX || 1)) / 1280) * 100;
+    const height = (((item.height || 0) * (item.scaleY || 1)) / 720) * 100;
+    slot.className = "slide-screen-share-slot";
+    slot.dataset.slideScreenShare = String(item.id || `screen-share-${index}`);
+    slot.setAttribute("aria-label", "Live screen share area");
+    Object.assign(slot.style, {
+      left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%`,
+      transform: item.angle ? `rotate(${Number(item.angle)}deg)` : ""
+    });
+    slot.innerHTML = '<span aria-hidden="true">▣</span><strong>Live screen share</strong><small>Open Interactive mode and click here</small>';
+    $("#controllerPreviewMedia").append(slot);
+  }
+
   function renderSlidePreview(slide) {
     if (!slide || !previewCanvas) return showPreviewPlaceholder("Slide unavailable");
     const version = ++previewRenderVersion;
@@ -673,9 +690,11 @@
     if (data.fabric) {
       const scene = JSON.parse(JSON.stringify(data.fabric));
       const videos = (scene.objects || []).filter(object => ["video", "youtube"].includes(object.mediaType) && (object.src || object.youtubeId));
-      scene.objects = (scene.objects || []).filter(object => !["video", "youtube"].includes(object.mediaType));
+      const screenShares = (scene.objects || []).filter(object => object.mediaType === "screen-share");
+      scene.objects = (scene.objects || []).filter(object => !["video", "youtube", "screen-share"].includes(object.mediaType));
       previewCanvas.loadFromJSON(scene, finish);
       videos.forEach(video => addPositionedPreviewMedia(video, true));
+      screenShares.forEach(addScreenSharePreviewSlot);
     } else {
       const elements = data.elements || [];
       elements.filter(item => item.type === "text").forEach(item => previewCanvas.add(legacyPreviewText(item)));

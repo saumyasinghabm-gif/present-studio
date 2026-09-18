@@ -168,6 +168,9 @@
     if (mediaType === "youtube" && window.SnapKeyYouTube?.idFor(object)) {
       return `<span class="slide-thumbnail-object is-youtube" style="${style}"><span aria-hidden="true">▶</span> YouTube</span>`;
     }
+    if (mediaType === "screen-share") {
+      return `<span class="slide-thumbnail-object is-screen-share" style="${style}"><i class="bi bi-display" aria-hidden="true"></i><span>Screen</span></span>`;
+    }
     if (["textbox", "text", "i-text"].includes(object.type)) {
       const fontSize = legacy ? Number(object.fontSize || 32) / 7 : Number(object.fontSize || 32) / 7;
       const font = ["Arial", "Calibri", "Inter", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Garamond", "Palatino Linotype", "Courier New", "Impact"].includes(object.fontFamily) ? object.fontFamily : "Arial";
@@ -730,6 +733,37 @@
     canvas.requestRenderAll();
     schedule();
     toast("Shape inserted. Start typing or double-click it to add text.");
+  }
+
+  function insertScreenShare() {
+    const id = `screen_share_${Date.now()}`;
+    const width = 720;
+    const height = 405;
+    const background = new fabric.Rect({
+      left: 0, top: 0, width, height, rx: 18, ry: 18,
+      fill: "#11110f", stroke: "#f5c842", strokeWidth: 4
+    });
+    const icon = new fabric.Text("▣", {
+      left: width / 2, top: 128, originX: "center", originY: "center",
+      fill: "#f5c842", fontFamily: "Arial", fontSize: 72, fontWeight: "bold"
+    });
+    const title = new fabric.Textbox("Live screen share", {
+      left: 90, top: 205, width: width - 180,
+      fill: "#ffffff", fontFamily: "Arial", fontSize: 36, fontWeight: "bold", textAlign: "center"
+    });
+    const hint = new fabric.Textbox("Select Share during the live meeting", {
+      left: 90, top: 263, width: width - 180,
+      fill: "#aaa89f", fontFamily: "Arial", fontSize: 21, textAlign: "center"
+    });
+    const object = new fabric.Group([background, icon, title, hint], {
+      id, mediaType: "screen-share", left: (W - width) / 2, top: (H - height) / 2
+    });
+    canvas.add(object);
+    canvas.setActiveObject(object);
+    canvas.requestRenderAll();
+    panel();
+    schedule();
+    toast("Screen Share area added. Resize and position it on the slide.");
   }
 
   function addGroup(objects, options = {}) {
@@ -2463,6 +2497,7 @@
       case "slide-size": { const ratio = window.prompt("Slide ratio: 16:9 or 4:3", ensure(activeSlide()).canvas.ratio || "16:9"); if (ratio === "16:9" || ratio === "4:3") { ensure(activeSlide()).canvas.ratio = ratio; byId("slideCanvas").style.aspectRatio = ratio === "4:3" ? "4 / 3" : "16 / 9"; schedule(); } break; }
       case "fit-media": if (typeof fitMediaToSlide === "function") fitMediaToSlide(); break;
       case "insert-youtube": openYoutubeDialog(); break;
+      case "insert-screen-share": insertScreenShare(); break;
       case "animation": setObjectAnimation(button.dataset.animation || "none"); break;
       case "preview-animation": previewObjectAnimation(); break;
       case "transition-menu": showTransitionOptions(button.dataset.transitionMenu); all("[data-transition-menu]").forEach((item) => item.classList.toggle("is-active", item === button)); break;
