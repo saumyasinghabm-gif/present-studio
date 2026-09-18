@@ -103,6 +103,7 @@
     let admissionState = admissionBypass ? "approved" : "idle";
     let screenShareRequestPending = false;
     let screenShareApproved = false;
+    let pendingScreenShareTracks = [];
     let participantRegistry = new Map();
     let backgroundProcessor = null;
     let backgroundProcessorTrack = null;
@@ -1041,6 +1042,7 @@
       room.on(events.Reconnecting, () => setStatus("Reconnecting…"));
       room.on(events.Reconnected, () => { announceParticipantIdentity({ refreshAdmission: true }); syncLocalPublishedState(); syncButtons(true); renderParticipants(); syncAudioRecovery(); setStatus("Connected", "success"); });
       room.on(events.Disconnected, () => {
+        stopPendingScreenShare();
         joinNotificationArmed = false;
         microphoneEnabled = false; cameraEnabled = false; screenShareEnabled = false; audioPlaybackBlocked = false; detachMountedTracks(); room = null;
         backgroundProcessor = null; backgroundProcessorTrack = null;
@@ -1151,13 +1153,28 @@
         return;
       }
       if (enable && !admissionBypass && !screenShareApproved) {
+        const activeRoom = room;
         screenShareRequestPending = true;
-        setStatus("Waiting for the presenter to allow screen sharing…");
+        setStatus("Choose the screen, window or tab you want to share…");
         syncButtons(true);
-        options.socket?.emit("meeting_screen_share_request", {
-          presentationId: options.presentationId, clientId: meetingClientId,
-          identity: currentIdentity(), name: currentName()
-        });
+        try {
+          pendingScreenShareTracks = await activeRoom.localParticipant.createScreenTracks();
+          if (room !== activeRoom) {
+            stopPendingScreenShare();
+            return;
+          }
+          if (!pendingScreenShareTracks.length) throw new Error("No screen was selected");
+          setStatus("Waiting for the presenter to allow screen sharing…");
+          options.socket?.emit("meeting_screen_share_request", {
+            presentationId: options.presentationId, clientId: meetingClientId,
+            identity: currentIdentity(), name: currentName()
+          });
+        } catch (error) {
+          stopPendingScreenShare();
+          const cancelled = error?.name === "NotAllowedError" || /cancel|permission|denied/i.test(error?.message || "");
+          setStatus(cancelled ? "Screen sharing was cancelled or blocked by browser permission" : (error.message || "Screen sharing could not start"), "error");
+          syncButtons(true);
+        }
         return;
       }
       if (enable) screenShareApproved = false;
@@ -1175,9 +1192,44 @@
       }
     }
 
+    async function publishApprovedScreenShare() {
+      const activeRoom = room;
+      const tracks = pendingScreenShareTracks;
+      pendingScreenShareTracks = [];
+      screenShareApproved = false;
+      if (!activeRoom || !tracks.length) {
+        setStatus("Screen sharing approval expired. Select Share to choose a screen again.", "error");
+        syncButtons(Boolean(activeRoom));
+        return;
+      }
+      screenShareButton.disabled = true;
+      const published = [];
+      try {
+        for (const track of tracks) {
+          await activeRoom.localParticipant.publishTrack(track);
+          published.push(track);
+        }
+        syncLocalPublishedState(); syncButtons(true); renderParticipants();
+        setStatus("Screen sharing started", "success");
+      } catch (error) {
+        await Promise.allSettled(published.map(track => activeRoom.localParticipant.unpublishTrack(track, true)));
+        tracks.filter(track => !published.includes(track)).forEach(track => { try { track.stop(); } catch {} });
+        syncLocalPublishedState(); syncButtons(true);
+        setStatus(error.message || "Screen sharing could not start", "error");
+      }
+    }
+
+    function stopPendingScreenShare() {
+      pendingScreenShareTracks.forEach(track => { try { track.stop(); } catch {} });
+      pendingScreenShareTracks = [];
+      screenShareRequestPending = false;
+      screenShareApproved = false;
+    }
+
     async function leave({ requeue = false } = {}) {
       const activeRoom = room;
       if (!activeRoom) return;
+      stopPendingScreenShare();
       if (!isController && !requeue) options.socket?.emit("meeting_participant_left", { presentationId: options.presentationId, clientId: meetingClientId });
       if (handRaised) options.socket?.emit("meeting_hand", { presentationId: options.presentationId, identity: currentIdentity(), name: currentName(), raised: false });
       await Promise.allSettled([
@@ -1327,14 +1379,15 @@
       setStatus("The presenter moved you to the waiting room.");
       syncButtons(false);
     });
-    options.socket?.on("meeting_screen_share_decision", message => {
+    options.socket?.on("meeting_screen_share_decision", async message => {
       if (isController || message?.presentationId !== options.presentationId || message.clientId !== meetingClientId) return;
       screenShareRequestPending = false;
       if (message.accepted) {
         screenShareApproved = true;
-        setStatus("Screen sharing approved. Select Start Approved Share.", "success");
-        syncButtons(true);
+        setStatus("Screen sharing approved. Starting now…", "success");
+        await publishApprovedScreenShare();
       } else {
+        stopPendingScreenShare();
         setStatus("The presenter declined the screen sharing request.", "error");
         syncButtons(true);
       }

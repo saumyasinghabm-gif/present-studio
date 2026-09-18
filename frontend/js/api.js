@@ -44,7 +44,7 @@
 })();
 
 /* MEETING_V2_BRIDGE
- * Persistent guest admission, co-host controls and approved-share UX.
+ * Persistent guest admission, co-host controls and screen-share routing.
  * Loaded from api.js before live-media.js so existing meeting code stays intact.
  */
 (function installMeetingV2Bridge() {
@@ -102,17 +102,6 @@
       .meeting-v2-cohost-control {
         border-color:#d3aa0d !important;background:#332c13 !important;color:#ffd54a !important;
       }
-      dialog.meeting-v2-share-dialog {
-        max-width:min(420px,calc(100vw - 28px));border:1px solid #4a483f;border-radius:14px;
-        padding:0;background:#1b1b18;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.5);
-      }
-      dialog.meeting-v2-share-dialog::backdrop { background:rgba(0,0,0,.62); }
-      .meeting-v2-share-dialog > div { padding:20px; }
-      .meeting-v2-share-dialog h3 { margin:0 0 8px;font-size:1rem; }
-      .meeting-v2-share-dialog p { margin:0 0 18px;color:#c9c6bc;font-size:.82rem;line-height:1.5; }
-      .meeting-v2-share-dialog footer { display:flex;justify-content:flex-end;gap:8px; }
-      .meeting-v2-share-dialog button { min-height:40px;border:1px solid #57544b;border-radius:8px;padding:0 13px;background:#282823;color:#fff; }
-      .meeting-v2-share-dialog button[data-meeting-v2-start-share] { border-color:#d3aa0d;background:#ffd54a;color:#171713;font-weight:800; }
       .meeting-v2-revoked-overlay {
         position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:24px;
         background:rgba(10,10,9,.94);color:#fff;text-align:center;
@@ -218,9 +207,6 @@
               }
               if (event === "meeting_admission_decision" && !ctx.isController && original?.accepted) {
                 applyLocalRole(ctx, original);
-              }
-              if (event === "meeting_screen_share_decision" && !ctx.isController && original?.accepted) {
-                queueMicrotask(() => showApprovedShareDialog(ctx));
               }
             });
             return target;
@@ -340,38 +326,6 @@
     const leave = dock.querySelector("[data-live-leave]");
     if (leave) dock.insertBefore(button, leave);
     else dock.append(button);
-  }
-
-  function showApprovedShareDialog(ctx) {
-    if (!ctx.root || ctx.isController) return;
-    let dialog = ctx.root.querySelector("[data-meeting-v2-share-dialog]");
-    if (!dialog) {
-      dialog = document.createElement("dialog");
-      dialog.className = "meeting-v2-share-dialog";
-      dialog.dataset.meetingV2ShareDialog = "";
-      dialog.innerHTML = `
-        <div>
-          <h3>Screen sharing approved</h3>
-          <p>The host approved your request. Select <strong>Start sharing</strong>, then choose the screen, window or tab you want to share.</p>
-          <footer>
-            <button type="button" data-meeting-v2-cancel-share>Not now</button>
-            <button type="button" data-meeting-v2-start-share>Start sharing</button>
-          </footer>
-        </div>`;
-      dialog.querySelector("[data-meeting-v2-cancel-share]").addEventListener("click", () => dialog.close?.());
-      dialog.querySelector("[data-meeting-v2-start-share]").addEventListener("click", () => {
-        dialog.close?.();
-        ctx.root.querySelector("[data-live-screen-share]")?.click();
-      });
-      ctx.root.append(dialog);
-    }
-
-    if (typeof dialog.showModal === "function") {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      const start = window.confirm("Screen sharing approved. Start sharing now?");
-      if (start) ctx.root.querySelector("[data-live-screen-share]")?.click();
-    }
   }
 
   function maybeAutoFeatureApprovedShare(ctx) {
