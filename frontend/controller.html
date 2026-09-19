@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260919-stage-fullscreen">
+    <link rel="stylesheet" href="/css/styles.css?v=20260919-theme-settings">
   </head>
   <body class="live-controller-page" data-controller-mode="control">
     <main class="live-controller-shell">
@@ -16,7 +16,7 @@
         </nav>
         <div class="live-controller-actions">
           <span class="controller-connection" id="connectionStatus" data-state="connecting"><i></i> Connecting</span>
-          <button class="controller-theme-toggle" id="controllerThemeToggle" type="button" aria-label="Switch to light theme" aria-pressed="false" title="Switch to light theme"><span class="controller-theme-track" aria-hidden="true"><span class="controller-theme-thumb">☾</span></span><span class="controller-theme-label">Dark</span></button>
+          <button class="controller-settings-button" id="controllerSettingsButton" type="button" aria-label="Open appearance settings" aria-haspopup="dialog" aria-controls="controllerSettingsDialog" title="Settings"><span aria-hidden="true">⚙</span></button>
           <a class="button button-soft" id="backToEditor" href="/dashboard.html" target="_blank" rel="noopener" aria-label="Open editor in a new tab" title="Open editor in a new tab"><span aria-hidden="true">✎</span><span class="controller-editor-label">Editor</span></a>
         </div>
       </header>
@@ -157,6 +157,10 @@
         </div>
       </section>
     </main>
+    <dialog class="appearance-settings-dialog" id="controllerSettingsDialog" aria-labelledby="controllerSettingsTitle">
+      <div class="appearance-settings-header"><div><span>Preferences</span><h2 id="controllerSettingsTitle">Appearance settings</h2></div><button type="button" id="controllerSettingsClose" aria-label="Close settings">×</button></div>
+      <div class="appearance-settings-body"><p>Choose how the controller workspace looks on this device.</p><div class="appearance-theme-options" role="group" aria-label="Controller theme"><button type="button" data-controller-theme-option="dark" aria-pressed="true"><span aria-hidden="true">☾</span><span><strong>Black</strong><small>Dark workspace</small></span><b>Selected</b></button><button type="button" data-controller-theme-option="light" aria-pressed="false"><span aria-hidden="true">☀</span><span><strong>Light</strong><small>Bright workspace</small></span><b>Use</b></button></div></div>
+    </dialog>
     <dialog class="local-recording-dialog" id="localRecordingDialog" aria-labelledby="localRecordingTitle">
       <div class="local-recording-header"><div><span class="local-recording-kicker">Saved only on this device</span><h2 id="localRecordingTitle">Record meeting locally</h2></div><button type="button" id="localRecordingClose" aria-label="Close recording panel">×</button></div>
       <div class="local-recording-intro" id="localRecordingIntro">
@@ -179,7 +183,7 @@
     <script src="/js/api.js?v=20260919-participant-icons"></script>
     <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260919-stage-fullscreen"></script>
-    <script src="/js/controller.js?v=20260919-stage-fullscreen"></script>
+    <script src="/js/live-media.js?v=20260919-theme-settings"></script>
+    <script src="/js/controller.js?v=20260919-theme-settings"></script>
   </body>
 </html>

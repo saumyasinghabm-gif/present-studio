@@ -13,6 +13,26 @@ function activeSlide() { return presentation.slides[currentSlideIndex]; }
 function playback() { return presentation.slides[0]?.canvas?.presentation_playback || { mode: "manual", interval_ms: 5000, slide_ids: [], media_mode: "all", media_cycle: "all", media_interval_ms: 5000, loop_videos: true }; }
 function setVisible(element, visible) { if (element) element.hidden = !visible; }
 function setStatus(message) { $("presentStatus").textContent = message; }
+function setAudienceTheme(theme, remember = true) {
+  const nextTheme = theme === "light" ? "light" : "dark";
+  document.body.dataset.audienceTheme = nextTheme;
+  document.querySelectorAll("[data-audience-theme-option]").forEach(button => {
+    const selected = button.dataset.audienceThemeOption === nextTheme;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+    button.querySelector("b").textContent = selected ? "Selected" : "Use";
+  });
+  if (remember) try { localStorage.setItem("presentStudio.audienceTheme", nextTheme); } catch {}
+}
+function bindAudienceSettings() {
+  const dialog = $("audienceSettingsDialog");
+  let initialTheme = "dark";
+  try { initialTheme = localStorage.getItem("presentStudio.audienceTheme") || initialTheme; } catch {}
+  setAudienceTheme(initialTheme, false);
+  document.querySelectorAll("[data-audience-theme-option]").forEach(button => button.addEventListener("click", () => setAudienceTheme(button.dataset.audienceThemeOption)));
+  $("audienceSettingsButton").addEventListener("click", () => dialog.showModal());
+  $("audienceSettingsClose").addEventListener("click", () => dialog.close());
+}
 function textObject(item) { return new fabric.Textbox(item.text || "", { left: (item.x || 0) * 12.8, top: (item.y || 0) * 7.2, width: (item.width || 40) * 12.8, fontSize: item.fontSize || 42, fontWeight: item.fontWeight || "500", fontStyle: item.fontStyle || "normal", fontFamily: item.fontFamily || "Arial", fill: item.color || "#171717", textAlign: item.textAlign || "left", selectable: false, evented: false }); }
 function mediaItems(slide) {
   const config = playback();
@@ -440,4 +460,5 @@ async function init() {
   setAutoplay(playback().mode !== "manual");
   setupSocket();
 }
+bindAudienceSettings();
 init().catch(error => showError(error.message));

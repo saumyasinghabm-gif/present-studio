@@ -304,24 +304,25 @@
 
   function setControllerTheme(theme, remember = true) {
     const nextTheme = theme === "light" ? "light" : "dark";
-    const isLight = nextTheme === "light";
-    const button = $("#controllerThemeToggle");
     document.body.dataset.controllerTheme = nextTheme;
-    button.setAttribute("aria-pressed", String(isLight));
-    button.setAttribute("aria-label", `Switch to ${isLight ? "dark" : "light"} theme`);
-    button.title = button.getAttribute("aria-label");
-    button.querySelector(".controller-theme-thumb").textContent = isLight ? "☀" : "☾";
-    button.querySelector(".controller-theme-label").textContent = isLight ? "Light" : "Dark";
+    document.querySelectorAll("[data-controller-theme-option]").forEach(button => {
+      const selected = button.dataset.controllerThemeOption === nextTheme;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+      button.querySelector("b").textContent = selected ? "Selected" : "Use";
+    });
     if (remember) try { localStorage.setItem("presentStudio.controllerTheme", nextTheme); } catch {}
   }
 
   function bindControllerTheme() {
+    const settingsButton = $("#controllerSettingsButton");
+    const settingsDialog = $("#controllerSettingsDialog");
     let initialTheme = "dark";
     try { initialTheme = localStorage.getItem("presentStudio.controllerTheme") || initialTheme; } catch {}
     setControllerTheme(initialTheme, false);
-    $("#controllerThemeToggle").addEventListener("click", () => {
-      setControllerTheme(document.body.dataset.controllerTheme === "light" ? "dark" : "light");
-    });
+    document.querySelectorAll("[data-controller-theme-option]").forEach(button => button.addEventListener("click", () => setControllerTheme(button.dataset.controllerThemeOption)));
+    settingsButton.addEventListener("click", () => settingsDialog.showModal());
+    $("#controllerSettingsClose").addEventListener("click", () => settingsDialog.close());
   }
 
   function setControllerMode(mode, remember = true) {
@@ -329,9 +330,9 @@
     const modeSwitch = $(".controller-mode-switch");
     const editorLink = $("#backToEditor");
     const status = $("#connectionStatus");
-    const themeToggle = $("#controllerThemeToggle");
+    const settingsButton = $("#controllerSettingsButton");
     const links = nextMode === "interactive" ? $("#interactiveWorkspaceLinks") : $("#controllerWorkspaceLinks");
-    links.append(modeSwitch, themeToggle, editorLink, status);
+    links.append(modeSwitch, settingsButton, editorLink, status);
     document.querySelectorAll("[data-controller-mode-view]").forEach(view => { view.hidden = view.dataset.controllerModeView !== nextMode; });
     document.querySelectorAll("[data-controller-mode-target]").forEach(button => {
       const active = button.dataset.controllerModeTarget === nextMode;
