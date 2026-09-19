@@ -52,12 +52,12 @@
     const sidebarTabs = [...root.querySelectorAll("[data-live-tab]")];
     const sidebarPanels = [...root.querySelectorAll("[data-live-panel]")];
     if (options.controller && meetingSidebar) {
-      // People and chat use the upper flexible area; presenter actions stay below.
+      // Keep People, Chat, and reactions in the sidebar. The meeting-control dock
+      // remains a direct child of the controller workspace so it stays at the bottom.
       meetingSidebar.append(...[
         root.querySelector(".live-sidebar-tabs"),
         root.querySelector(".live-sidebar-panels"),
-        root.querySelector(".live-engagement-bar"),
-        root.querySelector(".interactive-control-dock")
+        root.querySelector(".live-engagement-bar")
       ].filter(Boolean));
     }
     const peopleBadge = root.querySelector("[data-live-people-badge]");

@@ -2683,3 +2683,287 @@ button.present-back {
     max-width: min(480px, calc(100% - 390px));
   }
 }
+
+/* Controller theme toggle. Geometry stays unchanged; the light theme changes colors only. */
+.controller-theme-toggle {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #555249;
+  border-radius: 999px;
+  padding: 3px 8px 3px 4px;
+  background: #292925;
+  color: #f7f6f1;
+  font: 800 .54rem var(--mono);
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.controller-theme-toggle:hover,
+.controller-theme-toggle:focus-visible { border-color: #ffd54a; outline: none; }
+.controller-theme-track { width: 34px; height: 20px; display: block; border-radius: 999px; padding: 2px; background: #11110f; transition: background .18s ease; }
+.controller-theme-thumb { width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: #ffd54a; color: #171713; font: 900 10px/1 var(--sans); transform: translateX(0); transition: transform .18s ease, background .18s ease; }
+.controller-theme-label { min-width: 28px; text-align: left; }
+.controller-workspace-links .controller-theme-toggle,
+.interactive-workspace-links .controller-theme-toggle { flex: none; }
+
+.live-controller-page[data-controller-theme="light"] { background: #f4f6f8; color: #1f242c; }
+.live-controller-page[data-controller-theme="light"] .controller-theme-toggle { border-color: #d7dce2; background: #fff; color: #343a44; }
+.live-controller-page[data-controller-theme="light"] .controller-theme-track { background: #e4e8ed; }
+.live-controller-page[data-controller-theme="light"] .controller-theme-thumb { background: #fff; box-shadow: 0 1px 4px rgba(24,31,40,.2); transform: translateX(14px); }
+.live-controller-page[data-controller-theme="light"] .controller-sidebar-controls,
+.live-controller-page[data-controller-theme="light"] .controller-console-preview .controller-preview-panel { border-color: #d9dde3; background: #fff; color: #1f242c; box-shadow: 0 12px 34px rgba(36,43,52,.1); }
+.live-controller-page[data-controller-theme="light"] .controller-sidebar-controls-header,
+.live-controller-page[data-controller-theme="light"] .controller-volume-mixer { border-color: #e1e4e8; background: #fff; }
+.live-controller-page[data-controller-theme="light"] .controller-sidebar-controls-header .controller-preview-summary strong { color: #59616d; }
+.live-controller-page[data-controller-theme="light"] .controller-preview-window-actions button,
+.live-controller-page[data-controller-theme="light"] .controller-sidebar-controls-header > button { border-color: #dce0e5; background: #f7f8fa; color: #252b34; }
+.live-controller-page[data-controller-theme="light"] .controller-control-ribbon button { border-right-color: #e3e6ea; color: #333a45; }
+.live-controller-page[data-controller-theme="light"] .controller-control-ribbon button:hover:not(:disabled),
+.live-controller-page[data-controller-theme="light"] .controller-control-ribbon button:focus-visible { background: #f5f6f8; color: #171b21; }
+.live-controller-page[data-controller-theme="light"] .controller-control-ribbon button.is-danger:hover,
+.live-controller-page[data-controller-theme="light"] .controller-control-ribbon button.is-danger:focus-visible { background: #fff0ef; color: #ad332c; }
+.live-controller-page[data-controller-theme="light"] .controller-volume-row { background: #fff; }
+.live-controller-page[data-controller-theme="light"] .controller-volume-row label { color: #343a44; }
+.live-controller-page[data-controller-theme="light"] .controller-volume-row output { color: #755d00; }
+.live-controller-page[data-controller-theme="light"] .controller-workspace-links .controller-mode-switch,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace-links .controller-mode-switch { border-color: #d8dde3; background: #f2f4f7; }
+.live-controller-page[data-controller-theme="light"] .controller-workspace-links .controller-mode-switch button,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-session-sidebar-header .interactive-workspace-links .controller-mode-switch button { color: #555d68; }
+.live-controller-page[data-controller-theme="light"] .controller-workspace-links #backToEditor,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace-links #backToEditor { border-color: #d8dde3; background: #fff; color: #252b34; }
+.live-controller-page[data-controller-theme="light"] .controller-workspace-links .controller-connection { color: #59616d; }
+
+.live-controller-page[data-controller-theme="light"] .interactive-workspace { border-color: #d8dde3; background: #eef1f4; color: #1f242c; box-shadow: 0 18px 55px rgba(36,43,52,.13); }
+.live-controller-page[data-controller-theme="light"] .interactive-main-stage { background: radial-gradient(circle at 50% 35%, #fff 0, #f1f3f6 55%, #e7ebef 100%); }
+.live-controller-page[data-controller-theme="light"] .interactive-session-sidebar { border-color: #d9dde3; background: #fff; color: #1f242c; }
+.live-controller-page[data-controller-theme="light"] .interactive-session-sidebar-header { border-bottom-color: #e1e4e8; }
+.live-controller-page[data-controller-theme="light"] .interactive-session-sidebar-header > div:first-child span,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .live-media-status,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .live-media-join label { color: #69717d; }
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-header-button { border-color: #dce0e5; background: #f7f8fa; color: #252b34; }
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-header-button:hover { background: #fff9dc; color: #6f5800; }
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-session-card { border-color: #dde1e6; background: #f7f8fa; }
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .live-media-join input { border-color: #d8dde3; background: #fff; color: #1f242c; }
+.live-controller-page[data-controller-theme="light"] .live-engagement-bar,
+.live-controller-page[data-controller-theme="light"] .live-sidebar-tabs,
+.live-controller-page[data-controller-theme="light"] .live-chat-compose { border-color: #e1e4e8; background: #fff; }
+.live-controller-page[data-controller-theme="light"] .live-media-panel .live-engagement-bar button { border-color: #dce0e5; background: #f7f8fa; color: #252b34; }
+.live-controller-page[data-controller-theme="light"] .live-media-panel .live-engagement-bar button:hover:not(:disabled) { background: #fff9dc; }
+.live-controller-page[data-controller-theme="light"] .live-media-panel .live-sidebar-tabs button { color: #6a727e; }
+.live-controller-page[data-controller-theme="light"] .live-media-panel .live-sidebar-tabs button:hover:not(:disabled),
+.live-controller-page[data-controller-theme="light"] .live-media-panel .live-sidebar-tabs button.is-active { color: #1f242c; }
+.live-controller-page[data-controller-theme="light"] .live-sidebar-tabs button span { background: #e9edf1; color: #4e5662; }
+.live-controller-page[data-controller-theme="light"] .live-sidebar-panels,
+.live-controller-page[data-controller-theme="light"] .live-chat-panel,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-participant-grid,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace.is-connected .interactive-participant-grid,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace.has-screen-share .interactive-participant-grid { background: #f4f6f8; }
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-participant-grid .live-media-tile,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace.is-connected .interactive-participant-grid .live-media-tile,
+.live-controller-page[data-controller-theme="light"] .live-chat-message,
+.live-controller-page[data-controller-theme="light"] .live-lobby-person { border-color: #dce0e5; background: #fff; color: #1f242c; box-shadow: 0 5px 16px rgba(36,43,52,.08); }
+.live-controller-page[data-controller-theme="light"] .live-media-tile footer span,
+.live-controller-page[data-controller-theme="light"] .live-chat-message time { color: #69717d; }
+.live-controller-page[data-controller-theme="light"] .live-chat-message p,
+.live-controller-page[data-controller-theme="light"] .live-lobby-person > span,
+.live-controller-page[data-controller-theme="light"] .live-lobby-heading strong { color: #303741; }
+.live-controller-page[data-controller-theme="light"] .live-chat-message.is-own { border-color: #dbc252; background: #fff9dc; }
+.live-controller-page[data-controller-theme="light"] .live-chat-compose input { border-color: #d8dde3; background: #f7f8fa; color: #1f242c; }
+.live-controller-page[data-controller-theme="light"] .live-lobby { border-color: #e1e4e8; background: #f7f8fa; }
+.live-controller-page[data-controller-theme="light"] .live-background-dialog { border-color: #d8dde3; background: #fff; color: #1f242c; box-shadow: 0 28px 90px rgba(36,43,52,.25); }
+.live-controller-page[data-controller-theme="light"] .live-background-dialog > p,
+.live-controller-page[data-controller-theme="light"] .live-background-support { color: #69717d; }
+.live-controller-page[data-controller-theme="light"] .live-media-panel .live-background-options button { border-color: #dce0e5; background: #f7f8fa; color: #303741; }
+.live-controller-page[data-controller-theme="light"] .live-icon-control-dock,
+.live-controller-page[data-controller-theme="light"] .interactive-workspace .interactive-control-dock.live-icon-control-dock { border-color: #e1e4e8; background: #fff; }
+.live-controller-page[data-controller-theme="light"] .live-icon-control-dock .live-control-button { color: #252b34; }
+.live-controller-page[data-controller-theme="light"] .live-icon-control-dock .live-control-icon { border-color: #d8dde3; background: #f7f8fa; color: #252b34; }
+.live-controller-page[data-controller-theme="light"] .live-icon-control-dock .live-control-button > [data-live-control-label] { color: #4e5662; }
+
+@media (prefers-reduced-motion: reduce) {
+  .controller-theme-toggle, .controller-theme-track, .controller-theme-thumb { transition: none; }
+}
+
+/* Audience meeting controls: full-width bottom dock, matching the meeting reference. */
+.audience-live-view .present-live-media.is-connected {
+  --audience-bottom-controls-height: 88px;
+  grid-template-rows: minmax(0, 1fr) var(--audience-bottom-controls-height);
+}
+.audience-live-view .present-live-media.is-connected .audience-meeting-stage,
+.audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+  grid-row: 1;
+}
+.audience-live-view .present-live-media.is-connected .audience-meeting-sidebar { padding-bottom: 0; }
+.audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock,
+.audience-live-view .present-live-media.is-connected.is-sidebar-hidden > .audience-meeting-controls.live-icon-control-dock {
+  position: relative;
+  z-index: 30;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: stretch;
+  width: 100%;
+  height: var(--audience-bottom-controls-height);
+  min-height: var(--audience-bottom-controls-height);
+  justify-content: center;
+  gap: 12px;
+  overflow-x: auto;
+  margin: 0;
+  padding: 8px 112px 8px 18px;
+  border-top: 1px solid rgba(255,255,255,.14);
+  background: #191916;
+  box-shadow: 0 -10px 28px rgba(0,0,0,.2);
+}
+.audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button {
+  flex: 0 0 66px;
+  width: 66px;
+  min-width: 66px;
+  max-width: 66px;
+  min-height: 68px;
+}
+.audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button.is-leave {
+  position: absolute;
+  right: 24px;
+  width: 78px;
+  max-width: 78px;
+}
+.audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button.is-leave .live-control-icon {
+  width: 72px;
+  border-radius: 999px;
+  background: #d94a43;
+  color: #fff;
+}
+.audience-live-view .present-live-media.is-connected > .audience-control-feedback {
+  bottom: calc(var(--audience-bottom-controls-height) + 10px);
+}
+
+@media (max-width: 680px) {
+  .audience-live-view .present-live-media.is-connected,
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden {
+    --audience-bottom-controls-height: calc(78px + env(safe-area-inset-bottom));
+    grid-template-rows: minmax(0, 1fr) var(--audience-bottom-controls-height);
+  }
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+    bottom: var(--audience-bottom-controls-height);
+  }
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock,
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden > .audience-meeting-controls.live-icon-control-dock {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    grid-column: 1;
+    grid-row: 2;
+    height: var(--audience-bottom-controls-height);
+    min-height: var(--audience-bottom-controls-height);
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 5px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  }
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button {
+    flex: 1 0 52px;
+    width: auto;
+    min-width: 52px;
+    max-width: 68px;
+    min-height: 64px;
+  }
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button.is-leave {
+    position: static;
+    width: auto;
+    max-width: 78px;
+    margin-left: auto;
+  }
+}
+
+/* Controller Interactive Audience controls: full-width bottom meeting dock. */
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace {
+  --controller-meeting-dock-height: 76px;
+  grid-template-rows: minmax(0, 1fr) var(--controller-meeting-dock-height);
+}
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace .interactive-main-stage,
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace .interactive-session-sidebar {
+  grid-row: 1;
+}
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock {
+  position: relative;
+  z-index: 20;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: stretch;
+  width: 100%;
+  height: var(--controller-meeting-dock-height);
+  min-height: var(--controller-meeting-dock-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0;
+  padding: 4px 104px 4px 14px;
+  border-top: 1px solid rgba(255,255,255,.14);
+  border-bottom: 0;
+  background: #191916;
+  box-shadow: 0 -10px 28px rgba(0,0,0,.2);
+}
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock .live-control-button {
+  flex: 0 0 60px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  min-height: 64px;
+  grid-column: auto;
+}
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock .live-control-button.is-leave {
+  position: absolute;
+  right: 24px;
+  width: 72px;
+  max-width: 72px;
+}
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock .live-control-button.is-leave .live-control-icon {
+  width: 66px;
+  border-radius: 999px;
+  background: #d94a43;
+  color: #fff;
+}
+.live-controller-page[data-controller-theme="light"][data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock {
+  border-top-color: #e1e4e8;
+  background: #fff;
+  box-shadow: 0 -10px 28px rgba(36,43,52,.1);
+}
+
+@media (max-width: 820px) {
+  .live-controller-page[data-controller-mode="interactive"] .interactive-workspace {
+    --controller-meeting-dock-height: calc(72px + env(safe-area-inset-bottom));
+    grid-template-rows: minmax(0, 1fr) var(--controller-meeting-dock-height);
+  }
+  .live-controller-page[data-controller-mode="interactive"] .interactive-workspace .interactive-session-sidebar {
+    bottom: var(--controller-meeting-dock-height);
+  }
+  .live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock {
+    grid-column: 1;
+    grid-row: 2;
+    height: var(--controller-meeting-dock-height);
+    min-height: var(--controller-meeting-dock-height);
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 5px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  }
+  .live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock .live-control-button {
+    flex: 1 0 52px;
+    width: auto;
+    min-width: 52px;
+    max-width: 68px;
+    min-height: 60px;
+  }
+  .live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock .live-control-button.is-leave {
+    position: static;
+    width: auto;
+    max-width: 78px;
+    margin-left: auto;
+  }
+}

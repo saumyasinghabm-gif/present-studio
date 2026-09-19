@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260918-consent-unmute">
+    <link rel="stylesheet" href="/css/styles.css?v=20260919-controller-bottom-controls">
   </head>
   <body class="live-controller-page" data-controller-mode="control">
     <main class="live-controller-shell">
@@ -16,6 +16,7 @@
         </nav>
         <div class="live-controller-actions">
           <span class="controller-connection" id="connectionStatus" data-state="connecting"><i></i> Connecting</span>
+          <button class="controller-theme-toggle" id="controllerThemeToggle" type="button" aria-label="Switch to light theme" aria-pressed="false" title="Switch to light theme"><span class="controller-theme-track" aria-hidden="true"><span class="controller-theme-thumb">☾</span></span><span class="controller-theme-label">Dark</span></button>
           <a class="button button-soft" id="backToEditor" href="/dashboard.html" aria-label="Open editor" title="Open editor"><span aria-hidden="true">✎</span><span class="controller-editor-label">Editor</span></a>
         </div>
       </header>
@@ -109,15 +110,6 @@
         <aside class="interactive-session-sidebar live-meeting-sidebar" aria-label="Participants and meeting controls">
           <header class="interactive-session-sidebar-header"><div><strong>Interactive audience</strong><span data-live-count>0 connected</span></div><div><div class="interactive-workspace-links" id="interactiveWorkspaceLinks"></div><button class="interactive-header-button" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
           <div class="interactive-session-card interactive-session-setup"><p class="eyebrow">Session setup</p><div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div><p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p></div>
-          <div class="live-media-actions interactive-control-dock live-icon-control-dock" aria-label="Meeting controls">
-            <button class="live-control-button is-microphone" type="button" data-live-microphone disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mic</span></button>
-            <button class="live-control-button is-camera" type="button" data-live-camera disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg></span><span data-live-control-label>Camera</span></button>
-            <button class="live-control-button is-screen" type="button" data-live-screen-share disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4M12 13V7M9 10l3-3 3 3"></path></svg></span><span data-live-control-label>Share</span></button>
-            <button class="live-control-button is-background" type="button" data-live-background disabled aria-haspopup="dialog" aria-expanded="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 3 3 2-2 7 7M16.5 9h.01"></path></svg></span><span data-live-control-label>Effects</span></button>
-            <button class="live-control-button is-mute-all" type="button" data-live-mute-all disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mute all</span></button>
-            <button class="live-control-button is-audio" type="button" data-live-enable-audio hidden><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"></path></svg></span><span data-live-control-label>Audio</span></button>
-            <button class="live-control-button is-leave" type="button" data-live-leave disabled><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 15.5c4.3-3.6 8.7-3.6 13 0M4 14l2 5 4-2M20 14l-2 5-4-2"></path></svg></span><span data-live-control-label>Leave</span></button>
-          </div>
           <dialog class="live-background-dialog" data-live-background-dialog aria-labelledby="controllerBackgroundTitle">
             <div class="live-background-dialog-header"><div><small>Camera effects</small><strong id="controllerBackgroundTitle">Choose a background</strong></div><button type="button" data-live-background-close aria-label="Close background chooser">×</button></div>
             <p>Choose a look for your camera. Your selection is remembered on this device.</p>
@@ -153,6 +145,15 @@
             <section class="live-sidebar-panel live-chat-panel" data-live-panel="chat" aria-label="Meeting chat" hidden><div class="live-chat-messages" data-live-chat-messages role="log" aria-live="polite"><p class="live-chat-empty" data-live-chat-empty>Messages shared in this meeting appear here.</p></div><form class="live-chat-compose" data-live-chat-form><label class="sr-only" for="controllerChatInput">Message everyone</label><input id="controllerChatInput" data-live-chat-input maxlength="500" autocomplete="off" placeholder="Message everyone"><button type="submit" disabled aria-label="Send message">Send</button></form></section>
           </div>
         </aside>
+        <div class="live-media-actions interactive-control-dock live-icon-control-dock" aria-label="Meeting controls">
+          <button class="live-control-button is-microphone" type="button" data-live-microphone disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mic</span></button>
+          <button class="live-control-button is-camera" type="button" data-live-camera disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg></span><span data-live-control-label>Camera</span></button>
+          <button class="live-control-button is-screen" type="button" data-live-screen-share disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4M12 13V7M9 10l3-3 3 3"></path></svg></span><span data-live-control-label>Share</span></button>
+          <button class="live-control-button is-background" type="button" data-live-background disabled aria-haspopup="dialog" aria-expanded="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 3 3 2-2 7 7M16.5 9h.01"></path></svg></span><span data-live-control-label>Effects</span></button>
+          <button class="live-control-button is-mute-all" type="button" data-live-mute-all disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mute all</span></button>
+          <button class="live-control-button is-audio" type="button" data-live-enable-audio hidden><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"></path></svg></span><span data-live-control-label>Audio</span></button>
+          <button class="live-control-button is-leave" type="button" data-live-leave disabled><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 15.5c4.3-3.6 8.7-3.6 13 0M4 14l2 5 4-2M20 14l-2 5-4-2"></path></svg></span><span data-live-control-label>Leave</span></button>
+        </div>
       </section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -162,7 +163,7 @@
     <script src="/js/api.js?v=20260916-no-meeting-observer"></script>
     <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260918-direct-approved-share"></script>
-    <script src="/js/controller.js?v=20260918-slide-screen-share"></script>
+    <script src="/js/live-media.js?v=20260919-controller-bottom-dock"></script>
+    <script src="/js/controller.js?v=20260919-controller-theme"></script>
   </body>
 </html>

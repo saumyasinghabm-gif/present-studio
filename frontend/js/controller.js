@@ -46,13 +46,36 @@
   }
   function annotationPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
 
+  function setControllerTheme(theme, remember = true) {
+    const nextTheme = theme === "light" ? "light" : "dark";
+    const isLight = nextTheme === "light";
+    const button = $("#controllerThemeToggle");
+    document.body.dataset.controllerTheme = nextTheme;
+    button.setAttribute("aria-pressed", String(isLight));
+    button.setAttribute("aria-label", `Switch to ${isLight ? "dark" : "light"} theme`);
+    button.title = button.getAttribute("aria-label");
+    button.querySelector(".controller-theme-thumb").textContent = isLight ? "☀" : "☾";
+    button.querySelector(".controller-theme-label").textContent = isLight ? "Light" : "Dark";
+    if (remember) try { localStorage.setItem("presentStudio.controllerTheme", nextTheme); } catch {}
+  }
+
+  function bindControllerTheme() {
+    let initialTheme = "dark";
+    try { initialTheme = localStorage.getItem("presentStudio.controllerTheme") || initialTheme; } catch {}
+    setControllerTheme(initialTheme, false);
+    $("#controllerThemeToggle").addEventListener("click", () => {
+      setControllerTheme(document.body.dataset.controllerTheme === "light" ? "dark" : "light");
+    });
+  }
+
   function setControllerMode(mode, remember = true) {
     const nextMode = mode === "interactive" ? "interactive" : "control";
     const modeSwitch = $(".controller-mode-switch");
     const editorLink = $("#backToEditor");
     const status = $("#connectionStatus");
+    const themeToggle = $("#controllerThemeToggle");
     const links = nextMode === "interactive" ? $("#interactiveWorkspaceLinks") : $("#controllerWorkspaceLinks");
-    links.append(modeSwitch, editorLink, status);
+    links.append(modeSwitch, themeToggle, editorLink, status);
     document.querySelectorAll("[data-controller-mode-view]").forEach(view => { view.hidden = view.dataset.controllerModeView !== nextMode; });
     document.querySelectorAll("[data-controller-mode-target]").forEach(button => {
       const active = button.dataset.controllerModeTarget === nextMode;
@@ -931,6 +954,7 @@
   }
 
   bindControllerConsole();
+  bindControllerTheme();
   bindPreviewDock();
   bindControllerNotes();
   bindVolumeControls();
