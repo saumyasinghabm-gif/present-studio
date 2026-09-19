@@ -3018,32 +3018,61 @@ button.present-back {
   z-index: 9500;
   right: max(18px, env(safe-area-inset-right));
   bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px));
-  min-width: 310px;
-  display: grid;
-  grid-template-columns: 14px minmax(92px, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  border: 1px solid #484842;
-  border-radius: 15px;
-  padding: 11px 12px 11px 14px;
-  background: rgba(28,28,25,.96);
+  width: 58px;
+  height: 58px;
   color: #f8f7f2;
+  touch-action: none;
+}
+.local-recording-mini[hidden] { display: none; }
+.local-recording-mini-toggle {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,116,109,.62);
+  border-radius: 50%;
+  padding: 0;
+  background: radial-gradient(circle at 35% 28%, #ff8f89 0 16%, #d94a43 17% 54%, #351b19 55% 100%);
+  color: #fff;
+  box-shadow: 0 16px 42px rgba(0,0,0,.38);
+  cursor: grab;
+}
+.local-recording-mini-toggle:active { cursor: grabbing; }
+.local-recording-mini-toggle:hover, .local-recording-mini-toggle:focus-visible { border-color: #ffd54a; outline: none; box-shadow: 0 0 0 4px rgba(255,213,74,.18), 0 16px 42px rgba(0,0,0,.38); }
+.local-recording-mini-toggle .local-recording-dot { width: 16px; height: 16px; flex-basis: 16px; box-shadow: 0 0 0 8px rgba(255,255,255,.12); }
+.local-recording-mini-panel {
+  position: absolute;
+  left: 0;
+  top: 70px;
+  width: min(270px, calc(100vw - 24px));
+  border: 1px solid #484842;
+  border-radius: 14px;
+  padding: 13px;
+  background: rgba(28,28,25,.97);
   box-shadow: 0 18px 54px rgba(0,0,0,.42);
   backdrop-filter: blur(12px);
 }
-.local-recording-mini[hidden] { display: none; }
+.local-recording-mini.is-near-right .local-recording-mini-panel { right: 0; left: auto; }
+.local-recording-mini.is-near-bottom .local-recording-mini-panel { top: auto; bottom: 70px; }
+.local-recording-mini-panel[hidden] { display: none; }
+.local-recording-mini-panel header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.local-recording-mini-panel header > button { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #4b4b45; border-radius: 9px; padding: 0; background: #292925; color: #fff; font-size: 1rem; }
+.local-recording-mini-panel header > button:hover, .local-recording-mini-panel header > button:focus-visible { border-color: #ffd54a; color: #ffd54a; outline: none; }
+.local-recording-mini-panel p { margin: 0 0 12px; color: #bdbdb5; font-size: .78rem; line-height: 1.4; }
 .local-recording-mini-status { min-width: 0; display: grid; gap: 2px; }
 .local-recording-mini-status strong { color: #ff8f89; font: 800 .62rem var(--mono); letter-spacing: .06em; text-transform: uppercase; }
 .local-recording-mini-status time { color: #fff; font: 800 1rem var(--mono); font-variant-numeric: tabular-nums; }
-.local-recording-mini-actions { display: flex; align-items: center; gap: 6px; }
-.local-recording-mini-actions button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #4b4b45; border-radius: 9px; padding: 0; background: #292925; color: #fff; font-size: .88rem; }
+.local-recording-mini-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.local-recording-mini-actions button { height: 36px; display: grid; place-items: center; border: 1px solid #4b4b45; border-radius: 9px; padding: 0; background: #292925; color: #fff; font-size: .88rem; }
 .local-recording-mini-actions button:hover, .local-recording-mini-actions button:focus-visible { border-color: #ffd54a; color: #ffd54a; outline: none; }
 .local-recording-mini-actions button.is-danger { border-color: rgba(255,116,109,.58); background: #3b2220; color: #ff8f89; }
+.local-recording-mini.is-paused .local-recording-mini-toggle { border-color: #d3aa0d; background: radial-gradient(circle at 35% 28%, #ffe082 0 16%, #d3aa0d 17% 54%, #312711 55% 100%); }
 .local-recording-mini.is-paused .local-recording-dot { border-radius: 2px; background: #ffd54a; box-shadow: none; animation: none; }
 .local-recording-mini.is-paused .local-recording-mini-status strong { color: #ffd54a; }
-.live-controller-page[data-controller-theme="light"] .local-recording-mini { border-color: #d9dde2; background: rgba(255,255,255,.97); color: #202630; box-shadow: 0 18px 54px rgba(36,43,52,.2); }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini-panel { border-color: #d9dde2; background: rgba(255,255,255,.97); color: #202630; box-shadow: 0 18px 54px rgba(36,43,52,.2); }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini-panel p { color: #626b77; }
 .live-controller-page[data-controller-theme="light"] .local-recording-mini-status time { color: #202630; }
-.live-controller-page[data-controller-theme="light"] .local-recording-mini-actions button { border-color: #d9dde2; background: #f5f6f8; color: #202630; }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini-panel header > button, .live-controller-page[data-controller-theme="light"] .local-recording-mini-actions button { border-color: #d9dde2; background: #f5f6f8; color: #202630; }
 .live-controller-page[data-controller-theme="light"] .local-recording-mini-actions button.is-danger { border-color: #d94a43; background: #fff0ef; color: #b43b35; }
 
 @media (max-width: 560px) {
@@ -3051,7 +3080,9 @@ button.present-back {
   .local-recording-actions, .local-recording-controls { padding-left: 18px; padding-right: 18px; }
   .local-recording-controls { flex-direction: column; }
   .local-recording-controls button { width: 100%; }
-  .local-recording-mini { right: max(8px, env(safe-area-inset-right)); bottom: max(82px, calc(env(safe-area-inset-bottom) + 76px)); left: max(8px, env(safe-area-inset-left)); min-width: 0; }
+  .local-recording-mini { right: max(12px, env(safe-area-inset-right)); bottom: max(86px, calc(env(safe-area-inset-bottom) + 76px)); }
+  .local-recording-mini-panel { top: 68px; }
+  .local-recording-mini.is-near-bottom .local-recording-mini-panel { bottom: 68px; }
 }
 
 /* Fullscreen only the presented stage; meeting panels and controls stay outside the fullscreen subtree. */

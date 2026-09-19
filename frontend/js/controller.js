@@ -35,6 +35,9 @@
   let outputBlanked = false;
   let localRecording = null;
   let recordingUiMinimized = false;
+  let recordingMiniOpen = false;
+  let recordingMiniPosition = null;
+  let recordingMiniDragged = false;
   let localRecordingDownloadUrl = "";
   let localRecordingCleanupTimer = 0;
   let localRecordingTempCleanup = null;
@@ -117,9 +120,48 @@
     $("#localRecordingDialog").classList.toggle("is-paused", paused);
     $("#localRecordingMini").classList.toggle("is-paused", paused);
     $("#localRecordingMiniState").textContent = paused ? "Paused" : "Recording";
+    $("#localRecordingMiniHint").textContent = paused ? "Recording is paused." : "Recording locally on this device.";
     $("#localRecordingMiniPause").textContent = paused ? "▶" : "‖";
     $("#localRecordingMiniPause").setAttribute("aria-label", paused ? "Resume recording" : "Pause recording");
     $("#localRecordingMiniPause").title = paused ? "Resume recording" : "Pause recording";
+  }
+
+  function setRecordingMiniOpen(open) {
+    recordingMiniOpen = Boolean(open);
+    $("#localRecordingMini").classList.toggle("is-open", recordingMiniOpen);
+    $("#localRecordingMiniPanel").hidden = !recordingMiniOpen;
+    $("#localRecordingMiniToggle").setAttribute("aria-expanded", String(recordingMiniOpen));
+    $("#localRecordingMiniToggle").setAttribute("aria-label", recordingMiniOpen ? "Close recording controls" : "Open recording controls");
+  }
+
+  function applyRecordingMiniPosition(x, y) {
+    const mini = $("#localRecordingMini");
+    const rect = mini.getBoundingClientRect();
+    const margin = 8;
+    const maxX = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxY = Math.max(margin, window.innerHeight - rect.height - margin);
+    const nextX = Math.min(Math.max(margin, x), maxX);
+    const nextY = Math.min(Math.max(margin, y), maxY);
+    recordingMiniPosition = { x: nextX, y: nextY };
+    mini.style.left = `${nextX}px`;
+    mini.style.top = `${nextY}px`;
+    mini.style.right = "auto";
+    mini.style.bottom = "auto";
+    mini.classList.toggle("is-near-right", nextX > window.innerWidth / 2);
+    mini.classList.toggle("is-near-bottom", nextY > window.innerHeight / 2);
+  }
+
+  function syncRecordingMiniPosition() {
+    const mini = $("#localRecordingMini");
+    if (!mini || mini.hidden) return;
+    if (recordingMiniPosition) {
+      applyRecordingMiniPosition(recordingMiniPosition.x, recordingMiniPosition.y);
+      return;
+    }
+    requestAnimationFrame(() => {
+      const rect = mini.getBoundingClientRect();
+      applyRecordingMiniPosition(window.innerWidth - rect.width - 18, window.innerHeight - rect.height - 96);
+    });
   }
 
   function setRecordingMinimized(minimized) {
@@ -129,9 +171,12 @@
     setRecordingUi(true, localRecording.recorder.state === "paused");
     if (recordingUiMinimized) {
       if (dialog.open) dialog.close();
-      $("#localRecordingRestore").focus();
+      setRecordingMiniOpen(false);
+      syncRecordingMiniPosition();
+      $("#localRecordingMiniToggle").focus();
     } else {
       $("#localRecordingMini").hidden = true;
+      setRecordingMiniOpen(false);
       if (!dialog.open) dialog.showModal();
       $("#localRecordingPause").focus();
     }
@@ -208,6 +253,7 @@
     localRecording = null;
     document.body.removeAttribute("data-local-recording");
     setRecordingUi(false);
+    setRecordingMiniOpen(false);
     if ($("#localRecordingDialog").open) $("#localRecordingDialog").close();
     if (download && recordingBlob?.size) {
       downloadRecording(recordingBlob, session.mimeType);
@@ -335,6 +381,8 @@
 
   function bindLocalRecording() {
     const dialog = $("#localRecordingDialog");
+    const mini = $("#localRecordingMini");
+    const miniToggle = $("#localRecordingMiniToggle");
     const open = () => {
       setRecordingFeedback("");
       if (localRecording) recordingUiMinimized = false;
@@ -348,9 +396,45 @@
     $("#localRecordingStart").addEventListener("click", startLocalRecording);
     $("#localRecordingPause").addEventListener("click", toggleLocalRecordingPause);
     $("#localRecordingStop").addEventListener("click", () => finishLocalRecording());
+    miniToggle.addEventListener("click", () => {
+      if (recordingMiniDragged) {
+        recordingMiniDragged = false;
+        return;
+      }
+      setRecordingMiniOpen(!recordingMiniOpen);
+    });
+    $("#localRecordingMiniClose").addEventListener("click", () => {
+      setRecordingMiniOpen(false);
+      miniToggle.focus();
+    });
     $("#localRecordingMiniPause").addEventListener("click", toggleLocalRecordingPause);
     $("#localRecordingRestore").addEventListener("click", () => setRecordingMinimized(false));
     $("#localRecordingMiniStop").addEventListener("click", () => finishLocalRecording());
+    mini.addEventListener("pointerdown", event => {
+      if (!localRecording || localRecording.finishing || event.button !== 0) return;
+      if (event.target.closest(".local-recording-mini-panel button")) return;
+      const startRect = mini.getBoundingClientRect();
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let moved = false;
+      const move = moveEvent => {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+        if (!moved) return;
+        moveEvent.preventDefault();
+        applyRecordingMiniPosition(startRect.left + dx, startRect.top + dy);
+      };
+      const up = () => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        recordingMiniDragged = moved;
+        if (moved) setTimeout(() => { recordingMiniDragged = false; }, 0);
+      };
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up, { once: true });
+    });
+    window.addEventListener("resize", syncRecordingMiniPosition);
     dialog.addEventListener("cancel", event => { if (localRecording) event.preventDefault(); });
     window.addEventListener("beforeunload", event => {
       if (!localRecording) return;

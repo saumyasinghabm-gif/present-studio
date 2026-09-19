@@ -176,8 +176,13 @@
       <p class="local-recording-feedback" id="localRecordingFeedback" role="alert" hidden></p>
       <div class="local-recording-actions" id="localRecordingActions"><button type="button" id="localRecordingCancel">Cancel</button><button type="button" id="localRecordingStart" class="is-primary"><span aria-hidden="true">●</span> Start recording</button></div>
     </dialog>
-    <aside class="local-recording-mini" id="localRecordingMini" aria-label="Local recording controls" hidden>
-      <span class="local-recording-dot" aria-hidden="true"></span><div class="local-recording-mini-status"><strong id="localRecordingMiniState">Recording</strong><time id="localRecordingMiniTimer" datetime="PT0S">00:00</time></div><div class="local-recording-mini-actions"><button type="button" id="localRecordingMiniPause" aria-label="Pause recording" title="Pause recording">‖</button><button type="button" id="localRecordingRestore" aria-label="Restore recording controls" title="Restore recording controls">↗</button><button type="button" id="localRecordingMiniStop" class="is-danger" aria-label="Stop and download recording" title="Stop and download">■</button></div>
+    <aside class="local-recording-mini" id="localRecordingMini" aria-label="Floating local recording controls" hidden>
+      <button type="button" class="local-recording-mini-toggle" id="localRecordingMiniToggle" aria-label="Open recording controls" aria-expanded="false" aria-controls="localRecordingMiniPanel"><span class="local-recording-dot" aria-hidden="true"></span><span class="sr-only">Recording controls</span></button>
+      <div class="local-recording-mini-panel" id="localRecordingMiniPanel" hidden>
+        <header><div class="local-recording-mini-status"><strong id="localRecordingMiniState">Recording</strong><time id="localRecordingMiniTimer" datetime="PT0S">00:00</time></div><button type="button" id="localRecordingMiniClose" aria-label="Close floating recording controls">×</button></header>
+        <p id="localRecordingMiniHint">Recording locally on this device.</p>
+        <div class="local-recording-mini-actions"><button type="button" id="localRecordingMiniPause" aria-label="Pause recording" title="Pause recording">‖</button><button type="button" id="localRecordingRestore" aria-label="Restore recording controls" title="Restore recording controls">↗</button><button type="button" id="localRecordingMiniStop" class="is-danger" aria-label="Stop and download recording" title="Stop and download">■</button></div>
+      </div>
     </aside>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
