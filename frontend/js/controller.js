@@ -33,6 +33,7 @@
   let volumeEmitTimer;
   let restoredMediaState = null;
   let outputBlanked = false;
+  let localRecording = null;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -45,6 +46,261 @@
     status.innerHTML = `<i></i> ${label}`;
   }
   function annotationPayload(type, payload = {}) { socket?.emit("annotation_event", { ...credentials(), type, payload }); }
+
+  function recordingMimeType() {
+    return [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm"
+    ].find(type => window.MediaRecorder?.isTypeSupported?.(type)) || "";
+  }
+
+  function recordingFilename(mimeType) {
+    const safeTitle = String(presentation?.title || "meeting-recording")
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "meeting-recording";
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    return `${safeTitle}-${stamp}.${mimeType.includes("mp4") ? "mp4" : "webm"}`;
+  }
+
+  function formatRecordingTime(milliseconds) {
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor(totalSeconds % 3600 / 60);
+    const seconds = totalSeconds % 60;
+    return hours ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}` : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function setRecordingFeedback(message = "") {
+    const feedback = $("#localRecordingFeedback");
+    feedback.textContent = message;
+    feedback.hidden = !message;
+  }
+
+  function syncRecordingTimer() {
+    if (!localRecording) return;
+    const pausedNow = localRecording.recorder.state === "paused" ? Date.now() - localRecording.pauseStartedAt : 0;
+    const elapsed = Date.now() - localRecording.startedAt - localRecording.pausedDuration - pausedNow;
+    const value = formatRecordingTime(elapsed);
+    const timer = $("#localRecordingTimer");
+    timer.textContent = value;
+    timer.dateTime = `PT${Math.max(0, Math.floor(elapsed / 1000))}S`;
+  }
+
+  function setRecordingUi(active, paused = false) {
+    $("#localRecordingIntro").hidden = active;
+    $("#localRecordingActions").hidden = active;
+    $("#localRecordingActive").hidden = !active;
+    $("#localRecordingClose").disabled = active;
+    const recordButton = $("#controllerRecordButton");
+    recordButton.classList.toggle("is-recording", active && !paused);
+    recordButton.classList.toggle("is-paused", active && paused);
+    recordButton.setAttribute("aria-label", active ? "Open local recording controls" : "Record meeting locally");
+    recordButton.querySelector("[data-live-control-label]").textContent = active ? (paused ? "Paused" : "Recording") : "Record";
+    if (!active) return;
+    $("#localRecordingState").textContent = paused ? "Recording paused" : "Recording";
+    $("#localRecordingPause").textContent = paused ? "Resume" : "Pause";
+    $("#localRecordingDialog").classList.toggle("is-paused", paused);
+  }
+
+  async function createRecordingSink(mimeType) {
+    if (!navigator.storage?.getDirectory) return null;
+    try {
+      const root = await navigator.storage.getDirectory();
+      const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+      const id = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const name = `present-studio-recording-${id}.${extension}`;
+      const handle = await root.getFileHandle(name, { create: true });
+      const writable = await handle.createWritable();
+      return { root, name, handle, writable, writeChain: Promise.resolve() };
+    } catch {
+      return null;
+    }
+  }
+
+  function downloadRecording(blob, mimeType) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = recordingFilename(blob.type);
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async function finishLocalRecording({ download = true } = {}) {
+    const session = localRecording;
+    if (!session || session.finishing) return;
+    session.finishing = true;
+    clearInterval(session.timerInterval);
+    if (session.recorder.state !== "inactive") session.recorder.stop();
+    await session.stopped;
+    session.displayStream.getTracks().forEach(track => track.stop());
+    session.recordingStream.getTracks().forEach(track => {
+      if (!session.displayStream.getTracks().includes(track)) track.stop();
+    });
+    await session.audioContext?.close().catch(() => {});
+    let recordingBlob = null;
+    try {
+      if (session.sink) {
+        await session.sink.writeChain;
+        await session.sink.writable.close();
+        recordingBlob = await session.sink.handle.getFile();
+      } else if (session.chunks.length) {
+        recordingBlob = new Blob(session.chunks, { type: session.mimeType });
+      }
+    } catch (error) {
+      download = false;
+      if (session.sink?.writable.abort) await session.sink.writable.abort().catch(() => {});
+      setRecordingFeedback(error?.message || "The recording could not be finalized on this device.");
+    }
+    localRecording = null;
+    document.body.removeAttribute("data-local-recording");
+    setRecordingUi(false);
+    $("#localRecordingDialog").close();
+    if (download && recordingBlob?.size) {
+      downloadRecording(recordingBlob, session.mimeType);
+      toast("Recording finished. Your local download has started.");
+    }
+    if (session.sink) await session.sink.root.removeEntry(session.sink.name).catch(() => {});
+  }
+
+  async function startLocalRecording() {
+    if (localRecording) return;
+    setRecordingFeedback("");
+    if (!navigator.mediaDevices?.getDisplayMedia || !window.MediaRecorder) {
+      setRecordingFeedback("Local recording is not supported in this browser. Use the latest Chrome or Edge.");
+      return;
+    }
+    $("#localRecordingStart").disabled = true;
+    $("#localRecordingDialog").close();
+    let displayStream;
+    try {
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        preferCurrentTab: true,
+        selfBrowserSurface: "include",
+        surfaceSwitching: "exclude",
+        systemAudio: "include"
+      });
+    } catch (error) {
+      $("#localRecordingStart").disabled = false;
+      if (error?.name !== "NotAllowedError" && error?.name !== "AbortError") {
+        setRecordingFeedback(error?.message || "The browser could not start screen capture.");
+        $("#localRecordingDialog").showModal();
+      }
+      return;
+    }
+
+    let setupAudioContext = null;
+    let setupSink = null;
+    try {
+      const audioTracks = displayStream.getAudioTracks();
+      const localMicrophoneTrack = liveMediaSession?.getLocalMicrophoneMediaTrack?.();
+      let mixedAudioTrack = null;
+      if (audioTracks.length || localMicrophoneTrack?.readyState === "live") {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          setupAudioContext = new AudioContextClass();
+          const destination = setupAudioContext.createMediaStreamDestination();
+          audioTracks.forEach(track => setupAudioContext.createMediaStreamSource(new MediaStream([track])).connect(destination));
+          if (localMicrophoneTrack?.readyState === "live") setupAudioContext.createMediaStreamSource(new MediaStream([localMicrophoneTrack])).connect(destination);
+          await setupAudioContext.resume();
+          mixedAudioTrack = destination.stream.getAudioTracks()[0] || null;
+        }
+      }
+      const recordingStream = new MediaStream([...displayStream.getVideoTracks(), ...(mixedAudioTrack ? [mixedAudioTrack] : audioTracks)]);
+      const mimeType = recordingMimeType();
+      const recorder = new MediaRecorder(recordingStream, {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: 6_000_000,
+        audioBitsPerSecond: 128_000
+      });
+      const chunks = [];
+      setupSink = await createRecordingSink(recorder.mimeType || mimeType || "video/webm");
+      let resolveStopped;
+      const stopped = new Promise(resolve => { resolveStopped = resolve; });
+      recorder.addEventListener("dataavailable", event => {
+        if (!event.data?.size) return;
+        if (setupSink) setupSink.writeChain = setupSink.writeChain.then(() => setupSink.writable.write(event.data));
+        else chunks.push(event.data);
+      });
+      recorder.addEventListener("stop", resolveStopped, { once: true });
+      recorder.addEventListener("error", event => {
+        setRecordingFeedback(event.error?.message || "Recording stopped because of a browser error.");
+        finishLocalRecording();
+      }, { once: true });
+      localRecording = {
+        recorder, chunks, sink: setupSink, mimeType: recorder.mimeType || mimeType || "video/webm", displayStream, recordingStream, audioContext: setupAudioContext, stopped,
+        startedAt: Date.now(), pausedDuration: 0, pauseStartedAt: 0, timerInterval: null, finishing: false
+      };
+      displayStream.getVideoTracks()[0]?.addEventListener("ended", () => finishLocalRecording(), { once: true });
+      recorder.start(2000);
+      localRecording.timerInterval = setInterval(syncRecordingTimer, 250);
+      syncRecordingTimer();
+      document.body.dataset.localRecording = "active";
+      setRecordingUi(true);
+      $("#localRecordingMessage").textContent = audioTracks.length
+        ? "Tab audio is included. The recording will download when you stop."
+        : localMicrophoneTrack
+          ? "Your microphone is included, but shared-tab audio was not enabled."
+          : "Video is recording without audio. Restart and enable Share tab audio to capture meeting sound.";
+      $("#localRecordingStart").disabled = false;
+      $("#localRecordingDialog").showModal();
+    } catch (error) {
+      displayStream.getTracks().forEach(track => track.stop());
+      await setupAudioContext?.close().catch(() => {});
+      if (setupSink?.writable.abort) await setupSink.writable.abort().catch(() => {});
+      if (setupSink) await setupSink.root.removeEntry(setupSink.name).catch(() => {});
+      localRecording = null;
+      document.body.removeAttribute("data-local-recording");
+      setRecordingUi(false);
+      $("#localRecordingStart").disabled = false;
+      setRecordingFeedback(error?.message || "The browser could not create the recording.");
+      $("#localRecordingDialog").showModal();
+    }
+  }
+
+  function toggleLocalRecordingPause() {
+    if (!localRecording || localRecording.finishing) return;
+    if (localRecording.recorder.state === "recording") {
+      localRecording.recorder.pause();
+      localRecording.pauseStartedAt = Date.now();
+      setRecordingUi(true, true);
+    } else if (localRecording.recorder.state === "paused") {
+      localRecording.pausedDuration += Date.now() - localRecording.pauseStartedAt;
+      localRecording.pauseStartedAt = 0;
+      localRecording.recorder.resume();
+      setRecordingUi(true, false);
+    }
+    syncRecordingTimer();
+  }
+
+  function bindLocalRecording() {
+    const dialog = $("#localRecordingDialog");
+    const open = () => {
+      setRecordingFeedback("");
+      setRecordingUi(Boolean(localRecording), localRecording?.recorder.state === "paused");
+      if (!dialog.open) dialog.showModal();
+    };
+    $("#controllerRecordButton").addEventListener("click", open);
+    $("#localRecordingClose").addEventListener("click", () => dialog.close());
+    $("#localRecordingCancel").addEventListener("click", () => dialog.close());
+    $("#localRecordingStart").addEventListener("click", startLocalRecording);
+    $("#localRecordingPause").addEventListener("click", toggleLocalRecordingPause);
+    $("#localRecordingStop").addEventListener("click", () => finishLocalRecording());
+    dialog.addEventListener("cancel", event => { if (localRecording) event.preventDefault(); });
+    window.addEventListener("beforeunload", event => {
+      if (!localRecording) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+  }
 
   function setControllerTheme(theme, remember = true) {
     const nextTheme = theme === "light" ? "light" : "dark";
@@ -955,6 +1211,7 @@
 
   bindControllerConsole();
   bindControllerTheme();
+  bindLocalRecording();
   bindPreviewDock();
   bindControllerNotes();
   bindVolumeControls();

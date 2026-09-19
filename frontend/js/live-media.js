@@ -1456,7 +1456,12 @@
     ensureJoinSoundControl();
     syncButtons(false);
     setSidebarTab("people");
-    return { join, leave };
+    function getLocalMicrophoneMediaTrack() {
+      const publication = publications(room?.localParticipant).find(item => isSource(item, "Microphone") && item.track);
+      return publication?.track?.mediaStreamTrack || null;
+    }
+
+    return { join, leave, getLocalMicrophoneMediaTrack };
   }
 
   window.SnapKeyLiveMedia = { create };
