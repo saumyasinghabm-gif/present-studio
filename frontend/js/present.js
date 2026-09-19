@@ -418,7 +418,7 @@ async function init() {
   liveMediaSession = window.SnapKeyLiveMedia?.create({
     root: $("presentLiveMedia"), presentationId, shareToken, authToken: audienceJoinLink ? "" : authToken, screenAccessCode, socket,
     admissionBypass: presenter,
-    displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia"), fullscreenOnJoin: false,
+    displayName: api.getCachedSession()?.name || "", fullscreenTarget: presenter ? null : $("presentLiveMedia").querySelector(".audience-meeting-stage"), fullscreenOnJoin: false,
     onEnableAudio: enablePresentationAudio,
     onValidateAdmission: validateMeetingAccessCode,
     getScreenAccessCode: () => screenAccessCode,

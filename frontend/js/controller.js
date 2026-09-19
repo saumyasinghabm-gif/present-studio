@@ -1234,7 +1234,7 @@
       authToken,
       socket,
       displayName: api.getCachedSession()?.name || "Presenter",
-      fullscreenTarget: $("#controllerLiveMedia"),
+      fullscreenTarget: $("#controllerLiveMedia").querySelector(".interactive-main-stage"),
       fullscreenOnJoin: false,
       controller: true,
       presentationSource: {

@@ -3015,3 +3015,55 @@ button.present-back {
   .local-recording-controls { flex-direction: column; }
   .local-recording-controls button { width: 100%; }
 }
+
+/* Fullscreen only the presented stage; meeting panels and controls stay outside the fullscreen subtree. */
+.interactive-main-stage:fullscreen,
+.audience-meeting-stage:fullscreen {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+  padding: 0;
+  background: #000;
+}
+.interactive-main-stage:fullscreen > .interactive-presentation-feed,
+.interactive-main-stage:fullscreen > .interactive-screen-share,
+.audience-meeting-stage:fullscreen > .audience-presentation-feed,
+.audience-meeting-stage:fullscreen > .live-screen-share {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.interactive-main-stage:fullscreen .live-presentation-feed,
+.audience-meeting-stage:fullscreen .live-presentation-feed {
+  grid-template-rows: minmax(0, 1fr);
+}
+.interactive-main-stage:fullscreen .live-presentation-feed-heading,
+.interactive-main-stage:fullscreen .live-screen-share-heading,
+.audience-meeting-stage:fullscreen .live-presentation-feed-heading,
+.audience-meeting-stage:fullscreen .live-screen-share-heading,
+.interactive-main-stage:fullscreen [data-live-panel-restore],
+.audience-meeting-stage:fullscreen [data-live-panel-restore] {
+  display: none !important;
+}
+.interactive-main-stage:fullscreen .live-presentation-feed-frame,
+.interactive-main-stage:fullscreen .live-screen-share-media,
+.audience-meeting-stage:fullscreen .live-presentation-feed-frame,
+.audience-meeting-stage:fullscreen .live-screen-share-media {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  background: #000;
+}

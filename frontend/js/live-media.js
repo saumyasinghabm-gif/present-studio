@@ -35,6 +35,7 @@
       meetingSidebar.after(audienceFeedback, audienceControls);
     }
     const fullscreenButton = root.querySelector("[data-live-fullscreen]");
+    const fullscreenTarget = options.fullscreenTarget || null;
     const status = root.querySelector("[data-live-status]");
     const count = root.querySelector("[data-live-count]");
     const tiles = root.querySelector("[data-live-tiles]");
@@ -1349,15 +1350,26 @@
     });
     enableAudioButton.addEventListener("click", () => enableAudio(true));
     leaveButton.addEventListener("click", leave);
-    fullscreenButton?.addEventListener("click", () => {
-      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-      else options.fullscreenTarget?.requestFullscreen?.().catch(error => setStatus(error.message || "Fullscreen was blocked", "error"));
+    fullscreenButton?.addEventListener("click", async () => {
+      if (!fullscreenTarget) return;
+      if (document.fullscreenElement === fullscreenTarget) {
+        await document.exitFullscreen?.().catch(() => {});
+        return;
+      }
+      if (document.fullscreenElement) await document.exitFullscreen?.().catch(() => {});
+      const requestFullscreen = fullscreenTarget.requestFullscreen || fullscreenTarget.webkitRequestFullscreen;
+      if (!requestFullscreen) {
+        setStatus("Fullscreen is not supported by this browser", "error");
+        return;
+      }
+      try { await requestFullscreen.call(fullscreenTarget); }
+      catch (error) { setStatus(error.message || "Fullscreen was blocked", "error"); }
     });
     document.addEventListener("fullscreenchange", () => {
       if (!fullscreenButton) return;
-      const active = document.fullscreenElement === options.fullscreenTarget;
+      const active = document.fullscreenElement === fullscreenTarget;
       fullscreenButton.textContent = active ? "×" : "⛶";
-      fullscreenButton.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
+      fullscreenButton.setAttribute("aria-label", active ? "Exit presentation fullscreen" : "Enter presentation fullscreen");
       fullscreenButton.title = active ? "Exit fullscreen" : "Enter fullscreen";
     });
     panelToggle?.addEventListener("click", () => setAudienceSidebarHidden(true, true));
