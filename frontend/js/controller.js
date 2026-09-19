@@ -35,6 +35,9 @@
   let outputBlanked = false;
   let localRecording = null;
   let recordingUiMinimized = false;
+  let localRecordingDownloadUrl = "";
+  let localRecordingCleanupTimer = 0;
+  let localRecordingTempCleanup = null;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -149,16 +152,31 @@
     }
   }
 
-  function downloadRecording(blob, mimeType) {
-    const url = URL.createObjectURL(blob);
+  function releaseRecordingDownloadUrl(cleanTemporaryFile = false) {
+    if (localRecordingCleanupTimer) {
+      clearTimeout(localRecordingCleanupTimer);
+      localRecordingCleanupTimer = 0;
+    }
+    if (localRecordingDownloadUrl) {
+      URL.revokeObjectURL(localRecordingDownloadUrl);
+      localRecordingDownloadUrl = "";
+    }
+    if (cleanTemporaryFile && localRecordingTempCleanup) {
+      localRecordingTempCleanup();
+      localRecordingTempCleanup = null;
+    }
+  }
+
+  function downloadRecording(blob) {
+    releaseRecordingDownloadUrl(true);
+    localRecordingDownloadUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
+    link.href = localRecordingDownloadUrl;
     link.download = recordingFilename(blob.type);
     link.hidden = true;
     document.body.append(link);
     link.click();
     link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   async function finishLocalRecording({ download = true } = {}) {
@@ -195,7 +213,12 @@
       downloadRecording(recordingBlob, session.mimeType);
       toast("Recording finished. Your local download has started.");
     }
-    if (session.sink) await session.sink.root.removeEntry(session.sink.name).catch(() => {});
+    if (session.sink) {
+      localRecordingTempCleanup = () => session.sink.root.removeEntry(session.sink.name).catch(() => {});
+      localRecordingCleanupTimer = setTimeout(() => {
+        releaseRecordingDownloadUrl(true);
+      }, 10 * 60 * 1000);
+    }
   }
 
   async function startLocalRecording() {
@@ -334,6 +357,7 @@
       event.preventDefault();
       event.returnValue = "";
     });
+    window.addEventListener("pagehide", () => releaseRecordingDownloadUrl(true));
   }
 
   function setControllerTheme(theme, remember = true) {
