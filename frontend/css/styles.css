@@ -2981,8 +2981,11 @@ button.present-back {
 .local-recording-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 22px 24px 18px; border-bottom: 1px solid #383833; }
 .local-recording-header h2 { margin: 4px 0 0; font-size: 1.35rem; }
 .local-recording-kicker { color: #ffd54a; font-family: var(--mono); font-size: .67rem; letter-spacing: .11em; text-transform: uppercase; }
-.local-recording-header > button { width: 34px; height: 34px; border: 1px solid #484842; border-radius: 10px; background: #292925; color: #fff; font-size: 1.25rem; }
-.local-recording-header > button:disabled { opacity: .35; cursor: not-allowed; }
+.local-recording-header-actions { display: flex; align-items: center; gap: 7px; }
+.local-recording-header-actions button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #484842; border-radius: 10px; padding: 0; background: #292925; color: #fff; font-size: 1.25rem; }
+.local-recording-header-actions button:hover:not(:disabled), .local-recording-header-actions button:focus-visible { border-color: #ffd54a; color: #ffd54a; outline: none; }
+.local-recording-header-actions button:disabled { opacity: .35; cursor: not-allowed; }
+.local-recording-header-actions button[hidden] { display: none; }
 .local-recording-intro, .local-recording-active { padding: 22px 24px 8px; }
 .local-recording-privacy { display: flex; gap: 13px; padding: 14px; border: 1px solid rgba(255,213,74,.28); border-radius: 12px; background: rgba(255,213,74,.07); }
 .local-recording-privacy > span { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border-radius: 50%; background: #ffd54a; color: #171713; font-weight: 900; }
@@ -3003,17 +3006,51 @@ button.present-back {
 .local-recording-feedback { margin: 14px 24px 0; padding: 11px 12px; border: 1px solid rgba(255,116,109,.35); border-radius: 10px; background: rgba(217,74,67,.1); color: #ffaaa3; font-size: .82rem; line-height: 1.45; }
 .live-controller-page[data-controller-theme="light"] .local-recording-dialog { border-color: #d9dde2; background: #fff; color: #202630; }
 .live-controller-page[data-controller-theme="light"] .local-recording-header { border-color: #e5e8ec; }
-.live-controller-page[data-controller-theme="light"] .local-recording-header > button, .live-controller-page[data-controller-theme="light"] .local-recording-actions button, .live-controller-page[data-controller-theme="light"] .local-recording-controls button { border-color: #d9dde2; background: #f5f6f8; color: #202630; }
+.live-controller-page[data-controller-theme="light"] .local-recording-header-actions button, .live-controller-page[data-controller-theme="light"] .local-recording-actions button, .live-controller-page[data-controller-theme="light"] .local-recording-controls button { border-color: #d9dde2; background: #f5f6f8; color: #202630; }
 .live-controller-page[data-controller-theme="light"] .local-recording-actions .is-primary { border-color: #f4c521; background: #ffd54a; color: #171713; }
 .live-controller-page[data-controller-theme="light"] .local-recording-controls .is-danger { border-color: #d94a43; background: #d94a43; color: #fff; }
 .live-controller-page[data-controller-theme="light"] .local-recording-privacy p, .live-controller-page[data-controller-theme="light"] .local-recording-hint, .live-controller-page[data-controller-theme="light"] .local-recording-active p { color: #626b77; }
 .live-controller-page[data-controller-theme="light"] .local-recording-hint { background: #f3f5f7; }
+
+.local-recording-mini {
+  position: fixed;
+  z-index: 9500;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px));
+  min-width: 310px;
+  display: grid;
+  grid-template-columns: 14px minmax(92px, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid #484842;
+  border-radius: 15px;
+  padding: 11px 12px 11px 14px;
+  background: rgba(28,28,25,.96);
+  color: #f8f7f2;
+  box-shadow: 0 18px 54px rgba(0,0,0,.42);
+  backdrop-filter: blur(12px);
+}
+.local-recording-mini[hidden] { display: none; }
+.local-recording-mini-status { min-width: 0; display: grid; gap: 2px; }
+.local-recording-mini-status strong { color: #ff8f89; font: 800 .62rem var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.local-recording-mini-status time { color: #fff; font: 800 1rem var(--mono); font-variant-numeric: tabular-nums; }
+.local-recording-mini-actions { display: flex; align-items: center; gap: 6px; }
+.local-recording-mini-actions button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #4b4b45; border-radius: 9px; padding: 0; background: #292925; color: #fff; font-size: .88rem; }
+.local-recording-mini-actions button:hover, .local-recording-mini-actions button:focus-visible { border-color: #ffd54a; color: #ffd54a; outline: none; }
+.local-recording-mini-actions button.is-danger { border-color: rgba(255,116,109,.58); background: #3b2220; color: #ff8f89; }
+.local-recording-mini.is-paused .local-recording-dot { border-radius: 2px; background: #ffd54a; box-shadow: none; animation: none; }
+.local-recording-mini.is-paused .local-recording-mini-status strong { color: #ffd54a; }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini { border-color: #d9dde2; background: rgba(255,255,255,.97); color: #202630; box-shadow: 0 18px 54px rgba(36,43,52,.2); }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini-status time { color: #202630; }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini-actions button { border-color: #d9dde2; background: #f5f6f8; color: #202630; }
+.live-controller-page[data-controller-theme="light"] .local-recording-mini-actions button.is-danger { border-color: #d94a43; background: #fff0ef; color: #b43b35; }
 
 @media (max-width: 560px) {
   .local-recording-header, .local-recording-intro, .local-recording-active { padding-left: 18px; padding-right: 18px; }
   .local-recording-actions, .local-recording-controls { padding-left: 18px; padding-right: 18px; }
   .local-recording-controls { flex-direction: column; }
   .local-recording-controls button { width: 100%; }
+  .local-recording-mini { right: max(8px, env(safe-area-inset-right)); bottom: max(82px, calc(env(safe-area-inset-bottom) + 76px)); left: max(8px, env(safe-area-inset-left)); min-width: 0; }
 }
 
 /* Fullscreen only the presented stage; meeting panels and controls stay outside the fullscreen subtree. */

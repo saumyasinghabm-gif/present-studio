@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Present Studio — Live Controller</title>
-    <link rel="stylesheet" href="/css/styles.css?v=20260919-theme-settings">
+    <link rel="stylesheet" href="/css/styles.css?v=20260919-recording-minimize">
   </head>
   <body class="live-controller-page" data-controller-mode="control">
     <main class="live-controller-shell">
@@ -162,7 +162,7 @@
       <div class="appearance-settings-body"><p>Choose how the controller workspace looks on this device.</p><div class="appearance-theme-options" role="group" aria-label="Controller theme"><button type="button" data-controller-theme-option="dark" aria-pressed="true"><span aria-hidden="true">☾</span><span><strong>Black</strong><small>Dark workspace</small></span><b>Selected</b></button><button type="button" data-controller-theme-option="light" aria-pressed="false"><span aria-hidden="true">☀</span><span><strong>Light</strong><small>Bright workspace</small></span><b>Use</b></button></div></div>
     </dialog>
     <dialog class="local-recording-dialog" id="localRecordingDialog" aria-labelledby="localRecordingTitle">
-      <div class="local-recording-header"><div><span class="local-recording-kicker">Saved only on this device</span><h2 id="localRecordingTitle">Record meeting locally</h2></div><button type="button" id="localRecordingClose" aria-label="Close recording panel">×</button></div>
+      <div class="local-recording-header"><div><span class="local-recording-kicker">Saved only on this device</span><h2 id="localRecordingTitle">Record meeting locally</h2></div><div class="local-recording-header-actions"><button type="button" id="localRecordingMinimize" aria-label="Minimize recording controls" title="Minimize recording controls" hidden><span aria-hidden="true">—</span></button><button type="button" id="localRecordingClose" aria-label="Close recording panel">×</button></div></div>
       <div class="local-recording-intro" id="localRecordingIntro">
         <div class="local-recording-privacy"><span aria-hidden="true">↓</span><div><strong>No cloud upload</strong><p>The recording stays in this browser and downloads directly to your computer.</p></div></div>
         <ol class="local-recording-steps"><li>Choose <strong>This Tab</strong> when your browser asks what to share.</li><li>Turn on <strong>Share tab audio</strong> to include meeting and presentation sound.</li><li>Keep this tab open until you stop the recording and the download begins.</li></ol>
@@ -176,6 +176,9 @@
       <p class="local-recording-feedback" id="localRecordingFeedback" role="alert" hidden></p>
       <div class="local-recording-actions" id="localRecordingActions"><button type="button" id="localRecordingCancel">Cancel</button><button type="button" id="localRecordingStart" class="is-primary"><span aria-hidden="true">●</span> Start recording</button></div>
     </dialog>
+    <aside class="local-recording-mini" id="localRecordingMini" aria-label="Local recording controls" hidden>
+      <span class="local-recording-dot" aria-hidden="true"></span><div class="local-recording-mini-status"><strong id="localRecordingMiniState">Recording</strong><time id="localRecordingMiniTimer" datetime="PT0S">00:00</time></div><div class="local-recording-mini-actions"><button type="button" id="localRecordingMiniPause" aria-label="Pause recording" title="Pause recording">‖</button><button type="button" id="localRecordingRestore" aria-label="Restore recording controls" title="Restore recording controls">↗</button><button type="button" id="localRecordingMiniStop" class="is-danger" aria-label="Stop and download recording" title="Stop and download">■</button></div>
+    </aside>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
     <script src="/js/fabric-patch.js?v=20260908-paragraph-align"></script>
@@ -183,7 +186,7 @@
     <script src="/js/api.js?v=20260919-participant-icons"></script>
     <script src="/js/youtube-embed.js?v=20260915-youtube-media"></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
-    <script src="/js/live-media.js?v=20260919-theme-settings"></script>
-    <script src="/js/controller.js?v=20260919-theme-settings"></script>
+    <script src="/js/live-media.js?v=20260919-recording-minimize"></script>
+    <script src="/js/controller.js?v=20260919-recording-minimize"></script>
   </body>
 </html>

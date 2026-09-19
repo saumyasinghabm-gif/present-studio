@@ -34,6 +34,7 @@
   let restoredMediaState = null;
   let outputBlanked = false;
   let localRecording = null;
+  let recordingUiMinimized = false;
 
   function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
   function toast(message) { const node = $("#toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 2600); }
@@ -87,13 +88,21 @@
     const timer = $("#localRecordingTimer");
     timer.textContent = value;
     timer.dateTime = `PT${Math.max(0, Math.floor(elapsed / 1000))}S`;
+    const miniTimer = $("#localRecordingMiniTimer");
+    miniTimer.textContent = value;
+    miniTimer.dateTime = timer.dateTime;
   }
 
   function setRecordingUi(active, paused = false) {
+    $("#localRecordingTitle").textContent = active ? (paused ? "Recording paused" : "Recording in progress") : "Record meeting locally";
+    $("#localRecordingDialog").querySelector(".local-recording-kicker").textContent = active ? "Local recording" : "Saved only on this device";
     $("#localRecordingIntro").hidden = active;
     $("#localRecordingActions").hidden = active;
     $("#localRecordingActive").hidden = !active;
     $("#localRecordingClose").disabled = active;
+    $("#localRecordingMinimize").hidden = !active;
+    if (!active) recordingUiMinimized = false;
+    $("#localRecordingMini").hidden = !active || !recordingUiMinimized;
     const recordButton = $("#controllerRecordButton");
     recordButton.classList.toggle("is-recording", active && !paused);
     recordButton.classList.toggle("is-paused", active && paused);
@@ -103,6 +112,26 @@
     $("#localRecordingState").textContent = paused ? "Recording paused" : "Recording";
     $("#localRecordingPause").textContent = paused ? "Resume" : "Pause";
     $("#localRecordingDialog").classList.toggle("is-paused", paused);
+    $("#localRecordingMini").classList.toggle("is-paused", paused);
+    $("#localRecordingMiniState").textContent = paused ? "Paused" : "Recording";
+    $("#localRecordingMiniPause").textContent = paused ? "▶" : "‖";
+    $("#localRecordingMiniPause").setAttribute("aria-label", paused ? "Resume recording" : "Pause recording");
+    $("#localRecordingMiniPause").title = paused ? "Resume recording" : "Pause recording";
+  }
+
+  function setRecordingMinimized(minimized) {
+    if (!localRecording || localRecording.finishing) return;
+    const dialog = $("#localRecordingDialog");
+    recordingUiMinimized = Boolean(minimized);
+    setRecordingUi(true, localRecording.recorder.state === "paused");
+    if (recordingUiMinimized) {
+      if (dialog.open) dialog.close();
+      $("#localRecordingRestore").focus();
+    } else {
+      $("#localRecordingMini").hidden = true;
+      if (!dialog.open) dialog.showModal();
+      $("#localRecordingPause").focus();
+    }
   }
 
   async function createRecordingSink(mimeType) {
@@ -161,7 +190,7 @@
     localRecording = null;
     document.body.removeAttribute("data-local-recording");
     setRecordingUi(false);
-    $("#localRecordingDialog").close();
+    if ($("#localRecordingDialog").open) $("#localRecordingDialog").close();
     if (download && recordingBlob?.size) {
       downloadRecording(recordingBlob, session.mimeType);
       toast("Recording finished. Your local download has started.");
@@ -285,15 +314,20 @@
     const dialog = $("#localRecordingDialog");
     const open = () => {
       setRecordingFeedback("");
+      if (localRecording) recordingUiMinimized = false;
       setRecordingUi(Boolean(localRecording), localRecording?.recorder.state === "paused");
       if (!dialog.open) dialog.showModal();
     };
     $("#controllerRecordButton").addEventListener("click", open);
     $("#localRecordingClose").addEventListener("click", () => dialog.close());
+    $("#localRecordingMinimize").addEventListener("click", () => setRecordingMinimized(true));
     $("#localRecordingCancel").addEventListener("click", () => dialog.close());
     $("#localRecordingStart").addEventListener("click", startLocalRecording);
     $("#localRecordingPause").addEventListener("click", toggleLocalRecordingPause);
     $("#localRecordingStop").addEventListener("click", () => finishLocalRecording());
+    $("#localRecordingMiniPause").addEventListener("click", toggleLocalRecordingPause);
+    $("#localRecordingRestore").addEventListener("click", () => setRecordingMinimized(false));
+    $("#localRecordingMiniStop").addEventListener("click", () => finishLocalRecording());
     dialog.addEventListener("cancel", event => { if (localRecording) event.preventDefault(); });
     window.addEventListener("beforeunload", event => {
       if (!localRecording) return;
