@@ -2087,6 +2087,12 @@ button.present-back {
 }
 .audience-live-view .present-live-media.is-connected > .audience-control-feedback[data-kind="success"] { border-color: #588b63; color: #b5e3bd; }
 .audience-live-view .present-live-media.is-connected > .audience-control-feedback[data-kind="error"] { border-color: #a85750; color: #ffbeb8; }
+.audience-live-view .present-live-media.is-connected > .audience-control-feedback[data-kind="attention"] {
+  border-color: #d3aa0d;
+  background: rgba(51,44,19,.97);
+  color: #ffe48a;
+  box-shadow: 0 10px 28px rgba(0,0,0,.3), 0 0 0 3px rgba(255,213,74,.14);
+}
 
 @media (max-width: 680px) {
   .audience-live-view .present-live-media.is-connected .audience-meeting-stage { padding-bottom: 78px; }
@@ -2181,14 +2187,8 @@ button.present-back {
   stroke-linejoin: round;
 }
 .interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute {
-  width: auto;
-  grid-auto-flow: column;
-  gap: 5px;
-  padding: 0 8px;
-}
-.interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute span {
-  font: 800 .55rem var(--mono);
-  white-space: nowrap;
+  width: 36px;
+  padding: 0;
 }
 .interactive-workspace .interactive-participant-grid .live-participant-actions .live-participant-mute[aria-pressed="true"] {
   border-color: #9b8034;

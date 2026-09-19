@@ -326,6 +326,43 @@
       } catch {}
     }
 
+    async function playModerationAlert() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        soundContext ||= new AudioContextClass();
+        await soundContext.resume?.();
+        const now = soundContext.currentTime;
+        [880, 660].forEach((frequency, index) => {
+          const oscillator = soundContext.createOscillator();
+          const gain = soundContext.createGain();
+          const start = now + index * .14;
+          oscillator.type = "sine";
+          oscillator.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(.0001, start);
+          gain.gain.exponentialRampToValueAtTime(.12, start + .015);
+          gain.gain.exponentialRampToValueAtTime(.0001, start + .12);
+          oscillator.connect(gain);
+          gain.connect(soundContext.destination);
+          oscillator.start(start);
+          oscillator.stop(start + .13);
+        });
+      } catch {}
+    }
+
+    function showModerationNotice(message) {
+      if (audienceFeedback) {
+        audienceFeedback.setAttribute("role", "alert");
+        audienceFeedback.setAttribute("aria-live", "assertive");
+      }
+      setStatus(message, "attention");
+      window.setTimeout(() => {
+        if (!audienceFeedback) return;
+        audienceFeedback.setAttribute("role", "status");
+        audienceFeedback.setAttribute("aria-live", "polite");
+      }, 1200);
+    }
+
     function syncJoinSoundButton() {
       if (!joinSoundButton) return;
       joinSoundButton.setAttribute("aria-pressed", String(joinSoundEnabled));
@@ -421,15 +458,16 @@
       if (target !== "*" && target !== currentIdentity()) return;
       const shouldMute = message.muted === true;
       microphoneButton.classList.toggle("is-unmute-requested", !shouldMute);
+      await playModerationAlert();
       if (!shouldMute) {
         syncLocalPublishedState(); syncButtons(true);
-        setStatus("The presenter asked you to unmute. Select Unmute when you are ready.", "success");
+        showModerationNotice("Presenter asked you to unmute. Select Unmute when you are ready.");
         return;
       }
       try {
         await room.localParticipant.setMicrophoneEnabled(false);
         syncLocalPublishedState(); syncButtons(true); renderParticipants();
-        setStatus("The presenter muted your microphone", "success");
+        showModerationNotice("Presenter asked you to mute. Your microphone is now off.");
       } catch (error) {
         syncLocalPublishedState(); syncButtons(true);
         setStatus(error.message || "Microphone control failed", "error");
@@ -710,8 +748,8 @@
         mute.type = "button";
         mute.className = "live-participant-mute";
         mute.innerHTML = muted
-          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg><span>Ask to unmute</span>'
-          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg><span>Mute</span>';
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 11.7 5.2M12 18v3M9 21h6M3 3l18 18"></path></svg>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>';
         mute.disabled = meetingMuted;
         const muteLabel = meetingMuted ? "Everyone is muted. Turn off Mute all before changing one participant" : muted ? `Ask ${participant.name || "participant"} to unmute their microphone` : `Mute ${participant.name || "participant"}`;
         mute.setAttribute("aria-label", muteLabel);

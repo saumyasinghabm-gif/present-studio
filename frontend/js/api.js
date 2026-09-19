@@ -93,9 +93,10 @@
         font:800 .5rem var(--mono,monospace);text-transform:uppercase;letter-spacing:.04em;
       }
       .live-participant-actions .meeting-v2-role-button {
-        min-height:30px;border:1px solid #665f43;border-radius:6px;padding:4px 7px;
-        background:#2c2a22;color:#ffe48a;font:700 .54rem var(--mono,monospace);
+        width:36px;min-width:36px;min-height:36px;display:grid;place-items:center;
+        border:1px solid #665f43;border-radius:8px;padding:0;background:#2c2a22;color:#ffe48a;
       }
+      .live-participant-actions .meeting-v2-role-button svg { width:19px;height:19px; }
       .live-participant-actions .meeting-v2-role-button.is-cohost {
         border-color:#8c6b00;background:#3b3214;color:#ffd54a;
       }
@@ -224,10 +225,15 @@
     button.type = "button";
     button.className = `meeting-v2-role-button${isCohost ? " is-cohost" : ""}`;
     button.dataset.meetingV2Role = String(item.clientId);
-    button.textContent = isCohost ? "Remove co-host" : "Make co-host";
-    button.title = isCohost
+    button.dataset.meetingV2RoleState = isCohost ? "cohost" : "audience";
+    button.innerHTML = isCohost
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><path d="M3.5 19c.3-3 2.2-5 5.5-5s5.2 2 5.5 5M16 12h6"></path></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><path d="M3.5 19c.3-3 2.2-5 5.5-5s5.2 2 5.5 5M19 9v6M16 12h6"></path></svg>';
+    const label = isCohost
       ? `Remove co-host access from ${item.name || "participant"}`
       : `Give ${item.name || "participant"} co-host controls`;
+    button.setAttribute("aria-label", label);
+    button.title = label;
     button.addEventListener("click", event => {
       event.stopPropagation();
       ctx.socket.emit("meeting_role_update", {
@@ -278,11 +284,11 @@
       // mutation loop as soon as an active participant appears.
       const selector = `[data-meeting-v2-role="${escapeSelector(item.clientId)}"]`;
       const existingButton = actions.querySelector(selector);
-      const expectedLabel = item.role === "cohost" ? "Remove co-host" : "Make co-host";
+      const expectedRole = item.role === "cohost" ? "cohost" : "audience";
 
       if (!existingButton) {
         actions.prepend(roleButton(ctx, item));
-      } else if (existingButton.textContent !== expectedLabel) {
+      } else if (existingButton.dataset.meetingV2RoleState !== expectedRole) {
         // Role actually changed (audience <-> co-host), so rebuild once to
         // refresh the click handler's captured role. The next observer pass is
         // stable and performs no DOM mutation.
