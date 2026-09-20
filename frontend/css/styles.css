@@ -3518,6 +3518,81 @@ button.present-back {
   clip-path: none;
 }
 
+/* Dense participant rail: keep names inside the media tile instead of below it. */
+.live-media-tiles .live-media-tile,
+.interactive-workspace .interactive-participant-grid .live-media-tile,
+.interactive-workspace.is-connected .interactive-participant-grid .live-media-tile,
+.audience-live-view .present-live-media.is-connected .live-media-tile {
+  display: block;
+  min-height: 0;
+}
+.interactive-workspace.is-connected .interactive-participant-grid .live-media-tile,
+.interactive-workspace.has-screen-share .interactive-participant-grid .live-media-tile {
+  flex-basis: 132px;
+}
+.live-media-tiles .live-media-tile-video,
+.interactive-workspace .interactive-participant-grid .live-media-tile-video,
+.audience-live-view .present-live-media.is-connected .live-media-tile-video {
+  position: relative;
+  aspect-ratio: 1 / .72;
+}
+.live-media-tile footer,
+.interactive-workspace .interactive-participant-grid .live-media-tile footer,
+.audience-live-view .present-live-media.is-connected .live-media-tile footer {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  z-index: 2;
+  display: grid;
+  gap: 1px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
+  padding: 4px 6px;
+  background: rgba(10,10,9,.76);
+  box-shadow: 0 8px 18px rgba(0,0,0,.22);
+}
+.live-media-tile footer strong,
+.audience-live-view .present-live-media.is-connected .live-media-tile footer strong {
+  max-width: 10ch;
+  color: #fff;
+  font-size: .56rem;
+}
+.live-media-tile footer span,
+.audience-live-view .present-live-media.is-connected .live-media-tile footer span {
+  overflow: hidden;
+  max-width: 100%;
+  color: #d1cec4;
+  font-size: .48rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-media-tile footer .live-raised-hand {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 5px;
+  font-size: .48rem;
+}
+.live-media-tiles .live-media-avatar,
+.interactive-workspace .interactive-participant-grid .live-media-avatar,
+.audience-live-view .present-live-media.is-connected .live-media-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: .92rem;
+}
+.live-participant-action-toggle {
+  width: 24px;
+  height: 24px;
+}
+.controller-target-notes {
+  min-height: 22px;
+  padding: 2px;
+}
+.controller-target-notes strong,
+.controller-target-notes small {
+  display: none;
+}
+
 @media (max-width: 520px) {
   .appearance-theme-options { grid-template-columns: 1fr; }
 }
