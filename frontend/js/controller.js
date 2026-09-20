@@ -577,7 +577,9 @@
       fullscreenButton.title = active ? "Exit preview fullscreen" : "Open preview in fullscreen";
       fullscreenButton.querySelector("[aria-hidden='true']").textContent = active ? "×" : "⛶";
       fullscreenButton.querySelector("[data-preview-fullscreen-label]").textContent = active ? "Exit" : "Fullscreen";
-      if (!active) {
+      if (active) {
+        showPreviewToolbar();
+      } else {
         clearTimeout(previewToolbarTimer);
         $("#previewFullscreenTools").classList.remove("is-visible");
         closePreviewTextEditor();
@@ -708,6 +710,7 @@
     $("#previewZoomIn").onclick = () => { previewToolZoom = Math.min(3, previewToolZoom + .1); applyPreviewToolViewport(); };
     $("#previewResetView").onclick = () => { previewToolZoom = 1; previewToolPan = { x: 0, y: 0 }; applyPreviewToolViewport(); };
     $("#previewClearAnnotations").onclick = () => clearPreviewToolAnnotations(true);
+    $("#previewFullscreenNotes").onclick = () => $("#previewNotes").click();
     $("#previewTextCancel").onclick = closePreviewTextEditor;
     $("#previewTextEditor").onsubmit = event => {
       event.preventDefault();
