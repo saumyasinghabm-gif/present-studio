@@ -827,7 +827,7 @@
   }
   function syncVolumeControls() {
     document.querySelectorAll("input[type='range'][data-volume-kind]").forEach(slider => {
-      const percent = Math.round((slider.dataset.volumeKind === "video" ? videoVolume : audioVolume) * 100);
+      const percent = Math.round((slider.dataset.volumeKind === "audio" ? audioVolume : videoVolume) * 100);
       slider.value = String(percent);
       const output = document.querySelector(`[data-volume-value='${slider.dataset.volumeKind}']`);
       if (output) output.value = `${percent}%`;
@@ -835,7 +835,10 @@
   }
   function setPresentationVolume(kind, percent, final = false) {
     const volume = normalizedVolume(Number(percent) / 100);
-    if (kind === "video") videoVolume = volume;
+    if (kind === "master") {
+      videoVolume = volume;
+      audioVolume = volume;
+    } else if (kind === "video") videoVolume = volume;
     else if (kind === "audio") audioVolume = volume;
     else return;
     applyPreviewVolumes();
@@ -1367,8 +1370,9 @@
     ]);
     if (result.permission !== "presenter") throw new Error("A trusted presenter link is required for this controller.");
     presentation = result.presentation;
-    videoVolume = normalizedVolume(live.videoVolume);
-    audioVolume = normalizedVolume(live.audioVolume);
+    const initialVolume = normalizedVolume(live.videoVolume ?? live.audioVolume);
+    videoVolume = initialVolume;
+    audioVolume = initialVolume;
     syncVolumeControls();
     liveMediaSession = window.SnapKeyLiveMedia?.create({
       root: $("#controllerLiveMedia"),
@@ -1440,8 +1444,9 @@
     socket?.on("presenter_rejected", event => toast(event.message || "Presenter permission required."));
     socket?.on("presentation_state", state => {
       if (state.presentationId && state.presentationId !== presentationId) return;
-      videoVolume = normalizedVolume(state.videoVolume);
-      audioVolume = normalizedVolume(state.audioVolume);
+      const stateVolume = normalizedVolume(state.videoVolume ?? state.audioVolume);
+      videoVolume = stateVolume;
+      audioVolume = stateVolume;
       applyPreviewVolumes();
       syncVolumeControls();
     });

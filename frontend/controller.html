@@ -67,8 +67,7 @@
                   <button type="button" id="openScreen"><span class="controller-control-icon" aria-hidden="true">▣</span><strong>Open Screen</strong><small class="sr-only">Launch audience output</small></button>
                 </div>
                 <div class="controller-volume-mixer" aria-label="Audience presentation volume">
-                  <div class="controller-volume-row"><label for="controllerVideoVolume">Video sound</label><input id="controllerVideoVolume" type="range" min="0" max="100" step="1" value="100" data-volume-kind="video" aria-label="Video sound volume"><output for="controllerVideoVolume" data-volume-value="video">100%</output></div>
-                  <div class="controller-volume-row"><label for="controllerAudioVolume">Music &amp; audio</label><input id="controllerAudioVolume" type="range" min="0" max="100" step="1" value="100" data-volume-kind="audio" aria-label="Music and audio volume"><output for="controllerAudioVolume" data-volume-value="audio">100%</output></div>
+                  <div class="controller-volume-row"><label for="controllerMasterVolume">Master sound</label><input id="controllerMasterVolume" type="range" min="0" max="100" step="1" value="100" data-volume-kind="master" aria-label="Master presentation sound volume"><output for="controllerMasterVolume" data-volume-value="master">100%</output></div>
                 </div>
               </div>
             </section>
@@ -108,7 +107,7 @@
           <section class="live-screen-share interactive-screen-share" data-live-screen-share-viewer hidden><div class="live-screen-share-heading"><strong data-live-screen-share-label>Shared screen</strong><span data-live-screen-share-mode>Choose the screen shown to everyone</span></div><div class="live-screen-share-media" data-live-screen-share-media></div></section>
         </div>
         <aside class="interactive-session-sidebar live-meeting-sidebar" aria-label="Participants and meeting controls">
-          <header class="interactive-session-sidebar-header"><div><strong>Interactive audience</strong><span data-live-count>0 connected</span></div><div><div class="interactive-workspace-links" id="interactiveWorkspaceLinks"></div><button class="interactive-header-button" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
+          <header class="interactive-session-sidebar-header"><div><strong>Interactive audience</strong><span data-live-count>0 connected</span></div><div><div class="interactive-workspace-links" id="interactiveWorkspaceLinks"></div><button class="interactive-header-button live-header-action" data-live-fullscreen type="button" aria-label="Enter meeting fullscreen" title="Enter meeting fullscreen">⛶</button><button class="interactive-header-button live-header-action" data-live-panel-toggle type="button" aria-expanded="true" aria-label="Hide participants and meeting controls" title="Hide participants and meeting controls">›</button></div></header>
           <div class="interactive-session-card interactive-session-setup"><p class="eyebrow">Session setup</p><div class="live-media-join"><label>Your name <input data-live-name type="text" maxlength="80" autocomplete="name" placeholder="Presenter"></label><button class="button button-gold" data-live-join type="button">Join audio/video</button></div><p class="live-media-status" data-live-status aria-live="polite">Join when you are ready. Camera and microphone start off.</p></div>
           <dialog class="live-background-dialog" data-live-background-dialog aria-labelledby="controllerBackgroundTitle">
             <div class="live-background-dialog-header"><div><small>Camera effects</small><strong id="controllerBackgroundTitle">Choose a background</strong></div><button type="button" data-live-background-close aria-label="Close background chooser">×</button></div>
@@ -153,6 +152,14 @@
           <button class="live-control-button is-record" id="controllerRecordButton" type="button" aria-haspopup="dialog" aria-controls="localRecordingDialog" aria-label="Record meeting locally"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"></circle></svg></span><span data-live-control-label>Record</span></button>
           <button class="live-control-button is-mute-all" type="button" data-live-mute-all disabled aria-pressed="false"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg></span><span data-live-control-label>Mute all</span></button>
           <button class="live-control-button is-audio" type="button" data-live-enable-audio hidden><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"></path></svg></span><span data-live-control-label>Audio</span></button>
+          <div class="live-more-menu-wrap" data-live-settings-target="#controllerSettingsButton">
+            <button class="live-control-button is-more" type="button" data-live-more-toggle aria-haspopup="menu" aria-expanded="false" aria-label="More meeting options"><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg></span><span data-live-control-label>More</span></button>
+            <div class="live-more-menu" data-live-more-menu role="menu" hidden>
+              <button type="button" role="menuitem" data-live-more-action="panel">Hide panel</button>
+              <button type="button" role="menuitem" data-live-more-action="fullscreen">Fullscreen</button>
+              <button type="button" role="menuitem" data-live-more-action="settings">Appearance</button>
+            </div>
+          </div>
           <button class="live-control-button is-leave" type="button" data-live-leave disabled><span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 15.5c4.3-3.6 8.7-3.6 13 0M4 14l2 5 4-2M20 14l-2 5-4-2"></path></svg></span><span data-live-control-label>Leave</span></button>
         </div>
       </section>

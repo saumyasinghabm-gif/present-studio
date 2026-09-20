@@ -22,6 +22,8 @@
     const leaveButton = root.querySelector("[data-live-leave]");
     const panelToggle = root.querySelector("[data-live-panel-toggle]");
     const panelRestore = root.querySelector("[data-live-panel-restore]");
+    const moreToggle = root.querySelector("[data-live-more-toggle]");
+    const moreMenu = root.querySelector("[data-live-more-menu]");
     const restoreCount = root.querySelector("[data-live-restore-count]");
     const sheetHandle = root.querySelector("[data-live-sheet-handle]");
     const meetingSidebar = root.querySelector(".live-meeting-sidebar");
@@ -744,6 +746,19 @@
       if (isController && !isLocal) {
         const participantActions = document.createElement("div");
         participantActions.className = "live-participant-actions";
+        const actionToggle = document.createElement("button");
+        actionToggle.type = "button";
+        actionToggle.className = "live-participant-action-toggle";
+        actionToggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg>';
+        actionToggle.setAttribute("aria-label", `Show actions for ${participant.name || "participant"}`);
+        actionToggle.setAttribute("aria-expanded", "false");
+        actionToggle.addEventListener("click", event => {
+          event.stopPropagation();
+          const open = !tile.classList.contains("is-actions-open");
+          tile.classList.toggle("is-actions-open", open);
+          actionToggle.setAttribute("aria-expanded", String(open));
+        });
+        caption.append(actionToggle);
         const mute = document.createElement("button");
         const muted = !micAudible;
         mute.type = "button";
@@ -1031,7 +1046,24 @@
         panelToggle.title = panelToggle.getAttribute("aria-label");
       }
       if (panelRestore) panelRestore.hidden = !collapsed;
+      root.querySelectorAll("[data-live-more-action='panel']").forEach(button => { button.textContent = collapsed ? "Show panel" : "Hide panel"; });
       if (moveFocus) (collapsed ? panelRestore : panelToggle)?.focus();
+    }
+
+    function setMoreMenuOpen(open) {
+      if (!moreToggle || !moreMenu) return;
+      moreMenu.hidden = !open;
+      moreToggle.setAttribute("aria-expanded", String(open));
+    }
+
+    function activateMoreAction(action) {
+      if (action === "panel") panelToggle?.click();
+      else if (action === "fullscreen") fullscreenButton?.click();
+      else if (action === "settings") {
+        const settingsTarget = root.querySelector("[data-live-settings-target]")?.dataset.liveSettingsTarget || "";
+        if (settingsTarget) document.querySelector(settingsTarget)?.click();
+      }
+      setMoreMenuOpen(false);
     }
 
     function syncAudioRecovery() {
@@ -1374,6 +1406,21 @@
     });
     panelToggle?.addEventListener("click", () => setAudienceSidebarHidden(true, true));
     panelRestore?.addEventListener("click", () => setAudienceSidebarHidden(false, true));
+    moreToggle?.addEventListener("click", event => {
+      event.stopPropagation();
+      setMoreMenuOpen(moreMenu?.hidden !== false);
+    });
+    moreMenu?.addEventListener("click", event => {
+      const button = event.target.closest("[data-live-more-action]");
+      if (button) activateMoreAction(button.dataset.liveMoreAction);
+    });
+    document.addEventListener("click", event => {
+      if (moreMenu?.hidden !== false || moreMenu.contains(event.target) || moreToggle?.contains(event.target)) return;
+      setMoreMenuOpen(false);
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") setMoreMenuOpen(false);
+    });
     if (sheetHandle && !isController) {
       let startY = null;
       sheetHandle.addEventListener("pointerdown", event => {
