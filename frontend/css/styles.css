@@ -3485,6 +3485,18 @@ button.present-back {
   background: rgba(255,255,255,.94);
   color: #252b34;
 }
+.interactive-workspace .interactive-control-dock.live-icon-control-dock,
+.live-controller-page[data-controller-mode="interactive"] .interactive-workspace > .interactive-control-dock.live-icon-control-dock,
+.audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock,
+.audience-live-view .present-live-media.is-connected.is-sidebar-hidden > .audience-meeting-controls.live-icon-control-dock {
+  overflow: visible !important;
+}
+.live-more-menu-wrap {
+  z-index: 10020;
+}
+.live-more-menu {
+  z-index: 10030;
+}
 
 @media (max-width: 520px) {
   .appearance-theme-options { grid-template-columns: 1fr; }
