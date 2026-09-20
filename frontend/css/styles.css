@@ -3551,12 +3551,15 @@ button.present-back {
   padding: 4px 6px;
   background: rgba(10,10,9,.76);
   box-shadow: 0 8px 18px rgba(0,0,0,.22);
+  justify-items: center;
+  text-align: center;
 }
 .live-media-tile footer strong,
 .audience-live-view .present-live-media.is-connected .live-media-tile footer strong {
   max-width: 10ch;
   color: #fff;
   font-size: .56rem;
+  text-align: center;
 }
 .live-media-tile footer span,
 .audience-live-view .present-live-media.is-connected .live-media-tile footer span {
@@ -3589,7 +3592,8 @@ button.present-back {
   padding: 2px;
 }
 .controller-target-notes strong,
-.controller-target-notes small {
+.controller-target-notes small,
+.controller-target-notes > span {
   display: none;
 }
 
