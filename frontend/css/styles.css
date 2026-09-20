@@ -963,9 +963,12 @@ button.present-back {
 .controller-preview-stage:fullscreen { width: 100vw; max-width: none; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0; background: #000; touch-action: none; }
 .controller-preview-stage:fullscreen .controller-preview-visual { top: 50%; left: 50%; right: auto; bottom: auto; width: 100vw; height: 100vh; transform: translate(-50%, -50%) translate(var(--preview-pan-x, 0px), var(--preview-pan-y, 0px)) scale(var(--preview-zoom, 1)); }
 .controller-fullscreen-tools { display: none; }
-.controller-preview-stage:fullscreen .controller-fullscreen-tools { position: absolute; z-index: 80; bottom: 18px; left: 50%; display: flex; align-items: center; gap: 6px; max-width: calc(100vw - 36px); overflow-x: auto; padding: 7px; border: 1px solid rgba(255,255,255,.24); border-radius: 10px; background: rgba(18,18,18,.88); box-shadow: 0 14px 44px rgba(0,0,0,.46); opacity: 0; pointer-events: none; transform: translate(-50%, 8px); transition: opacity .16s ease, transform .16s ease; }
+.controller-preview-stage:fullscreen .controller-fullscreen-tools,
+.interactive-main-stage:fullscreen .controller-fullscreen-tools { position: absolute; z-index: 80; bottom: 18px; left: 50%; display: flex; align-items: center; gap: 6px; max-width: calc(100vw - 36px); overflow-x: auto; padding: 7px; border: 1px solid rgba(255,255,255,.24); border-radius: 10px; background: rgba(18,18,18,.88); box-shadow: 0 14px 44px rgba(0,0,0,.46); opacity: 0; pointer-events: none; transform: translate(-50%, 8px); transition: opacity .16s ease, transform .16s ease; }
 .controller-preview-stage:fullscreen .controller-fullscreen-tools.is-visible,
-.controller-preview-stage:fullscreen .controller-fullscreen-tools:focus-within { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.controller-preview-stage:fullscreen .controller-fullscreen-tools:focus-within,
+.interactive-main-stage:fullscreen .controller-fullscreen-tools.is-visible,
+.interactive-main-stage:fullscreen .controller-fullscreen-tools:focus-within { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
 .controller-fullscreen-tools button { flex: 0 0 auto; width: 36px; height: 34px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #fff; font: 600 22px/1 Arial, sans-serif; }
 .controller-fullscreen-tools button:hover, .controller-fullscreen-tools button:focus-visible { background: rgba(255,255,255,.18); }
 .controller-fullscreen-tools button.is-active { color: #111; background: #ffd740; }
@@ -991,6 +994,9 @@ button.present-back {
 .controller-preview-stage:fullscreen.is-preview-highlighting { cursor: crosshair; }
 .controller-preview-stage:fullscreen.is-preview-panning { cursor: grab; }
 .controller-preview-stage:fullscreen.is-preview-grabbing { cursor: grabbing; }
+.interactive-main-stage:fullscreen.is-preview-highlighting { cursor: crosshair; }
+.interactive-main-stage:fullscreen.is-preview-panning { cursor: grab; }
+.interactive-main-stage:fullscreen.is-preview-grabbing { cursor: grabbing; }
 .controller-empty { color: var(--muted); }
 
 /* Clean audience/projector output */

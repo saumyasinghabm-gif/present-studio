@@ -23,6 +23,11 @@
   let previewToolPointer = null;
   let previewTextPoint = null;
   let previewToolbarTimer;
+  let interactiveToolZoom = 1;
+  let interactiveToolPan = { x: 0, y: 0 };
+  let interactiveToolPointer = null;
+  let interactiveTextPoint = null;
+  let interactiveToolbarTimer;
   let liveMediaSession = null;
   let notesReturnFocus = null;
   let previewAudioEnabled = true;
@@ -647,6 +652,36 @@
     $("#previewAnnotationText").append(label);
   }
 
+  function drawInteractiveToolPath(points, color, size) {
+    if (points.length < 2) return;
+    const canvas = $("#interactiveAnnotationCanvas");
+    const context = canvas.getContext("2d");
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    points.forEach((point, index) => {
+      const x = point.x * canvas.width;
+      const y = point.y * canvas.height;
+      if (index) context.lineTo(x, y);
+      else context.moveTo(x, y);
+    });
+    context.stroke();
+    context.restore();
+  }
+
+  function addInteractiveToolText(text, point, color, size) {
+    const label = document.createElement("span");
+    label.textContent = text;
+    label.style.left = `${point.x * 100}%`;
+    label.style.top = `${point.y * 100}%`;
+    label.style.setProperty("--annotation-color", color);
+    label.style.setProperty("--annotation-size", `${Math.max(18, size * 3.8)}px`);
+    $("#interactiveAnnotationText").append(label);
+  }
+
   function openPreviewTextEditor(point) {
     previewTextPoint = point;
     const editor = $("#previewTextEditor");
@@ -661,10 +696,31 @@
     $("#previewTextEditor").hidden = true;
   }
 
+  function openInteractiveTextEditor(point) {
+    interactiveTextPoint = point;
+    const editor = $("#interactiveTextEditor");
+    const input = $("#interactiveTextInput");
+    input.value = "";
+    editor.hidden = false;
+    requestAnimationFrame(() => input.focus());
+  }
+
+  function closeInteractiveTextEditor() {
+    interactiveTextPoint = null;
+    $("#interactiveTextEditor").hidden = true;
+  }
+
   function clearPreviewToolAnnotations(send = true) {
     const canvas = $("#previewAnnotationCanvas");
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     $("#previewAnnotationText").replaceChildren();
+    if (send) annotationPayload("clear");
+  }
+
+  function clearInteractiveToolAnnotations(send = true) {
+    const canvas = $("#interactiveAnnotationCanvas");
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    $("#interactiveAnnotationText").replaceChildren();
     if (send) annotationPayload("clear");
   }
 
@@ -677,6 +733,15 @@
     if (send) annotationPayload("viewport", { zoom: previewToolZoom, x: previewToolPan.x, y: previewToolPan.y });
   }
 
+  function applyInteractiveToolViewport(send = true) {
+    const stage = $("#controllerLiveMedia").querySelector(".interactive-main-stage");
+    stage.style.setProperty("--audience-zoom", String(interactiveToolZoom));
+    stage.style.setProperty("--audience-pan-x", `${interactiveToolPan.x}px`);
+    stage.style.setProperty("--audience-pan-y", `${interactiveToolPan.y}px`);
+    $("#interactiveZoomValue").textContent = `${Math.round(interactiveToolZoom * 100)}%`;
+    if (send) annotationPayload("viewport", { zoom: interactiveToolZoom, x: interactiveToolPan.x, y: interactiveToolPan.y });
+  }
+
   function setPreviewTool(tool) {
     previewTool = tool;
     document.querySelectorAll("[data-preview-tool]").forEach(button => {
@@ -687,6 +752,9 @@
     const stage = $("#previewStage");
     stage.classList.toggle("is-preview-highlighting", tool === "highlighter");
     stage.classList.toggle("is-preview-panning", tool === "pan");
+    const interactiveStage = $("#controllerLiveMedia")?.querySelector(".interactive-main-stage");
+    interactiveStage?.classList.toggle("is-preview-highlighting", tool === "highlighter");
+    interactiveStage?.classList.toggle("is-preview-panning", tool === "pan");
   }
 
   function showPreviewToolbar() {
@@ -827,6 +895,104 @@
   function applyPreviewVolumes() {
     previewMediaElements().forEach(media => { media.volume = media.tagName === "VIDEO" ? videoVolume : audioVolume; });
     $("#controllerPreviewMedia").querySelectorAll("iframe[data-youtube-id]").forEach(frame => window.SnapKeyYouTube.sync(frame, { volume: videoVolume, muted: !previewAudioEnabled }));
+  }
+
+  function interactiveToolPoint(event) {
+    const bounds = $("#controllerLiveMedia").querySelector(".live-presentation-feed-frame").getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) return null;
+    return {
+      x: (event.clientX - bounds.left) / bounds.width,
+      y: (event.clientY - bounds.top) / bounds.height
+    };
+  }
+
+  function showInteractiveToolbar() {
+    const stage = $("#controllerLiveMedia").querySelector(".interactive-main-stage");
+    const toolbar = $("#interactiveFullscreenTools");
+    if (document.fullscreenElement !== stage) return;
+    toolbar.classList.add("is-visible");
+    clearTimeout(interactiveToolbarTimer);
+    interactiveToolbarTimer = setTimeout(() => {
+      if (!toolbar.matches(":focus-within")) toolbar.classList.remove("is-visible");
+    }, 2400);
+  }
+
+  function bindInteractiveFullscreenTools() {
+    const stage = $("#controllerLiveMedia").querySelector(".interactive-main-stage");
+    const toolbar = $("#interactiveFullscreenTools");
+    const color = () => $("#interactiveToolColor").value || "#ffd54a";
+    const size = () => Number($("#interactiveToolSize").value) || 18;
+    $("#interactiveZoomOut").onclick = () => { interactiveToolZoom = Math.max(.5, interactiveToolZoom - .1); applyInteractiveToolViewport(); };
+    $("#interactiveZoomIn").onclick = () => { interactiveToolZoom = Math.min(3, interactiveToolZoom + .1); applyInteractiveToolViewport(); };
+    $("#interactiveResetView").onclick = () => { interactiveToolZoom = 1; interactiveToolPan = { x: 0, y: 0 }; applyInteractiveToolViewport(); };
+    $("#interactiveClearAnnotations").onclick = () => clearInteractiveToolAnnotations(true);
+    $("#interactiveTextCancel").onclick = closeInteractiveTextEditor;
+    $("#interactiveTextEditor").onsubmit = event => {
+      event.preventDefault();
+      const value = $("#interactiveTextInput").value.trim();
+      if (!value || !interactiveTextPoint) return;
+      const payload = { text: value.slice(0, 180), point: interactiveTextPoint, color: color(), size: size() };
+      addInteractiveToolText(payload.text, payload.point, payload.color, payload.size);
+      annotationPayload("text", payload);
+      closeInteractiveTextEditor();
+    };
+    toolbar.addEventListener("pointerenter", showInteractiveToolbar);
+    toolbar.addEventListener("focusin", showInteractiveToolbar);
+    stage.addEventListener("pointerdown", showInteractiveToolbar, { passive: true });
+    stage.addEventListener("touchstart", showInteractiveToolbar, { passive: true });
+    stage.addEventListener("pointermove", event => {
+      if (document.fullscreenElement !== stage) return;
+      showInteractiveToolbar();
+      if (!interactiveToolPointer || interactiveToolPointer.id !== event.pointerId) return;
+      if (previewTool === "pan") {
+        interactiveToolPan = {
+          x: interactiveToolPointer.pan.x + event.clientX - interactiveToolPointer.startX,
+          y: interactiveToolPointer.pan.y + event.clientY - interactiveToolPointer.startY
+        };
+        applyInteractiveToolViewport();
+        return;
+      }
+      const point = interactiveToolPoint(event);
+      if (!point) return;
+      const previous = interactiveToolPointer.points.at(-1);
+      interactiveToolPointer.points.push(point);
+      drawInteractiveToolPath([previous, point], color(), size());
+    });
+    stage.addEventListener("pointerdown", event => {
+      if (document.fullscreenElement !== stage || event.button !== 0 || event.target.closest("#interactiveFullscreenTools, #interactiveTextEditor")) return;
+      const point = interactiveToolPoint(event);
+      if (previewTool !== "pan" && !point) return;
+      if (previewTool === "text") {
+        openInteractiveTextEditor(point);
+        return;
+      }
+      interactiveToolPointer = { id: event.pointerId, startX: event.clientX, startY: event.clientY, pan: { ...interactiveToolPan }, points: point ? [point] : [] };
+      stage.setPointerCapture(event.pointerId);
+      stage.classList.toggle("is-preview-grabbing", previewTool === "pan");
+      event.preventDefault();
+    });
+    const finishPointer = event => {
+      if (!interactiveToolPointer || interactiveToolPointer.id !== event.pointerId) return;
+      if (previewTool === "highlighter" && interactiveToolPointer.points.length > 1) {
+        annotationPayload("draw", { points: interactiveToolPointer.points, color: color(), size: size() });
+      }
+      interactiveToolPointer = null;
+      stage.classList.remove("is-preview-grabbing");
+    };
+    stage.addEventListener("pointerup", finishPointer);
+    stage.addEventListener("pointercancel", finishPointer);
+    document.addEventListener("fullscreenchange", () => {
+      const active = document.fullscreenElement === stage;
+      if (active) showInteractiveToolbar();
+      else {
+        clearTimeout(interactiveToolbarTimer);
+        toolbar.classList.remove("is-visible");
+        closeInteractiveTextEditor();
+        interactiveToolPointer = null;
+        stage.classList.remove("is-preview-grabbing");
+      }
+    });
+    applyInteractiveToolViewport(false);
   }
   function syncVolumeControls() {
     document.querySelectorAll("input[type='range'][data-volume-kind]").forEach(slider => {
@@ -1362,6 +1528,7 @@
   bindControllerTheme();
   bindLocalRecording();
   bindPreviewDock();
+  bindInteractiveFullscreenTools();
   bindControllerNotes();
   bindVolumeControls();
 
