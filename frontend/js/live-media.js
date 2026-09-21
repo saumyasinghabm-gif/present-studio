@@ -102,6 +102,8 @@
     let soundContext = null;
     let joinSoundEnabled = localStorage.getItem("presentStudio.joinSoundEnabled") !== "false";
     let joinSoundButton = null;
+    let tabSpeakerMuted = localStorage.getItem("presentStudio.tabSpeakerMuted") === "true";
+    let tabSpeakerButton = null;
     let joinNotificationArmed = false;
     let admissionState = admissionBypass ? "approved" : "idle";
     let screenShareRequestPending = false;
@@ -370,12 +372,49 @@
       if (!joinSoundButton) return;
       joinSoundButton.setAttribute("aria-pressed", String(joinSoundEnabled));
       const labelNode = joinSoundButton.querySelector("[data-live-control-label]");
-      if (labelNode) labelNode.textContent = joinSoundEnabled ? "Join sound" : "Join muted";
+      if (labelNode) labelNode.textContent = joinSoundEnabled ? "Entry bell" : "Bell off";
       const title = joinSoundEnabled
-        ? "Participant join sound is on. Select to turn it off"
-        : "Participant join sound is off. Select to turn it on";
+        ? "Participant entry sound is on. Select to turn it off"
+        : "Participant entry sound is off. Select to turn it on";
       joinSoundButton.setAttribute("aria-label", title);
       joinSoundButton.title = title;
+    }
+
+    function syncTabSpeakerButton() {
+      if (!tabSpeakerButton) return;
+      tabSpeakerButton.setAttribute("aria-pressed", String(tabSpeakerMuted));
+      setControlLabel(
+        tabSpeakerButton,
+        tabSpeakerMuted ? "Speaker off" : "Speaker",
+        tabSpeakerMuted ? "This tab's speaker is muted. Select to hear this tab" : "This tab's speaker is on. Select to mute only this tab"
+      );
+    }
+
+    function ensureTabSpeakerControl() {
+      if (tabSpeakerButton) return;
+      const dock = root.querySelector(".live-media-actions");
+      if (!dock) return;
+
+      tabSpeakerButton = document.createElement("button");
+      tabSpeakerButton.type = "button";
+      tabSpeakerButton.className = "live-control-button is-tab-speaker";
+      tabSpeakerButton.innerHTML =
+        '<span class="live-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4zM15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"></path></svg></span>' +
+        '<span data-live-control-label>Speaker</span>';
+
+      const leaveControl = dock.querySelector("[data-live-leave]");
+      if (joinSoundButton) dock.insertBefore(tabSpeakerButton, joinSoundButton);
+      else if (leaveControl) dock.insertBefore(tabSpeakerButton, leaveControl);
+      else dock.append(tabSpeakerButton);
+
+      tabSpeakerButton.addEventListener("click", () => {
+        tabSpeakerMuted = !tabSpeakerMuted;
+        localStorage.setItem("presentStudio.tabSpeakerMuted", String(tabSpeakerMuted));
+        applyRemoteAudioState();
+        setStatus(tabSpeakerMuted ? "Speaker muted for this tab only" : "Speaker enabled for this tab", "success");
+      });
+
+      syncTabSpeakerButton();
     }
 
     function ensureJoinSoundControl() {
@@ -388,7 +427,7 @@
       joinSoundButton.className = "live-control-button is-join-sound";
       joinSoundButton.innerHTML =
         '<span class="live-control-icon" aria-hidden="true">🔔</span>' +
-        '<span data-live-control-label>Join sound</span>';
+        '<span data-live-control-label>Entry bell</span>';
 
       const leaveControl = dock.querySelector("[data-live-leave]");
       if (leaveControl) dock.insertBefore(joinSoundButton, leaveControl);
@@ -400,12 +439,13 @@
         localStorage.setItem("presentStudio.joinSoundEnabled", String(joinSoundEnabled));
         syncJoinSoundButton();
         setStatus(
-          joinSoundEnabled ? "Participant join sound enabled" : "Participant join sound muted",
+          joinSoundEnabled ? "Participant entry bell enabled" : "Participant entry bell off",
           "success"
         );
       });
 
       syncJoinSoundButton();
+      ensureTabSpeakerControl();
     }
 
     function playParticipantJoinSound(participant) {
@@ -488,12 +528,22 @@
 
     function applyRemoteAudioState() {
       root.querySelectorAll("audio[data-live-audio-participant]").forEach(audio => {
-        audio.muted = participantAudioMuted(audio.dataset.liveAudioParticipant);
+        audio.muted = tabSpeakerMuted || participantAudioMuted(audio.dataset.liveAudioParticipant);
+      });
+      root.querySelectorAll("audio:not([data-live-audio-participant]), video").forEach(media => {
+        if (tabSpeakerMuted) {
+          if (!media.dataset.tabSpeakerPreviousMuted) media.dataset.tabSpeakerPreviousMuted = media.muted ? "1" : "0";
+          media.muted = true;
+        } else if (media.dataset.tabSpeakerPreviousMuted) {
+          media.muted = media.dataset.tabSpeakerPreviousMuted === "1";
+          delete media.dataset.tabSpeakerPreviousMuted;
+        }
       });
       if (muteAllButton) {
         setControlLabel(muteAllButton, meetingMuted ? "Ask all" : "Mute all", meetingMuted ? "Everyone is muted. Select to ask everyone to unmute" : "Everyone can speak. Select to mute everyone");
         muteAllButton.setAttribute("aria-pressed", String(meetingMuted));
       }
+      syncTabSpeakerButton();
     }
 
     function publishControllerState() {
@@ -1512,7 +1562,8 @@
       recoverMeetingAfterBackground().catch(() => {});
     });
 
-    ensureJoinSoundControl();
+    if (isController) ensureJoinSoundControl();
+    ensureTabSpeakerControl();
     syncButtons(false);
     setSidebarTab("people");
     function getLocalMicrophoneMediaTrack() {
