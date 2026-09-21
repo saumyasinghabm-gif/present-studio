@@ -2887,6 +2887,216 @@ button.present-back {
   }
 }
 
+@media (max-width: 640px) {
+  html:has(body.audience-live-view),
+  body.audience-live-view {
+    width: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+    background: #080807;
+  }
+
+  .audience-live-view .present-stage {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    background: #080807;
+  }
+
+  .audience-live-view .present-live-media.is-connected,
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden {
+    --audience-bottom-controls-height: calc(66px + env(safe-area-inset-bottom));
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    background: #080807;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-stage {
+    padding: 0;
+    background: #080807;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-presentation-feed-heading,
+  .audience-live-view .present-live-media.is-connected .live-screen-share-heading {
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+    left: 8px;
+    min-height: 28px;
+    padding: 0 8px;
+    border-radius: 7px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-presentation-feed-heading strong,
+  .audience-live-view .present-live-media.is-connected .live-screen-share-heading strong {
+    font-size: .64rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-presentation-feed-heading span,
+  .audience-live-view .present-live-media.is-connected .live-screen-share-heading span {
+    font-size: .52rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+    bottom: var(--audience-bottom-controls-height);
+    height: clamp(236px, 46dvh, 390px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 15px 15px 0 0;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar-header {
+    height: 52px;
+    min-height: 52px;
+    padding: 20px 10px 4px;
+  }
+
+  .audience-meeting-sidebar-header > div:first-of-type {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .audience-meeting-sidebar-header > div:first-of-type strong {
+    flex: 0 0 auto;
+    font-size: .84rem;
+  }
+
+  .audience-meeting-sidebar-header > div:first-of-type span {
+    min-width: 0;
+    overflow: hidden;
+    font-size: .58rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar-header > div:last-child {
+    gap: 4px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar-header .live-header-action:not(.audience-people-hide) {
+    display: none;
+  }
+
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar-header .audience-people-hide {
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    font-size: 1rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-engagement-bar {
+    gap: 5px;
+    padding: 6px 8px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-panel .live-engagement-bar button,
+  .audience-live-view .present-live-media.is-connected .live-engagement-bar button {
+    min-height: 36px;
+    padding: 3px 2px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-engagement-bar button > span:first-child {
+    font-size: .95rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-engagement-bar button > span:last-child {
+    font-size: .46rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-sidebar-tabs {
+    height: 36px;
+    padding: 0 8px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-panel .live-sidebar-tabs button,
+  .audience-live-view .present-live-media.is-connected .live-sidebar-tabs button {
+    min-height: 36px;
+    font-size: .58rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tiles {
+    gap: 6px;
+    padding: 7px 8px 12px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile {
+    border-width: 1px;
+    border-radius: 7px;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile footer {
+    gap: 1px;
+    padding: 5px 6px;
+    text-align: center;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile footer strong {
+    max-width: 10ch;
+    margin: 0 auto;
+    font-size: .62rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected .live-media-tile footer span {
+    font-size: .52rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock,
+  .audience-live-view .present-live-media.is-connected.is-sidebar-hidden > .audience-meeting-controls.live-icon-control-dock {
+    height: var(--audience-bottom-controls-height);
+    min-height: var(--audience-bottom-controls-height);
+    justify-content: space-between;
+    gap: 0;
+    overflow: hidden;
+    padding: 3px max(5px, env(safe-area-inset-right)) max(3px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
+    box-shadow: 0 -8px 22px rgba(0,0,0,.28);
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 54px;
+    min-height: 56px;
+    padding: 2px 1px;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button.is-background {
+    display: none;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button.is-leave {
+    max-width: 62px;
+    margin-left: 0;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-icon {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button.is-leave .live-control-icon {
+    width: 52px;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-meeting-controls.live-icon-control-dock .live-control-button > [data-live-control-label] {
+    font-size: .46rem;
+  }
+
+  .audience-live-view .present-live-media.is-connected > .audience-control-feedback {
+    bottom: calc(var(--audience-bottom-controls-height) + 8px);
+  }
+}
+
 /* Controller Interactive Audience controls: full-width bottom meeting dock. */
 .live-controller-page[data-controller-mode="interactive"] .interactive-workspace {
   --controller-meeting-dock-height: 76px;
