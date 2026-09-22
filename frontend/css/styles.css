@@ -2468,16 +2468,16 @@ button.present-back {
     width: 100vw;
     height: 100dvh;
     max-height: none;
-    display: block;
+    display: grid;
     overflow: hidden;
     padding: 0;
   }
   .audience-live-view .present-live-media.is-connected .audience-meeting-stage {
     position: absolute;
-    inset: 0;
+    inset: 0 0 var(--audience-bottom-controls-height, var(--audience-dock-height));
     display: grid;
     width: 100%;
-    height: 100%;
+    height: auto;
     min-height: 0;
     overflow: hidden;
     padding: 0;
@@ -2940,7 +2940,7 @@ button.present-back {
 
   .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
     bottom: var(--audience-bottom-controls-height);
-    height: clamp(236px, 46dvh, 390px);
+    height: clamp(220px, 36dvh, 320px);
     border-right: 0;
     border-bottom: 0;
     border-left: 0;
@@ -2948,9 +2948,9 @@ button.present-back {
   }
 
   .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar-header {
-    height: 52px;
-    min-height: 52px;
-    padding: 20px 10px 4px;
+    height: 48px;
+    min-height: 48px;
+    padding: 18px 10px 3px;
   }
 
   .audience-meeting-sidebar-header > div:first-of-type {
@@ -3094,6 +3094,21 @@ button.present-back {
 
   .audience-live-view .present-live-media.is-connected > .audience-control-feedback {
     bottom: calc(var(--audience-bottom-controls-height) + 8px);
+  }
+}
+
+@media (orientation: landscape) and (max-width: 680px),
+       (orientation: landscape) and (max-width: 1100px) and (pointer: coarse) {
+  .audience-live-view .present-live-media.is-connected .audience-meeting-sidebar {
+    top: 0;
+    right: 0;
+    bottom: var(--audience-bottom-controls-height);
+    left: auto;
+    width: min(43vw, 390px);
+    height: auto;
+    border-top: 0;
+    border-left: 1px solid rgba(255,255,255,.18);
+    border-radius: 0;
   }
 }
 
